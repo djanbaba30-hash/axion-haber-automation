@@ -1,3 +1,19 @@
+# v1.7.0 — Faz 2 sözleşme geçişi — 2026-09-24
+
+## Changed
+- Video Studio medya çıktısı shared.media_models 2.1 sözleşmesine taşındı.
+- Medya kaynaklarına gerçek SHA-256 kimliği eklendi.
+- Luna görsel sınıfları ortak VisualType / EditorialRole enum değerlerine normalize ediliyor; ek API çağrısı eklenmedi.
+- EditProject üretimi shared.edit_models 2.1'e taşındı.
+- Eski 1.1 EditProject dosyaları açılışta kullanılmıyor; yeniden oluşturuluyor.
+- Browser upload medya kaynakları aktif proje altında media/ klasöründe saklanıyor.
+- TTS audio metadata'sında gerçek SHA-256 tutuluyor.
+- Faz 2 için ortak sözleşme regresyon testi eklendi.
+
+## Verification
+- Kod GitHub main üzerinde doğrudan güncellendi.
+- Bu oturumda gerçek Windows/FFmpeg ortamında make test çalıştırılmadı; Windows uçtan uca doğrulama açık test adımıdır.
+
 # v1.6.1 — 2026-09-24
 
 ## Changed
