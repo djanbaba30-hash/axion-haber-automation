@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import subprocess
+
+FFMPEG_TIMEOUT_SECONDS = 120
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -89,6 +91,7 @@ def probe_audio(
         capture_output=True,
         text=True,
         check=False,
+        timeout=FFMPEG_TIMEOUT_SECONDS,
     )
 
     if result.returncode != 0:

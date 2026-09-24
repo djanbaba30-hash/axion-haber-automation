@@ -43,9 +43,11 @@ Sonuç: sonuç, son gelişme, resmi açıklama/soruşturma durumu.
 - Tanınmış kişiler dışında sivil isimleri baş harfleriyle yaz.
 - Röportaj veren vatandaşın adı açık kalabilir.
 - TTS'de sivil isim/baş harfi kullanma; gerekirse genel ifadeler kullan.
-- Şiddet, suç, suç aleti ve cinsellik içeren kelimeleri anlamı bozmadan
-  yıldızlayarak sansürle: s*lah, b*çak, c*nayet vb.
-- Caption sonuna yalnızca ham haberde bulunan kaynak bilgisini ekle.
+- Şiddet, suç, suç aleti ve cinsellik içeren kelimeler için yalnızca CAPTION
+  çıktısında anlamı bozmadan yıldızlama uygula: s*lah, b*çak, c*nayet vb.
+- TTS metninde yıldızlama kullanma; seslendirmeyi bozabilecek sansürlü yazım yerine
+  gerekiyorsa nötr/genel bir ifade kullan.
+- Caption sonuna yalnızca ham haberde bulunan kaynak bilgisini ek.
 
 TTS
 - Caption'dan daha kısa ve seslendirmeye uygun olmalı.
