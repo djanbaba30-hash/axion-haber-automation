@@ -56,7 +56,7 @@ apps/video_studio/             VIDEO STUDIO
   modules/media_pipeline.py    ingestion → proxy → shot tespiti → temsilci kare → Luna → Media Library
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı
-  modules/edit_plan.py         ESKİ taslak EditProject (1.1); hedef sözleşme shared/edit_models.py (2.1)
+  modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
@@ -74,13 +74,14 @@ tests/                         pytest; tests/test_axion_local_app.py uygulamayı
 Haber Stüdyosu ──"Kaydet"──► data/projects/<zaman>_<başlık>/
                                news_package.json  (NewsPackage; ses sha256'sı metadata'da)
                                tts.mp3
-Video Studio   ──analiz────►   media_library.json (Luna sonucu; tekrar açınca yeniden analiz yok)
-               ──hazırla───►   edit_project.json
+Video Studio   ──analiz────►   media_library.json (shared MediaLibrary; tekrar açınca yeniden analiz yok)
+                               browser upload ise proje içindeki media/ kaynakları kullanır
+               ──hazırla───►   edit_project.json (shared EditProject 2.1)
 ```
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
 - Ses üretildikten sonra TTS metni değişirse kaydetme engellenir.
-- Videolar kopyalanmadan diskten okunur (`LocalMediaFile`); proxy ve kareler analizden sonra silinir.
+- Local inbox dosyaları yerinde okunur (`LocalMediaFile`); browser upload dosyaları aktif proje altındaki `media/` klasörüne kalıcı yazılır. Proxy ve analiz kareleri analizden sonra silinir.
 
 
 ## Nerede kaldık (2026-09-24)
@@ -97,7 +98,7 @@ Video Studio   ──analiz────►   media_library.json (Luna sonucu; te
 - Faz 2 için ortak sözleşme regresyon testi eklendi.
 
 ### Şu anki durum / sonraki adım
-- Faz 2 ana sözleşme geçişi kodlanmış durumda.
+- Faz 2 ana sözleşme geçişi kodlanmış durumda. EditProject importunu kıran tipografik tırnak/syntax hatası düzeltildi; Video Studio sayfasının browser-upload persistence ve yeni MediaLibrary sayımı da güncellendi.
 - Windows üzerinde make test ve gerçek bir haber/video ile uçtan uca test bu oturumda çalıştırılmadı; Windows doğrulaması yapılmış kabul edilmemeli.
 - Sıradaki teknik iş: uzun shot'ları AnalysisWindow'lara deterministik bölmek ve bunu tek Luna çağrısı içinde yapmak.
 - Ardından Faz 3: API çağrısı olmadan TTS segmentlerini shot'larla eşleştirip FFmpeg ile 1080x1440 kaba kurgu MP4 üretmek.
