@@ -1,0 +1,41 @@
+name: Extract Clean Repository
+
+on:
+  push:
+    paths:
+      - "axion_haber_automation_clean.zip"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract archive
+        run: |
+          rm -rf apps shared tests data
+          unzip -o axion_haber_automation_clean.zip -d extracted
+
+          if [ -d "extracted/axion_repo" ]; then
+            cp -R extracted/axion_repo/. .
+          else
+            echo "axion_repo directory not found"
+            exit 1
+          fi
+
+          rm -rf extracted
+          rm -f axion_haber_automation_clean.zip
+
+      - name: Commit extracted repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git diff --cached --quiet || git commit -m "Extract clean repository structure"
+          git push
