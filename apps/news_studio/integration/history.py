@@ -1,6 +1,9 @@
+import json
+import logging
 import sqlite3
 from pathlib import Path
-import json
+
+logger = logging.getLogger(__name__)
 
 
 def log_run(db_path: Path, *, raw_text, result, usage, style, provider, model, validation):
@@ -17,5 +20,5 @@ def log_run(db_path: Path, *, raw_text, result, usage, style, provider, model, v
             )""")
             con.execute("INSERT INTO news_runs(provider,model,style,source_chars,caption_chars,tts_chars,usage_json,validation_json,headline1,headline2,caption,tts) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(
                 provider,model,style,len(raw_text),len(result.icerik),len(result.tts),json.dumps(usage,ensure_ascii=False),json.dumps(validation,ensure_ascii=False),result.baslik1,result.baslik2,result.icerik,result.tts))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("News history log yazılamadı: %s", exc, exc_info=True)
