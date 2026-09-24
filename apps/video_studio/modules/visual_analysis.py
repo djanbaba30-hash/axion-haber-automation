@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-mimetypes
+import mimetypes
 from pathlib import Path
 from typing import Any
 
