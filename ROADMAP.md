@@ -66,7 +66,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 | 0 ✅ | **Yerel çalışma:** tek uygulama (`axion_local.py`), kalıcı proje klasörü, videoyu diskten alma, ikonla konsolsuz başlatma, Tailscale ile uzaktan erişim | Yükleme sorunu biter |
 | 1 ✅ | **News Studio:** zaman bilgili TTS (`convert_with_timestamps`), metin değişince sesin geçersiz sayılması, NewsPackage'da ses hash'i | TTS cümleleri zamanlanabilir |
 | 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, enum'lu Luna şeması, uzun shot pencereleri (Windows'ta doğrulandı) | Planner'a güvenilir veri |
-| 3 🔶 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
+| 3 ✅ | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → `EditProject` | Otomatik kurgu kararı |
 | 5 | **Axion şablon katmanı (Tasarım Stüdyosu sayfası):** arka plan + başlıklar + slogan yazıları + logo kutusu animasyonu → 1080×1920 (ayrıntı: aşağıda, `shared/axion_template.py`) | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
 | 6 | **Blur:** plaka ve yüz önerisi, yalnızca son videoya giren parçalarda, editör onayıyla | Gizlilik |
