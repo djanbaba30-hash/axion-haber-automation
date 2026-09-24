@@ -60,7 +60,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 |---|---|---|
 | 0 ✅ | **Yerel çalışma:** tek uygulama (`axion_local.py`), kalıcı proje klasörü, videoyu diskten alma, ikonla konsolsuz başlatma, Tailscale ile uzaktan erişim | Yükleme sorunu biter |
 | 1 ✅ | **News Studio:** zaman bilgili TTS (`convert_with_timestamps`), metin değişince sesin geçersiz sayılması, NewsPackage'da ses hash'i | TTS cümleleri zamanlanabilir |
-| 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, sabit kategoriler (enum), uzun shot'ları pencerelere bölme, tanık sesi ve kaynak ses alanları | Planner'a güvenilir veri |
+| 2 🔶 | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri ve gerçek Windows E2E doğrulaması tamam; uzun shot windowing ve Luna görsel sınıflandırma kalitesi henüz tamam değil | Planner'a güvenilir veri |
 | 3 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile 1080×1440 MP4 | **CapCut'a gerek kalmaz** |
 | 4 | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → `EditProject` | Otomatik kurgu kararı |
 | 5 | **Axion şablon katmanı:** statik şablon PNG + başlık yazısı + logo animasyonu → 1080×1920 | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
@@ -77,7 +77,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - edit_project.json artık 2.1 ortak sözleşmesiyle yazılıyor; eski 1.1 dosyalar yeniden kullanılamıyor.
 - Browser upload medya kaynakları proje altında saklanıyor; local inbox dosyaları yerinde okunuyor.
 - TTS alignment varsa karakter aralıkları doğrulanıyor; yoksa segmentler deterministik noktalama sınırlarından üretiliyor.
-- Windows uçtan uca test henüz yapılmadı.
+- Windows gerçek E2E testinde analiz + EditProject üretimi doğrulandı; 157.28 sn videoda 15 shot, 21.27 sn TTS timeline üretildi. Ancak AI görsel sınıflandırma alanları `unknown`/boş ve 71.6 sn uzun shot tek pencere olarak kalıyor.
 
 ## Açık sorular
 
