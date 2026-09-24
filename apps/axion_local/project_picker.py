@@ -41,7 +41,7 @@ def selected_project(key: str) -> NewsProject | None:
 def project_selector(key: str) -> None:
     choices = _choices(key)
     select_col, old_col = st.columns([5, 1], vertical_alignment="center")
-    old_col.checkbox("Önceki günler", key=f"{key}_old", help="Bugün 02:00'den önce kaydedilen haberleri de göster.")
+    old_col.checkbox("Önceki günler", key=f"{key}_old", help="Önceki 2 günün haberleri. Haberler 3 gün saklanır, daha eskileri otomatik silinir.")
     if not choices:
         select_col.info("Bugün kaydedilmiş haber yok. Haber Stüdyosu'nda haberi hazırlayıp kaydet.")
         return

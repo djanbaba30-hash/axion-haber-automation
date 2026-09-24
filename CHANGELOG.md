@@ -1,3 +1,13 @@
+# v2.2.1 — Haberler 3 gün saklanır — 2026-09-24
+
+## Changed
+- Haber projeleri en fazla 3 iş günü (bugün + önceki 2 gün) saklanır; daha eskileri her gün ilk açılışta otomatik
+  silinir (ses, analiz, kesitler, kurgu, video ve önizlemeler dahil). Üretim geçmişindeki eski kayıtlar da silinir.
+  İndirilenler'deki kaynak videolara dokunulmaz.
+
+## Verification
+- `make test` geçti (3 gün sınırı ve proje olmayan klasöre dokunulmaması testleri dahil).
+
 # v2.2.0 — Her gün taze başlangıç, metin düzenleme düzeltmesi — 2026-09-24
 
 ## Fixed

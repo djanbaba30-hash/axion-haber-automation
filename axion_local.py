@@ -8,6 +8,7 @@ import hmac
 import os
 import sys
 import threading
+from datetime import timedelta
 from pathlib import Path
 
 import streamlit as st
@@ -17,7 +18,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from apps.axion_local.settings import secret  # noqa: E402
-from apps.axion_local.store import get_news_project  # noqa: E402
+from apps.axion_local.store import KEEP_DAYS, delete_old_projects, get_news_project, work_day_start  # noqa: E402
+from apps.news_studio.config import HISTORY_DB_PATH  # noqa: E402
+from apps.news_studio.integration.history import delete_runs_before  # noqa: E402
 
 ASSETS = ROOT / "assets"
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
@@ -91,6 +94,16 @@ def sidebar_footer() -> None:
 
 if not authenticated():
     st.stop()
+
+
+@st.cache_resource(show_spinner=False)
+def clean_up_for_day(day: str) -> list[str]:
+    """Her iş günü bir kez: 3 günden eski haber projelerini ve üretim kayıtlarını sil (editör kararı)."""
+    delete_runs_before(HISTORY_DB_PATH, work_day_start() - timedelta(days=KEEP_DAYS - 1))
+    return delete_old_projects()
+
+
+clean_up_for_day(work_day_start().date().isoformat())
 
 pages = [
     st.Page(ROOT / "apps" / "news_studio" / "page.py", title="Haber Stüdyosu", icon="📰", url_path="haber", default=True),

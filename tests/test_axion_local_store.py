@@ -121,3 +121,36 @@ def test_corrupt_project_json_is_ignored(tmp_path):
     (folder / store.MEDIA_LIBRARY_FILENAME).write_text("{bozuk", encoding="utf-8")
     project = store.get_news_project(folder.name, base_dir=tmp_path)
     assert store.load_project_json(project, store.MEDIA_LIBRARY_FILENAME) is None
+
+
+def test_projects_older_than_three_days_are_deleted(tmp_path):
+    from datetime import datetime
+
+    now = datetime(2026, 9, 25, 10, 0)
+    kept, dropped = [], []
+    for when, bucket in [
+        (datetime(2026, 9, 25, 9, 0), kept),      # bugün
+        (datetime(2026, 9, 23, 2, 30), kept),     # 3. gün (önceki 2 gün)
+        (datetime(2026, 9, 23, 1, 30), dropped),  # 3 günden eski (22'sinin iş günü)
+        (datetime(2026, 9, 1, 12, 0), dropped),
+    ]:
+        bucket.append(store.save_news_project(package(f"HABER {when:%d %H%M}"), b"mp3", base_dir=tmp_path, now=when).name)
+    (tmp_path / "baska_klasor").mkdir()  # proje olmayan klasöre dokunulmaz
+
+    assert sorted(store.delete_old_projects(tmp_path, now=now)) == sorted(dropped)
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(kept + ["baska_klasor"])
+
+
+def test_old_history_rows_are_deleted(tmp_path):
+    import sqlite3
+    from datetime import datetime
+
+    from apps.news_studio.integration.history import delete_runs_before
+
+    db = tmp_path / "history.sqlite3"
+    with sqlite3.connect(db) as con:
+        con.execute("CREATE TABLE news_runs (id INTEGER PRIMARY KEY, created_at TEXT, tts TEXT)")
+        con.executemany("INSERT INTO news_runs(created_at, tts) VALUES(?, ?)", [("2026-09-01 10:00:00", "eski"), ("2026-09-25 10:00:00", "yeni")])
+    assert delete_runs_before(db, datetime(2026, 9, 23, 2, 0)) == 1
+    with sqlite3.connect(db) as con:
+        assert [row[0] for row in con.execute("SELECT tts FROM news_runs")] == ["yeni"]

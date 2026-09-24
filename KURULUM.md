@@ -63,7 +63,8 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    - Aynı haberi düzeltip yeniden kaydedersen aynı proje güncellenir; yapılmış video analizi kaybolmaz.
 3. **DHA videosunu** her zamanki gibi panelden bilgisayarına indir (İndirilenler klasörüne).
 4. **Video Stüdyosu** (ve Tasarım Stüdyosu) açılışta boş gelir: haberi listeden seç. Liste her gün saat 02:00'de
-   sıfırlanır; eski haberler için **Önceki günler**'i işaretle. Video Stüdyosu adım adım ilerler; biten adım tek satıra daralır (tıklayınca yeniden açılır):
+   sıfırlanır; önceki 2 günün haberleri için **Önceki günler**'i işaretle. Haberler **3 gün** saklanır, daha eskileri
+   otomatik silinir (İndirilenler'deki DHA videolarına dokunulmaz). Video Stüdyosu adım adım ilerler; biten adım tek satıra daralır (tıklayınca yeniden açılır):
    - **1. Haber:** kaydettiğin haber ve sesi. Başka bir haberi buradan seçebilirsin.
    - **2. Görüntüler:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Görüntüleri analiz et**.
      Video kopyalanmaz, yerinden okunur. Analiz projeye kaydedilir; tekrar açınca yeniden ücret ödemezsin.
@@ -132,7 +133,7 @@ Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çif
 
 ## 7. Verilerin yeri
 
-- Projeler (haber, seslendirme, görüntü analizi, kesitler, kurgu ve video): `C:\Axion\data\projects\`
+- Projeler (haber, seslendirme, görüntü analizi, kesitler, kurgu ve video): `C:\Axion\data\projects\` — 3 günden eski projeler otomatik silinir.
 - Seslendirme hız ayarı (kalibrasyon) ve üretim geçmişi: `C:\Axion\data\`
 
 Bu klasörü ara sıra yedeklemen yeterli.

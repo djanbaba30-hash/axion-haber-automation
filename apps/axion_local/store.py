@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -156,6 +157,27 @@ def work_day_start(now: datetime | None = None) -> datetime:
     now = now or datetime.now()
     start = now.replace(hour=DAY_START_HOUR, minute=0, second=0, microsecond=0)
     return start if now >= start else start - timedelta(days=1)
+
+
+KEEP_DAYS = 3  # Haberler en fazla 3 iş günü saklanır (bugün + önceki 2 gün; editör kararı).
+
+
+def delete_old_projects(base_dir: Path | None = None, now: datetime | None = None, keep_days: int = KEEP_DAYS) -> list[str]:
+    """Saklama süresi dolan proje klasörlerini siler (ses, analiz, kurgu, video, önizlemeler dahil).
+
+    Yalnızca proje adı biçimindeki (YYYYMMDD-HHMMSS_...) klasörlere dokunur; İndirilenler'deki kaynak videolar silinmez.
+    """
+    base_dir = base_dir or projects_dir()
+    if not base_dir.is_dir():
+        return []
+    cutoff = work_day_start(now) - timedelta(days=keep_days - 1)
+    deleted = []
+    for folder in base_dir.iterdir():
+        created = _folder_time(folder) if folder.is_dir() else None
+        if created is not None and created < cutoff:
+            shutil.rmtree(folder, ignore_errors=True)
+            deleted.append(folder.name)
+    return deleted
 
 
 def _folder_time(folder: Path) -> datetime | None:

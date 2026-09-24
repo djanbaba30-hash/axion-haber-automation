@@ -183,6 +183,9 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
     yol açıyordu. Widget anahtarı `_w_<alan>`, değer `session_state[<alan>]`; sayfa değişince de kaybolmaz.
   - `axion_local/project_picker.py`: Video/Tasarım stüdyosunda taze açılışta haber seçili gelmez; liste her gün 02:00'de
     (bilgisayar saati) sıfırlanır (`store.work_day_start`), "Önceki günler" ile eskiler görünür.
+- v2.2.1: haberler en fazla 3 iş günü saklanır (`store.KEEP_DAYS`, editör kararı). `axion_local.clean_up_for_day`
+  her iş günü bir kez eski proje klasörlerini (`store.delete_old_projects`, yalnızca YYYYMMDD-HHMMSS_ adlı klasörler)
+  ve `history.sqlite3` kayıtlarını (`delete_runs_before`) siler. İndirilenler'deki kaynak videolara dokunulmaz.
 - **Faz 3 sonu:** editör bu sürümü test edecek, ardından Claude ve GPT tüm kodu ayrı ayrı gözden geçirecek
   (hata, optimizasyon, sadeleştirme); düzeltmelerden sonra Faz 4'e geçilir (Luna Edit Planner: tek metin çağrısı,
   rough_cut yedek kalır). Plaka/yüz bulanıklaştırma ROADMAP'te Faz 6.
