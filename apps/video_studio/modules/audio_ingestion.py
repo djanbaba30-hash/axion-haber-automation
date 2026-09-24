@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,8 @@ def build_audio_metadata(
         audio_path.stat().st_size
     )
 
+    sha256 = hashlib.sha256(audio_path.read_bytes()).hexdigest()
+
     return {
         "filename": audio_path.name,
 
@@ -118,6 +121,8 @@ def build_audio_metadata(
         "file_size_bytes": (
             file_size_bytes
         ),
+
+        "sha256": sha256,
 
         "file_size_mb": round(
             file_size_bytes
