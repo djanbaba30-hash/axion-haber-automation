@@ -1,4 +1,4 @@
-"""Medya dosyalarından Media Library üretir: ingestion → shot → temsilci kare → Luna → kütüphane."""
+"""Medya dosyalarını ortak MediaLibrary 2.1 sözleşmesine dönüştüren pipeline."""
 
 from __future__ import annotations
 
@@ -11,12 +11,11 @@ from .local_media import LocalMediaFile
 from .media_library import build_image_asset, build_media_library, detect_media_type
 from .representative_sampling import extract_representative_frames
 from .shot_detection import detect_shots
-from .video_asset import build_video_asset
+from .video_asset import build_image_asset_model, build_video_asset
 from .video_ingestion import create_proxy, probe_video, save_uploaded_video
 from .visual_analysis import analyze_media_with_luna
 
 PROXY_WIDTH = 960
-
 Progress = Callable[[str], None]
 
 
@@ -29,14 +28,13 @@ def _image_path(file) -> Path:
 
 
 def _scratch_files(metadata: dict[str, Any], shots: list[dict[str, Any]]) -> list[Path]:
-    """Analiz bitince gereksiz kalan proxy ve kare dosyaları."""
     paths = [Path(metadata["proxy"]["path"])]
     for shot in shots:
         paths.extend(Path(frame["path"]) for frame in shot.get("analysis_frames", []))
     return paths
 
 
-def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress):
     progress(f"{file.name}: video okunuyor")
     video_path = save_uploaded_video(file)
     metadata = probe_video(video_path)
@@ -66,11 +64,11 @@ def prepare_media_library(
     analysis_mode: str,
     api_key: str,
     progress: Progress = lambda message: None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Seçilen video/görselleri analiz eder; (media_library, luna_usage) döndürür."""
-    videos: list[tuple[str, dict[str, Any], list[dict[str, Any]]]] = []
-    all_shots: list[dict[str, Any]] = []
-    images: list[dict[str, Any]] = []
+):
+    videos = []
+    all_shots = []
+    images = []
+    image_paths: list[Path] = []
     scratch: list[Path] = []
 
     try:
@@ -84,14 +82,21 @@ def prepare_media_library(
                 all_shots.extend(shots)
             else:
                 image_asset = build_image_asset(file, len(images) + 1)
-                image_asset["path"] = str(_image_path(file))
+                image_path = _image_path(file)
+                image_asset["path"] = str(image_path)
                 images.append(image_asset)
+                image_paths.append(image_path)
 
         progress("Luna görüntüleri analiz ediyor")
         analyzed_shots, analyzed_images, usage = analyze_media_with_luna(all_shots, images, api_key)
     finally:
         for path in scratch:
             path.unlink(missing_ok=True)
+        # Browser upload görselleri geçici olduğundan analizden sonra silinebilir.
+        for path, image in zip(image_paths, images):
+            if not isinstance(next((f for f in files if getattr(f, "name", None) == image["source"]["filename"]), None), LocalMediaFile):
+                path.unlink(missing_ok=True)
+
     analyzed_by_id = {shot["shot_id"]: shot for shot in analyzed_shots}
 
     assets: list[dict[str, Any]] = []
@@ -108,22 +113,12 @@ def prepare_media_library(
             )
         )
     for image in analyzed_images:
-        assets.append(
-            {
-                "asset_id": image["asset_id"],
-                "asset_type": "image",
-                "source": image["source"],
-                "analysis": {"frame_count": 1},
-                "visual": image.get("visual_asset", {}),
-                "path": image.get("path", ""),
-            }
-        )
+        assets.append(build_image_asset_model(image, usage))
 
     return build_media_library(assets=assets, usage=usage), usage
 
 
 def shot_rows(media_library: dict[str, Any]) -> list[dict[str, Any]]:
-    """Editörün kurguda kullanabileceği shot özeti (zaman kodu + Luna açıklaması)."""
     rows = []
     for asset in media_library.get("assets", []):
         if asset.get("asset_type") != "video":
@@ -131,17 +126,23 @@ def shot_rows(media_library: dict[str, Any]) -> list[dict[str, Any]]:
         filename = asset.get("source", {}).get("filename", "")
         for shot in asset.get("shots", []):
             visual = shot.get("visual") or {}
-            subjects = visual.get("subjects") or []
             rows.append(
                 {
                     "Video": filename,
                     "Shot": shot.get("shot_number"),
-                    "Başlangıç": shot.get("start_formatted"),
-                    "Bitiş": shot.get("end_formatted"),
+                    "Başlangıç": _format_timestamp(shot.get("start_seconds", 0)),
+                    "Bitiş": _format_timestamp(shot.get("end_seconds", 0)),
                     "Süre (sn)": round(float(shot.get("duration_seconds") or 0), 1),
                     "Görüntü": visual.get("visual_type", ""),
                     "Rol": visual.get("editorial_role", ""),
-                    "Açıklama": subjects[0] if subjects else "",
+                    "Açıklama": visual.get("description", ""),
                 }
             )
     return rows
+
+
+def _format_timestamp(seconds: float) -> str:
+    total = max(0.0, float(seconds))
+    minutes = int(total // 60)
+    remaining = total - minutes * 60
+    return f"{minutes:02d}:{remaining:05.2f}"
