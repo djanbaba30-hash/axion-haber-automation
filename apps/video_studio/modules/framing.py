@@ -21,9 +21,10 @@ EDGE_PEAK_RATIO = 2.5   # Görüntü/kenar sınır çizgisi merkez keskinliğini
 GAP_TOLERANCE = 0.03    # İçerikte bu genişliğe kadar düz alan (duvar, gökyüzü şeridi) kesinti sayılmaz.
 MIN_MARGIN = 0.06       # Daha dar kenarlar yok sayılır (gürültü).
 MAX_ASYMMETRY = 0.05    # Bulanık kenarlar iki yanda yaklaşık eşit olmalı (tek yanda düz alan değil).
-SAFETY_INSET = 0.012    # Yumuşak geçişteki son bulanık/siyah çizgi büyütmede görünmesin.
+SAFETY_INSET = 0.02     # Yumuşak geçişteki son bulanık/siyah çizgi büyütmede görünmesin.
 VERTICAL_ASPECTS = (9 / 16, 1.0, 4 / 3)  # Yanları bulanık verilen çekimler: telefon dikey, kare, eski 4:3.
 SNAP_TOLERANCE = 0.02
+CENTER_TOLERANCE = 0.06
 
 
 def _profiles(path: Path) -> tuple[np.ndarray, np.ndarray, float]:
@@ -87,6 +88,8 @@ def _snap_to_vertical_aspect(start: float, end: float, frame_aspect: float) -> t
         return start, end
     snapped = min(max(fits), width)
     center = (start + end) / 2
+    if abs(center - 0.5) <= CENTER_TOLERANCE:
+        center = 0.5  # DHA dikey görüntüyü hep ortalar; tespitin tek yana kayması şerit bırakmasın.
     return center - snapped / 2, center + snapped / 2
 
 

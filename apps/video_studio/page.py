@@ -26,7 +26,7 @@ from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
 from apps.video_studio.modules.news_package import news_package_to_state
 from apps.video_studio.modules.render import ROUGH_CUT_FILENAME, render_rough_cut
-from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut, set_framing
+from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut
 
 ANALYSIS_OPTIONS = {
     "Ekonomik — 1 kare / shot": 1,
@@ -34,7 +34,8 @@ ANALYSIS_OPTIONS = {
     "Ayrıntılı — 3 kare / shot": 3,
     "Maksimum — 4 kare / shot": 4,
 }
-FRAMING_OPTIONS = {"Doldur": "fill_crop", "Bulanık kenar": "fit_blur"}
+FRAMING_OPTIONS = {"Akıllı": "fill_crop", "Tüm kare": "fit_blur"}
+DEFAULT_FRAMING = "Akıllı"
 UPLOAD_TYPES = ["mp4", "mov", "mkv", "avi", "webm", "m4v", "jpg", "jpeg", "png", "webp"]
 
 ss = st.session_state
@@ -42,7 +43,7 @@ ss = st.session_state
 st.set_page_config(page_title="Video Studio · Axion", page_icon="🎬", layout="wide")
 require_secrets("OPENAI_API_KEY")
 st.title("Video Studio")
-remember(ss, {"framing": "Doldur"}, {"framing": list(FRAMING_OPTIONS)})
+remember(ss, {"framing": DEFAULT_FRAMING}, {"framing": list(FRAMING_OPTIONS)})
 
 
 def load_project(project: NewsProject) -> None:
@@ -206,13 +207,14 @@ if edit_project and project:
         "Kadraj",
         list(FRAMING_OPTIONS),
         key="framing",
-        help="Doldur: yatay görüntü dikey kadraja yakınlaştırılır, kenarlar kırpılır. "
-        "Bulanık kenar: görüntünün tamamı görünür, boşluklar bulanık arka planla dolar.",
+        help="Akıllı: haberin ana öznesi hiç kesilmeden video alanı olabildiğince doldurulur; özne genişse "
+        "üst/alt aynı görüntünün bulanık kopyasıyla dolar. Tüm kare: görüntünün tamamı görünür.",
     )
     persist(ss, ["framing"])
     label = "Videoyu yeniden oluştur" if output.exists() else "🎬 Videoyu oluştur"
     if button_col.button(label, type="primary", use_container_width=True):
-        edit_project = set_framing(edit_project, FRAMING_OPTIONS[ss.framing or "Doldur"])
+        # Kadraj seçimi gösterilecek alanı değiştirir: plan aynı kurallarla yeniden kurulur (API yok).
+        edit_project = plan_rough_cut(edit_project, media_library, FRAMING_OPTIONS[ss.framing or DEFAULT_FRAMING])
         try:
             with st.spinner("Video oluşturuluyor... (birkaç dakika sürebilir)"):
                 encoder = render_rough_cut(edit_project, media_library, output)

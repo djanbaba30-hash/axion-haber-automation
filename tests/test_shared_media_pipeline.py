@@ -74,12 +74,14 @@ def test_luna_schema_forces_known_categories_and_maps_all_fields():
     item = WindowVisualAnalysis(
         window_id="w", description=" Konuşan esnaf ", visual_type="person", editorial_role="portrait",
         visible_people=True, location="dükkân önü", text_visible=True, visible_text="BERBER", confidence=1.3,
-        focus_x=1.4, focus_y=0.3,
+        subject_left=0.6, subject_right=1.4, subject_top=0.5, subject_bottom=0.1,
     )
     visual = _visual_metadata(item)
     assert visual["description"] == "Konuşan esnaf"
     assert (visual["visual_type"], visual["editorial_role"]) == ("person", "portrait")
     assert (visual["visible_people"], visual["visible_text"], visual["confidence"]) == (True, "BERBER", 1.0)
-    assert visual["focus_point"] == {"x": 1.0, "y": 0.3}
+    # Sınır dışı değerler kırpılır, ters verilen kenarlar düzeltilir; odak kutunun merkezi.
+    assert visual["subject_region"] == {"x": 0.6, "y": 0.1, "width": 0.4, "height": 0.4}
+    assert visual["focus_point"] == {"x": 0.8, "y": 0.3}
     with pytest.raises(ValueError):
         WindowVisualAnalysis(**{**item.model_dump(), "visual_type": "olay yeri"})

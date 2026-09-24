@@ -121,7 +121,7 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
     Puan: açıklama/konum kelime eşleşmesi + kavram grupları (yaralı→ambulans, gözaltı→polis, yangın→itfaiye, kaza→hasar)
     + açılışta establishing/action/event + güven. Cezalar: röportaj (portrait) sessiz dolgu olarak, plaka görünen kare,
     aynı shot'ı tekrar veya art arda kullanma. Aynı shot'tan ikinci kesit kaldığı yerden devam eder. Boşluk bırakmaz.
-  - Klipler `origin="rule"` (sözleşmeye eklendi). Kadraj (Doldur=fill_crop / Bulanık kenar=fit_blur) editör seçer, hatırlanır.
+  - Klipler `origin="rule"` (sözleşmeye eklendi). Kadraj (Akıllı=fill_crop / Tüm kare=fit_blur) editör seçer, hatırlanır.
   - `render.render_rough_cut`: her klip ayrı `-ss/-t` girdisi, filtrede tam kare sayısına kırpılır (ses senkronu), concat + TTS.
     Önce `h264_amf` (AMD), hata verirse x264. Dosya önce `.yaziliyor.mp4` adına yazılır.
 - Faz 3 Windows'ta doğrulandı: Bayrampaşa videosu hızlıca render edildi, AMD `h264_amf` kullanıldı, editör kaliteden memnun.
@@ -145,6 +145,13 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
     (cümle sonu > virgül > nefes arası, duraklama uzunluğu), `_cut_times` her sahneyi 2–5 sn tutar. Sahne, o aralıkta
     söylenen kelimelere göre seçilir.
   - `edit_plan._segment_ranges`: "17.00" gibi sayılardaki nokta artık cümle sonu sayılmıyor (0,8 sn'lik sahne bunun içindi).
+- v1.9.4 (editör: "aşırı zoom yapıp bir cismin yarısını göstermeyelim; kadraja olabildiğince çok şey sığsın"):
+  - Luna odak noktası yerine ana öznenin kutusunu verir (`subject_left/right/top/bottom` → `VisualMetadata.subject_region`),
+    prompt v2.4. `rough_cut._view_region`: video alanını dolduran en büyük alan (en az zoom), özneyi içerecek şekilde
+    kaydırılır; özne daha genişse alan özne kadar genişler, üst/alt bulanık dolgu. `Framing.view_region` → render
+    bu alanı kırpıp FIT_BLUR ile yerleştirir.
+  - Bulanık kenar oturtması merkezde (DHA hep ortalar; tek yanda şerit kalıyordu), güvenlik payı %2.
+  - Token: Luna kareleri 640 px genişlikte (önce 960) → girdi token'ı yaklaşık yarıya inmeli; editör doğrulayacak.
 - Açık tasarım sorusu (editöre soruldu): TTS öncesi dikkat çekici kesit / TTS sonrası röportaj ekleme arayüzü.
 - Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 

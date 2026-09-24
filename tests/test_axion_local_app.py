@@ -164,14 +164,14 @@ def test_render_button_creates_video_with_chosen_framing(local_env, monkeypatch)
     }]))
     at = start()
     at.switch_page(VIDEO_PAGE).run()
-    at.segmented_control(key="framing").set_value("Bulanık kenar").run()
+    at.segmented_control(key="framing").set_value("Tüm kare").run()
     button(at, "🎬 Videoyu oluştur").click().run()
     assert not at.exception
     assert rendered == [{"fit_blur"}]
     assert (project.folder / store.ROUGH_CUT_FILENAME).exists()
     assert any(b.label == "Videoyu yeniden oluştur" for b in at.button)
     from apps.axion_local.preferences import load_preferences
-    assert load_preferences()["framing"] == "Bulanık kenar"
+    assert load_preferences()["framing"] == "Tüm kare"
 
 
 def test_outdated_media_analysis_asks_for_reanalysis(local_env):

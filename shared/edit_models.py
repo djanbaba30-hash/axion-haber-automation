@@ -54,7 +54,8 @@ class ClipType(str, Enum):
 
 class Framing(BaseModel):
     """content_region: kaynakta önce kırpılacak asıl görüntü alanı (0–1; bulanık/siyah kenarlar atılır).
-    focus_x/focus_y: FILL_CROP'ta kadrajın ortalanacağı nokta, content_region'a göre (0–1)."""
+    focus_x/focus_y: FILL_CROP'ta kadrajın ortalanacağı nokta, content_region'a göre (0–1).
+    view_region: planlayıcının seçtiği son görüntü alanı (öznenin tamamı + mümkün olan en dolu kadraj)."""
 
     model_config = ConfigDict(extra="forbid")
     mode: FramingMode = FramingMode.FILL_CROP
@@ -62,6 +63,9 @@ class Framing(BaseModel):
     focus_y: float = 0.5
     zoom: float = 1.0
     content_region: Region | None = None
+    # Kaynakta gösterilecek dikdörtgen (0–1, tüm kareye göre). Oranı video alanından genişse üst/alt boşluk
+    # aynı görüntünün bulanık kopyasıyla dolar. Doluysa render content_region/focus yerine bunu kullanır.
+    view_region: Region | None = None
 
     @field_validator("focus_x", "focus_y")
     @classmethod

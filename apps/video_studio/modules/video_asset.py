@@ -17,7 +17,7 @@ from shared.media_models import (
 )
 
 # Prompt/şema değişince artır: eski sürümle yapılmış analiz yeniden istenir.
-LUNA_PROMPT_VERSION = "media-index-v2.3"
+LUNA_PROMPT_VERSION = "media-index-v2.4"
 
 
 def sha256_file(path: Path) -> str:

@@ -22,6 +22,8 @@ MAX_FRAME_COUNT = 4
 # "kare sayısı" pencere başına uygulanır.
 WINDOW_SECONDS = 10.0
 
+ANALYSIS_FRAME_WIDTH = 640
+
 
 # -------------------------------------------------
 # Ana fonksiyon
@@ -305,6 +307,9 @@ def extract_single_frame(
         str(video_path),
         "-frames:v",
         "1",
+        # Luna'ya küçük kare: token tasarrufu (kare başına ~yarı), sahne tanıma için yeterli.
+        "-vf",
+        f"scale={ANALYSIS_FRAME_WIDTH}:-2",
         "-q:v",
         "4",
         str(frame_path),

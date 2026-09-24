@@ -7,7 +7,7 @@ from typing import Any, Literal
 from openai import OpenAI
 from pydantic import BaseModel
 
-from shared.media_models import EditorialRole, FocusPoint, VisualMetadata, VisualType
+from shared.media_models import EditorialRole, FocusPoint, Region, VisualMetadata, VisualType
 
 
 LUNA_MODEL = "gpt-5.6-luna"
@@ -29,8 +29,10 @@ class LunaVisual(BaseModel):
     location: str
     text_visible: bool
     visible_text: str
-    focus_x: float
-    focus_y: float
+    subject_left: float
+    subject_right: float
+    subject_top: float
+    subject_bottom: float
     confidence: float
 
 
@@ -71,8 +73,8 @@ editorial_role — kurgudaki işlevi:
   detail=yakın plan ayrıntı (hasar, kan, eşya), context=çevre/bağlam, evidence=kanıt (kamera kaydı, belge),
   portrait=konuşan kişi/röportaj, generic_broll=genel dolgu görüntü, other=hiçbiri.
 location: görünen mekân türü (ör. "cadde", "dükkân içi"); belirsizse "unknown".
-focus_x, focus_y: ana öznenin (hasarlı araç, konuşan kişinin yüzü, olay anı) karedeki merkezi, 0-1
-  (sol/üst=0, sağ/alt=1). Kare dikey kadraja kırpılacak; bu nokta kadrajda kalacak.
+subject_left/right/top/bottom: haberin ana öznesinin (hasarlı araç, konuşan kişi, olay anı) TAMAMINI içeren kutu,
+  0-1 (sol/üst=0, sağ/alt=1). Kare dikey kadraja kırpılacak; bu kutu kesilmeyecek. Genel planda kutu geniş olur.
 confidence: 0-1."""
 
 
@@ -82,6 +84,8 @@ def _unit(value: float) -> float:
 
 def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
     """Luna sonucunu ortak VisualMetadata sözleşmesine dönüştürür."""
+    left, right = sorted((_unit(item.subject_left), _unit(item.subject_right)))
+    top, bottom = sorted((_unit(item.subject_top), _unit(item.subject_bottom)))
     return VisualMetadata(
         description=item.description.strip(),
         visual_type=item.visual_type,
@@ -90,7 +94,8 @@ def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
         location=item.location.strip() or "unknown",
         text_visible=item.text_visible,
         visible_text=item.visible_text.strip(),
-        focus_point=FocusPoint(x=_unit(item.focus_x), y=_unit(item.focus_y)),
+        focus_point=FocusPoint(x=(left + right) / 2, y=(top + bottom) / 2),
+        subject_region=Region(x=left, y=top, width=right - left, height=bottom - top) if right > left and bottom > top else None,
         confidence=_unit(item.confidence),
     ).model_dump(mode="json")
 

@@ -39,9 +39,9 @@ def dha_vertical(path):
 def test_dha_blurred_sides_are_detected(tmp_path):
     region = detect_content_region([dha_vertical(tmp_path / "f.jpg")])
     assert region is not None and region.y == 0.0 and region.height == 1.0
-    # Gerçek alan 0.3417–0.6583; bulunan alan tamamen içeride ve en fazla %2 dar.
-    assert 0.3417 <= region.x <= 0.3617
-    assert 0.6383 <= region.x + region.width <= 0.6583
+    # Gerçek alan 0.3417–0.6583; bulunan alan tamamen içeride ve her yandan en fazla %3 dar.
+    assert 0.3417 <= region.x <= 0.3717
+    assert 0.6283 <= region.x + region.width <= 0.6583
 
 
 def test_black_bars_are_detected(tmp_path):
@@ -108,10 +108,9 @@ def test_render_crops_away_blur_and_follows_focus(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("mode", ["fill_crop", "fit_blur"])
 def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypatch, mode):
-    """Yeşil dikey görüntü + gri bulanık kenarlar: Doldur modunda çıktının kenarları da yeşil olmalı."""
+    """Yeşil dikey görüntü + gri bulanık kenarlar: Akıllı modda çıktının kenarları da yeşil olmalı."""
     from apps.video_studio.modules import render
     from apps.video_studio.modules.edit_plan import build_edit_project
-    from apps.video_studio.modules.rough_cut import set_framing
     from tests.test_rough_cut import library, plan_rough_cut
 
     monkeypatch.setattr(render, "amd_encoder_available", lambda: False)
@@ -126,7 +125,7 @@ def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypat
     lib = library([(0.0, 4.0, "event", "establishing", "Kaza", "")], source=str(source))
     lib["assets"][0]["shots"][0]["content_region"] = {"x": 0.3543, "y": 0.0, "width": 0.2934, "height": 1.0}
     text = "Kaza oldu."
-    project = set_framing(plan_rough_cut(build_edit_project(lib, text, str(audio), 2.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib), mode)
+    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 2.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib, mode)
     output = tmp_path / "out.mp4"
     render.render_rough_cut(project, lib, output)
 
@@ -154,3 +153,61 @@ def test_real_dha_overshoot_snaps_to_vertical_phone_aspect():
     assert abs((end - start) - 0.5625) < 0.002
     # Standart orandan dar tespit (ör. 0.30) olduğu gibi kalır.
     assert _snap_to_vertical_aspect(0.35, 0.65, 16 / 9) == (0.35, 0.65)
+
+
+
+def rgb_row(output, y, width=960):
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(output), "-vf", f"crop={width}:2:0:{y},scale=6:1", "-frames:v", "1",
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+        capture_output=True, check=True,
+    ).stdout
+    return [tuple(raw[i:i + 3]) for i in range(0, len(raw), 3)]
+
+
+def render_stripes(tmp_path, monkeypatch, subject):
+    """Yatay video: soldan sağa kırmızı | yeşil | mavi şeritler (araç gibi geniş bir özne)."""
+    from apps.video_studio.modules import render
+    from apps.video_studio.modules.edit_plan import build_edit_project
+    from tests.test_rough_cut import library, plan_rough_cut
+
+    monkeypatch.setattr(render, "amd_encoder_available", lambda: False)
+    source, audio = tmp_path / "dha.mp4", tmp_path / "tts.mp3"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=red:size=640x1080:rate=25:duration=4",
+         "-f", "lavfi", "-i", "color=green:size=640x1080:rate=25:duration=4",
+         "-f", "lavfi", "-i", "color=blue:size=640x1080:rate=25:duration=4",
+         "-filter_complex", "[0][1][2]hstack=inputs=3", str(source)],
+        check=True,
+    )
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=duration=2", str(audio)], check=True)
+    lib = library([(0.0, 4.0, "vehicle", "detail", "Minibüs", "")], source=str(source))
+    visual = lib["assets"][0]["shots"][0]["analysis_windows"][0]["visual"]
+    visual["subject_region"] = subject
+    text = "Minibüs devrildi."
+    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 2.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib)
+    output = tmp_path / "out.mp4"
+    render.render_rough_cut(project, lib, output)
+    return output, project
+
+
+def dominant(pixel):
+    return "rgb"[max(range(3), key=lambda i: pixel[i])]
+
+
+def test_wide_subject_is_never_cut_in_half(tmp_path, monkeypatch):
+    """Geniş özne (ör. yandan minibüs) kadraja tam sığar: üç renk de görünür; üst/alt bulanık dolgu."""
+    output, _ = render_stripes(tmp_path, monkeypatch, {"x": 0.05, "y": 0.3, "width": 0.9, "height": 0.4})
+    middle = [dominant(p) for p in rgb_row(output, 613)]
+    assert middle[0] == "r" and "g" in middle and middle[-1] == "b"
+
+
+def test_narrow_subject_fills_the_frame(tmp_path, monkeypatch):
+    """Dar özne (ör. tek kişi, sağda): video alanı tam dolar, özne kadrajda."""
+    output, project = render_stripes(tmp_path, monkeypatch, {"x": 0.72, "y": 0.2, "width": 0.12, "height": 0.6})
+    clip = next(t for t in project["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video")["clips"][0]
+    view = clip["framing"]["view_region"]
+    assert abs(view["width"] * 16 / 9 / view["height"] - 960 / 1226) < 0.01  # tam dolu, dolgu yok
+    assert view["x"] <= 0.72 and view["x"] + view["width"] >= 0.84
+    row = [dominant(p) for p in rgb_row(output, 10)]
+    assert "r" not in row and row[-1] == "b"  # kadraj sağa, özneye kaydı; dolgu yok (en üst satır da görüntü)

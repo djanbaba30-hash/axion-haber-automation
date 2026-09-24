@@ -30,7 +30,13 @@ def amd_encoder_available() -> bool:
 def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int, frames: int) -> str:
     size = f"{width}:{height}"
     steps = []
-    region = framing.content_region
+    view = framing.view_region
+    if view:
+        # Planlayıcının seçtiği alan: öznenin tamamı. Oranı video alanından farklıysa boşluk aynı görüntünün
+        # bulanık kopyasıyla dolar (oran aynıysa dolgu görünmez).
+        steps.append(f"crop=iw*{view.width}:ih*{view.height}:iw*{view.x}:ih*{view.y}")
+        framing = framing.model_copy(update={"mode": FramingMode.FIT_BLUR})
+    region = None if view else framing.content_region
     if region:
         # Önce bulanık/siyah kenarları at: kalan asıl görüntü üzerinden kadrajlanır.
         steps.append(f"crop=iw*{region.width}:ih*{region.height}:iw*{region.x}:ih*{region.y}")

@@ -1,3 +1,17 @@
+# v1.9.4 — Özneyi kesmeyen kadraj, daha az token — 2026-09-24
+
+## Changed
+- Akıllı kadraj: Luna ana öznenin tamamını içeren kutuyu verir; kadraj özneyi asla kesmez ve olabildiğince az
+  yakınlaştırır. Özne dikey alana sığmayacak kadar genişse (ör. yandan minibüs) üst/alt bulanık dolguyla tamamı gösterilir.
+- Kadraj seçenekleri: "Akıllı" (önerilen) ve "Tüm kare" (önceki "Doldur"/"Bulanık kenar").
+- Yanları bulanık dikey çekimlerde kadraj ortalanıyor ve güvenlik payı %2 (tek yanda ince bulanık şerit kalıyordu).
+- Luna'ya gönderilen analiz kareleri 640 px genişlikte (önce 960): girdi token'ı azalır.
+- Luna prompt v2.4: önceki analizler için yeniden analiz istenir.
+
+## Verification
+- `make test` geçti: geniş özne tam görünür, dar özne alanı tam doldurur (gerçek FFmpeg render testleri).
+  Windows'ta yeni bir haberle doğrulanacak.
+
 # v1.9.3 — Doğal kesmeler ve bulanık kenarın tamamen atılması — 2026-09-24
 
 ## Changed

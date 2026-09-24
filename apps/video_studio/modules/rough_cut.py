@@ -23,7 +23,8 @@ IDEAL_CLIP_SECONDS = 3.0
 MAX_CLIP_SECONDS = 5.0
 SENTENCE_END = set(".!?…")
 PAUSE_PUNCTUATION = set(".!?…,;:\"”'’»)")
-EDGE_SECONDS = 0.2  # Shot geçişindeki karışık karelerden kaçın.
+EDGE_SECONDS = 0.2
+SUBJECT_MARGIN = 0.08  # Öznenin çevresinde bırakılan pay (her yanda, öznenin boyutuna oranla).  # Shot geçişindeki karışık karelerden kaçın.
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
 ROLE_BONUS = {
@@ -69,6 +70,8 @@ class Candidate:
     description: str
     content_region: Region | None = None
     focus: FocusPoint | None = None
+    subject: Region | None = None
+    frame_aspect: float = 16 / 9  # kaynak genişlik / yükseklik (ekranda görünen)
 
 
 @dataclass
@@ -106,6 +109,8 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
                         description=description,
                         content_region=shot.content_region,
                         focus=visual.focus_point if visual else None,
+                        subject=visual.subject_region if visual else None,
+                        frame_aspect=asset.geometry.display.width / asset.geometry.display.height,
                     )
                 )
     return items
@@ -147,8 +152,39 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     return score
 
 
-def clip_framing(mode: FramingMode, candidate: Candidate) -> Framing:
-    """Odak noktası (Luna, tüm kareye göre) → asıl görüntü alanına göre odak."""
+def _view_region(mode: FramingMode, candidate: Candidate, slot_aspect: float) -> Region:
+    """Kaynakta gösterilecek alan (0–1). Hesap kaynak piksel oranında yapılır (yükseklik = 1 birim).
+
+    Akıllı kadraj: öznenin tamamı (+pay) sığıyorsa video alanını tam dolduran en büyük alan; özne daha genişse
+    alan özneyi içerecek kadar genişler (üst/alt bulanık dolgu). "Tüm kare": bulanık/siyah kenar hariç her şey.
+    """
+    a = candidate.frame_aspect
+    c = candidate.content_region or Region(x=0, y=0, width=1, height=1)
+    cx, cy, cw, ch = c.x * a, c.y, c.width * a, c.height  # piksel oranında (yükseklik 1)
+    if mode == FramingMode.FIT_BLUR:
+        return c
+    fill_w, fill_h = (ch * slot_aspect, ch) if cw / ch > slot_aspect else (cw, cw / slot_aspect)
+    if candidate.subject:
+        s = candidate.subject
+        sx0, sx1 = max(cx, s.x * a), min(cx + cw, (s.x + s.width) * a)
+        sy0, sy1 = max(cy, s.y), min(cy + ch, s.y + s.height)
+        margin_x, margin_y = (sx1 - sx0) * SUBJECT_MARGIN, (sy1 - sy0) * SUBJECT_MARGIN
+        sx0, sx1, sy0, sy1 = sx0 - margin_x, sx1 + margin_x, sy0 - margin_y, sy1 + margin_y
+    else:
+        focus = candidate.focus or FocusPoint()
+        sx0 = sx1 = focus.x * a
+        sy0 = sy1 = focus.y
+    # En az yakınlaştırma: video alanını dolduran en büyük alan; özne sığmıyorsa özne kadar genişlet.
+    view_w = min(cw, max(fill_w, sx1 - sx0))
+    view_h = min(ch, max(fill_h, sy1 - sy0))
+    x = min(max((sx0 + sx1) / 2 - view_w / 2, cx), cx + cw - view_w)
+    y = min(max((sy0 + sy1) / 2 - view_h / 2, cy), cy + ch - view_h)
+    floor = lambda v: math.floor(v * 10_000) / 10_000  # noqa: E731 — x + width 1'i aşmasın
+    return Region(x=floor(x / a), y=floor(y), width=floor(view_w / a), height=floor(view_h))
+
+
+def clip_framing(mode: FramingMode, candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_HEIGHT) -> Framing:
+    """Odak noktası (Luna, tüm kareye göre) → asıl görüntü alanına göre odak; ve gösterilecek alan."""
     fx, fy = (candidate.focus.x, candidate.focus.y) if candidate.focus else (0.5, 0.5)
     region = candidate.content_region
     if region:
@@ -159,6 +195,7 @@ def clip_framing(mode: FramingMode, candidate: Candidate) -> Framing:
         focus_x=round(min(1.0, max(0.0, fx)), 3),
         focus_y=round(min(1.0, max(0.0, fy)), 3),
         content_region=region,
+        view_region=_view_region(mode, candidate, slot_aspect),
     )
 
 
@@ -309,15 +346,6 @@ def matches_template(edit_project: dict[str, Any]) -> bool:
     """Kurgu, şablonun güncel video alanı ölçüsünde mi (eski 1080x1440 projeler yeniden kurulur)?"""
     timeline = edit_project["edit_plan"]["timeline"]
     return (timeline.get("width"), timeline.get("height")) == (VIDEO_WIDTH, VIDEO_HEIGHT)
-
-
-def set_framing(edit_project: dict[str, Any], framing_mode: str) -> dict[str, Any]:
-    """Tüm video kliplerinin kadraj modunu değiştirir (editörün seçimi)."""
-    for track in edit_project["edit_plan"]["timeline"]["tracks"]:
-        if track["kind"] == "video":
-            for clip in track["clips"]:
-                clip["framing"]["mode"] = framing_mode
-    return edit_project
 
 
 def clip_rows(edit_project: dict[str, Any]) -> list[dict[str, Any]]:

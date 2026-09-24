@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from apps.video_studio.modules import render
-from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut, segment_times, set_framing
+from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut, segment_times
 from shared.edit_models import EditProject
 
 TTS = (
@@ -123,7 +123,7 @@ def test_short_material_is_reused_instead_of_leaving_gaps():
 
 
 def test_framing_choice_applies_to_all_clips():
-    project = set_framing(plan_rough_cut(edit_project(), library()), "fit_blur")
+    project = plan_rough_cut(edit_project(), library(), "fit_blur")
     assert {c["framing"]["mode"] for c in video_clips(project)} == {"fit_blur"}
 
 
@@ -147,7 +147,7 @@ def test_render_produces_template_sized_mp4_matching_voiceover(tmp_path, monkeyp
     lib = library(shots, source=str(source))
     from apps.video_studio.modules.edit_plan import build_edit_project
 
-    project = set_framing(plan_rough_cut(build_edit_project(lib, text, str(audio), 4.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib), framing)
+    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 4.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib, framing)
     output = tmp_path / "kaba_kurgu.mp4"
 
     assert render.render_rough_cut(project, lib, output) == "x264 (işlemci)"

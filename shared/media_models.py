@@ -84,6 +84,8 @@ class VisualMetadata(BaseModel):
     visible_text: str = ""
     text_region: Region | None = None
     focus_point: FocusPoint | None = None
+    # Ana öznenin tamamını içeren kutu (0–1): kadraj bunu asla kesmez.
+    subject_region: Region | None = None
     safe_for_center_crop: bool | None = None
     editorial_role: EditorialRole = EditorialRole.UNKNOWN
     confidence: float = 0.0
