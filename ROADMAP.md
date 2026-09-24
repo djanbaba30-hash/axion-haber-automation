@@ -94,6 +94,7 @@ Kanvas 1080×1920. Konumlar sol üst köşeye göre piksel; koddaki karşılığ
 | Axion Haber logo kutusu (yumuşak köşeli) | alttan yükselir | 16–19 sn | "slow baseline": alttan çıkar, geri iner |
 | Arka plan | 1080×1920 | tüm video | 8 arka plan; her gün bir sonraki, aynı gün tüm haberler aynı |
 
+Videonun başına kaynak sesli kesit eklense de 1. başlık 0. saniyeden itibaren ekrandadır.
 Zamanlar video uzunluğundan bağımsız, sabittir. Video **en az 20 sn**; daha uzunsa yalnızca arka plan ve 2. başlık
 videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa kurgu 20 sn'ye tamamlanır (son sahne sessiz devam eder).
 

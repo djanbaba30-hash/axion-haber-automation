@@ -29,6 +29,7 @@ def video_seconds(tts_seconds: float) -> float:
 HEADLINE_BOX = {"x": 60, "y": 260, "width": 960, "height": 155}
 HEADLINE_FONT = {"family": "Binate Bold", "size": 45, "glow_intensity": 100}
 HEADLINE_1 = {"start_s": 0.0, "end_s": 9.0, "enter": None, "exit": "merge"}      # girişte animasyon yok
+# Videonun başına kaynak sesli kesit (TTS öncesi) eklense de 1. başlık 0. saniyeden itibaren ekrandadır (editör).
 HEADLINE_2 = {"start_s": 13.0, "end_s": None, "enter": "merge", "exit": None}    # sona kadar kalır
 
 # Başlıklar arasındaki "reklamvari" yazılar (Canva Text Studio), başlık kutusunun ortasında, her biri 2 sn,
