@@ -1,0 +1,22 @@
+Axion Haber Automation — clean baseline
+
+Deploy targets:
+1) apps/news_studio/app.py
+2) apps/video_studio/app.py
+
+Required secrets:
+APP_PASSWORD
+OPENAI_API_KEY
+ANTHROPIC_API_KEY
+ELEVENLABS_API_KEY
+
+System package:
+ffmpeg
+
+Video AI model:
+gpt-5.6-luna
+
+News AI models:
+claude-sonnet-5
+gpt-5.6-luna
+gpt-5.6-sol
