@@ -37,7 +37,7 @@ ss = st.session_state
 
 st.set_page_config(page_title="Video Studio · Axion", page_icon="🎬", layout="wide")
 require_secrets("OPENAI_API_KEY")
-st.title("🎬 Video Studio")
+st.title("Video Studio")
 
 
 def load_project(project: NewsProject) -> None:
@@ -97,8 +97,6 @@ if project and ss.get("loaded_news_project") == project.id:
         st.audio(audio_path)
     else:
         st.warning("Bu haberin sesi yok. Haber Stüdyosu'nda seslendirip yeniden kaydet.")
-    with st.expander("Haber metni"):
-        st.text_area("Haber metni", height=160, key="project_news_text", label_visibility="collapsed")
 
 
 # =================================================
@@ -106,15 +104,9 @@ if project and ss.get("loaded_news_project") == project.id:
 # =================================================
 
 st.subheader("2. Görüntüler")
-source_mode = st.radio(
-    "Medya kaynağı",
-    ["Bilgisayardan seç", "Dosya yükle"],
-    horizontal=True,
-    label_visibility="collapsed",
-    help="Dosya yükleme, telefondan/tabletten dosya göndermek içindir.",
-)
 with st.expander("Gelişmiş"):
     folder = st.text_input("Video klasörü", value=str(inbox_dir()), help="DHA'dan indirdiğin videoların bulunduğu klasör.")
+    upload_mode = st.toggle("Dosyayı tarayıcıdan yükle", help="Telefondan veya tabletten dosya göndermek için.")
     analysis_mode = st.selectbox(
         "Analiz yoğunluğu",
         list(ANALYSIS_OPTIONS),
@@ -122,7 +114,9 @@ with st.expander("Gelişmiş"):
     )
     frame_count = ANALYSIS_OPTIONS[analysis_mode]
 
-if source_mode == "Bilgisayardan seç":
+if upload_mode:
+    media_files = st.file_uploader("Video ve görseller", type=UPLOAD_TYPES, accept_multiple_files=True, label_visibility="collapsed") or []
+else:
     local_files = list_inbox_media(Path(folder))
     selected = st.multiselect(
         "Dosyalar",
@@ -132,8 +126,6 @@ if source_mode == "Bilgisayardan seç":
         label_visibility="collapsed",
     )
     media_files = [LocalMediaFile(path) for path in selected]
-else:
-    media_files = st.file_uploader("Video ve görseller", type=UPLOAD_TYPES, accept_multiple_files=True, label_visibility="collapsed") or []
 
 if media_files and st.button("Görüntüleri analiz et", type="primary", use_container_width=True):
     try:
@@ -155,15 +147,8 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
 
 media_library = ss.get("media_library")
 if media_library:
-    rows = shot_rows(media_library)
-    st.caption(f"{media_library.get('video_count', 0)} video · {media_library.get('image_count', 0)} görsel · {len(rows)} sahne")
-    if rows:
-        st.dataframe(
-            rows,
-            use_container_width=True,
-            hide_index=True,
-            column_order=["Shot", "Başlangıç", "Bitiş", "Süre (sn)", "Görüntü", "Açıklama", "Rol", "Video"],
-        )
+    names = [a.get("source", {}).get("filename", "") for a in media_library.get("assets", []) if a.get("asset_type") == "video"]
+    st.caption("Analiz edildi: " + (", ".join(names) if names else f"{media_library.get('image_count', 0)} görsel"))
 
 
 # =================================================
@@ -191,10 +176,11 @@ if ready and not ss.get("edit_project"):
         save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
 
 st.divider()
-checks = [("Haber", bool(project and news_text)), ("Ses", bool(audio_metadata)), ("Görüntüler", bool(media_library))]
-st.caption("  ·  ".join(f"{'✅' if ok else '⬜'} {label}" for label, ok in checks))
 if ss.get("edit_project"):
     st.success("Proje hazır. Otomatik kurgu (MP4) bir sonraki sürümde bu adımdan devam edecek.")
+else:
+    checks = [("Haber", bool(project and news_text)), ("Ses", bool(audio_metadata)), ("Görüntüler", bool(media_library))]
+    st.caption("Hazırlık: " + "  ·  ".join(f"{'✅' if ok else '⬜'} {label}" for label, ok in checks))
 
 
 # =================================================
@@ -216,6 +202,9 @@ if media_library:
         )
         if project:
             st.caption(f"Proje klasörü: {project.folder}")
+        rows = shot_rows(media_library)
+        if rows:
+            st.dataframe(rows, use_container_width=True, hide_index=True)
         st.json(media_library, expanded=False)
         if edit_project:
             st.json(edit_project, expanded=False)

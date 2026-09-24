@@ -25,16 +25,21 @@ Tek uygulama (Streamlit), iki sayfa: **Haber Stüdyosu** ve **Video Studio**. Bu
 7. **Modüller ayrı kalır.** Tek arayüz (`axion_local.py`) sayfaları birleştirir; iş mantığı `apps/*/` ve `shared/` içinde yaşar.
 8. **Windows betikleri** (`windows/*.bat|.vbs|.ps1`) ASCII ve CRLF olmalı (Türkçe karakter yok; `.gitattributes` CRLF'yi korur).
 9. Kullanıcı Türkçe konuşur; arayüz metinleri ve kullanıcıya yönelik dokümanlar Türkçedir.
+10. **Arayüz sade kalır:** editörün görmesi gerekmeyen bilgi (token, maliyet, sahne tablosu, JSON, dosya yolları)
+    sadece "Geliştirici bilgileri" altında; nadir değişen ayarlar kapalı bölümlerde. Sık kullanılan ayarlar
+    (üslup, süre, yapay zekâ, model, düşünme seviyesi, spiker) kenar çubuğunda hep görünür ve hatırlanır.
 
 ## Kod haritası
 
 ```text
-axion_local.py                 Ana giriş: isteğe bağlı şifre, iki sayfalı menü, "Axion'u kapat" (sadece localhost)
-.streamlit/config.toml         Port 8501, headless, 4 GB yükleme sınırı, sade araç çubuğu
+axion_local.py                 Ana giriş: logo + menü, isteğe bağlı şifre, stil (CSS), "Axion'u kapat" (sadece localhost)
+.streamlit/config.toml         Port 8501, headless, 4 GB yükleme sınırı, beyaz Axion teması (lacivert #123249)
+assets/                        axion_logo.png (kenar çubuğu), axion_mark.png (sekme ikonu); windows/axion.ico aynı X işareti
 .streamlit/secrets.toml        API anahtarları (git'te yok; örnek: secrets.toml.example)
 
 apps/axion_local/
   settings.py                  secret(), require_secrets(): anahtar okuma
+  preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), gelen kutusu (İndirilenler) listesi
 
 apps/news_studio/              HABER STÜDYOSU

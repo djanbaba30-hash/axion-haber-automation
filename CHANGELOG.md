@@ -1,3 +1,17 @@
+# v1.6.0 — Axion branding, remembered settings, leaner Video Studio — 2026-09-24
+
+## Changed
+- White theme in the Axion logo colours (navy `#123249` primary, light blue and green accents). The logo is in the sidebar above custom page links; the X mark is the browser tab icon and the new `windows/axion.ico`.
+- Haber Stüdyosu sidebar:
+  - style, duration, AI provider, model, reasoning level and voice are always visible;
+  - voice fine-tuning sits in a collapsed "Ses ince ayarları" section;
+  - all of these settings are remembered across sessions in `data/ayarlar.json` (`apps/axion_local/preferences.py`).
+- Video Studio:
+  - the shot table moved to developer info;
+  - the news text box was removed; the text comes from the project;
+  - browser upload became a toggle under "Gelişmiş";
+  - status is a single line.
+
 # v1.5.0 — Timed TTS (Faz 1) and a simpler interface — 2026-09-24
 
 ## Added

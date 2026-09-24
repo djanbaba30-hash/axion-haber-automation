@@ -41,6 +41,10 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - TTS doğal ve konuşma dilindedir. Her cümle yeni bilgi verir; süreyi doldurmak için metin uzatılmaz.
 - Viral potansiyeli olan yön öne çıkarılır, ama kaynakta olmayan fiil veya abartı kullanılmaz.
 
+**Arayüz**
+- Beyaz zeminli, Axion logosu renklerinde (lacivert, açık mavi, yeşil) sade arayüz.
+- Editörün görmesi gerekmeyen bilgiler gizli (geliştirici bölümü); son kullanılan ayarlar hatırlanır.
+
 **Video**
 - Kurgu çıktısı 1080×1440. Axion şablonu (başlık, alttan logo şeridi, font) ile birlikte son çıktı 1080×1920.
 - Altyazı yok.

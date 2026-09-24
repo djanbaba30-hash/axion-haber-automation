@@ -1,7 +1,7 @@
 """Axion Local: Haber Stüdyosu ve Video Studio'yu tek uygulamada açan ana giriş.
 
 Windows: masaüstündeki "Axion Local" ikonu (windows/axion_baslat.vbs).
-Geliştirme: `make run` (streamlit run axion_local.py). Ayarlar: .streamlit/config.toml
+Geliştirme: `make run` (streamlit run axion_local.py). Ayarlar ve tema: .streamlit/config.toml
 """
 
 import hmac
@@ -19,17 +19,23 @@ if str(ROOT) not in sys.path:
 from apps.axion_local.settings import secret  # noqa: E402
 from apps.axion_local.store import get_news_project  # noqa: E402
 
-# Sayfa değişince Streamlit, görünmeyen sayfanın widget değerlerini siler; bunlar korunur.
-PERSISTENT_WIDGET_KEYS = ("project_news_text",)
+ASSETS = ROOT / "assets"
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
 
-st.set_page_config(page_title="Axion Local", page_icon="🗞️", layout="wide")
-st.markdown(
-    """<style>
-    [data-testid="stMainBlockContainer"], .block-container {padding-top: 2rem; max-width: 1100px;}
-    </style>""",
-    unsafe_allow_html=True,
-)
+# Logo renkleri: lacivert #123249, açık mavi #BEE1E8, yeşil #D0E491 (tema: .streamlit/config.toml)
+STYLE = """<style>
+[data-testid="stMainBlockContainer"], .block-container {padding-top: 2.5rem; max-width: 1080px;}
+h1 {color: #123249; font-weight: 800; letter-spacing: -0.02em;}
+h3 {color: #123249;}
+h1::after {content: ""; display: block; width: 56px; height: 4px; margin-top: .35rem;
+           border-radius: 2px; background: linear-gradient(90deg, #D0E491, #BEE1E8);}
+[data-testid="stSidebar"] {border-right: 1px solid #E3EAF0;}
+[data-testid="stSidebar"] [data-testid="stImage"] {margin: -1rem 0 .5rem 0;}
+div[data-testid="stExpander"] details {border-radius: 10px;}
+</style>"""
+
+st.set_page_config(page_title="Axion", page_icon=str(ASSETS / "axion_mark.png"), layout="wide")
+st.markdown(STYLE, unsafe_allow_html=True)
 
 
 def authenticated() -> bool:
@@ -47,7 +53,7 @@ def authenticated() -> bool:
         st.session_state.axion_password_failed = not ok
         st.session_state.pop("axion_password", None)
 
-    st.title("Axion Local")
+    st.image(str(ASSETS / "axion_logo.png"), width=180)
     st.text_input("Şifre", type="password", key="axion_password", on_change=entered)
     if st.session_state.get("axion_password_failed"):
         st.error("Şifre yanlış.")
@@ -63,11 +69,13 @@ def sidebar_footer() -> None:
     with st.sidebar:
         active_id = st.session_state.get("active_news_project")
         project = get_news_project(active_id) if active_id else None
-        if project:
-            st.caption(f"Aktif proje: **{project.headline}**")
-        if not opened_on_this_computer():
+        local = opened_on_this_computer()
+        if not project and not local:
             return
-        st.divider()
+        if project:
+            st.caption(f"Aktif haber: **{project.headline}**")
+        if not local:
+            return
         if st.session_state.get("axion_confirm_shutdown"):
             st.warning("Axion kapatılsın mı? Telefon/tabletten erişim de kapanır.")
             yes, no = st.columns(2)
@@ -85,15 +93,15 @@ def sidebar_footer() -> None:
 if not authenticated():
     st.stop()
 
-for key in PERSISTENT_WIDGET_KEYS:
-    if key in st.session_state:
-        st.session_state[key] = st.session_state[key]
-
-page = st.navigation(
-    [
-        st.Page(ROOT / "apps" / "news_studio" / "page.py", title="Haber Stüdyosu", icon="📰", url_path="haber", default=True),
-        st.Page(ROOT / "apps" / "video_studio" / "page.py", title="Video Studio", icon="🎬", url_path="video"),
-    ]
-)
+pages = [
+    st.Page(ROOT / "apps" / "news_studio" / "page.py", title="Haber Stüdyosu", icon="📰", url_path="haber", default=True),
+    st.Page(ROOT / "apps" / "video_studio" / "page.py", title="Video Studio", icon="🎬", url_path="video"),
+]
+page = st.navigation(pages, position="hidden")
+with st.sidebar:
+    st.image(str(ASSETS / "axion_logo.png"), width=150)
+    for item in pages:
+        st.page_link(item)
+    st.divider()
 page.run()
 sidebar_footer()

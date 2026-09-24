@@ -15,6 +15,7 @@ from apps.news_studio.prompts.news import build_news_prompt, build_correction_pr
 from apps.news_studio.tts.calibration import load as load_calibration, estimate, update as update_calibration
 from apps.news_studio.tts.service import synthesize
 from apps.news_studio.validation.news import validate_news_output, find_censorship_warnings
+from apps.axion_local.preferences import persist, remember
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import get_news_project, save_news_project
 from shared.news_package import NewsPackage
@@ -24,6 +25,13 @@ VIDEO_PAGE = "apps/video_studio/page.py"
 st.set_page_config(page_title="Haber Stüdyosu · Axion", page_icon="📰", layout="wide")
 
 DEFAULT_EXAMPLES = {"Standart (Ana Haber) Dili":"","Tepkili Haber Dili":"","Eleştirel Haber Dili":"","Son Dakika Dili":"","Mizahi Haber Dili":""}
+THINKING_LEVELS = ["Kapalı (Tasarruflu)","Düşük","Orta","Yüksek"]
+PROVIDERS = ["OpenAI","Claude"]
+PREFERENCES = {
+    "news_style":list(DEFAULT_EXAMPLES)[0],"duration_label":list(TTS_DURATION_PRESETS)[2],
+    "ai_provider":"OpenAI","openai_model":list(OPENAI_MODELS)[0],"thinking":THINKING_LEVELS[0],"voice_name":"",
+    "speed":1.11,"stability":0.50,"similarity":0.65,"style_strength":0.10,"boost":True,
+}
 AUDIO_STATE = {"last_audio_bytes":None,"last_audio_duration":None,"last_audio_text":None,"last_audio_alignment":None,"last_audio_filename":"axion_haber_ses.mp3"}
 
 
@@ -59,7 +67,7 @@ def accumulate(a,b):
 
 
 def reset_state():
-    keep={"examples","tts_calibration","voice_name","ai_provider","openai_model"}
+    keep={"examples","tts_calibration",*PREFERENCES}
     for k in list(st.session_state.keys()):
         if k not in keep: del st.session_state[k]
     st.session_state.update(AUDIO_STATE)
@@ -68,42 +76,50 @@ def reset_state():
 require_secrets("OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY"); init_state()
 
 # =================================================
-# KENAR ÇUBUĞU: AYARLAR
+# KENAR ÇUBUĞU: AYARLAR (son kullanılan değerler hatırlanır)
 # =================================================
+remember(st.session_state,PREFERENCES,{"news_style":list(DEFAULT_EXAMPLES),"duration_label":list(TTS_DURATION_PRESETS),"ai_provider":PROVIDERS,"openai_model":list(OPENAI_MODELS),"thinking":THINKING_LEVELS})
+try:
+    voices=fetch_voices(); names=[x[0] for x in voices]
+except Exception:
+    voices=[]; names=[]
+if names and st.session_state.voice_name not in names:
+    st.session_state.voice_name=next((n for n in names if "Cavit" in n and "Presenter" in n), next((n for n in names if "Cavit" in n),names[0]))
+
 with st.sidebar:
-    style=st.selectbox("Üslup",list(DEFAULT_EXAMPLES),index=0)
-    duration_label=st.selectbox("Seslendirme süresi",list(TTS_DURATION_PRESETS),index=2)
+    style=st.selectbox("Üslup",list(DEFAULT_EXAMPLES),key="news_style")
+    duration_label=st.selectbox("Seslendirme süresi",list(TTS_DURATION_PRESETS),key="duration_label")
     duration_range=TTS_DURATION_PRESETS[duration_label]
-    try:
-        voices=fetch_voices(); names=[x[0] for x in voices]
-        default=next((i for i,n in enumerate(names) if "Cavit" in n and "Presenter" in n), next((i for i,n in enumerate(names) if "Cavit" in n),0))
-        saved=st.session_state.get("voice_name"); idx=names.index(saved) if saved in names else default
-        voice_name=st.selectbox("Spiker",names,index=idx); st.session_state.voice_name=voice_name
+    provider=st.segmented_control("Yapay zekâ",PROVIDERS,key="ai_provider") or "OpenAI"
+    if provider=="OpenAI": openai_model=st.selectbox("Model",list(OPENAI_MODELS),key="openai_model")
+    else:
+        openai_model=st.session_state.openai_model
+        st.caption(f"Claude modeli: `{CLAUDE_MODEL}`")
+    thinking=st.selectbox("Düşünme seviyesi",THINKING_LEVELS,key="thinking",help="Yüksek seviye daha pahalıdır.")
+    if names:
+        voice_name=st.selectbox("Spiker",names,key="voice_name")
         voice_id=dict(voices)[voice_name]
-    except Exception:
+    else:
         st.warning("ElevenLabs sesleri alınamadı. API anahtarını kontrol et.")
         voice_name=voice_id=""
-    with st.expander("Gelişmiş ayarlar"):
-        provider=st.radio("Yapay zekâ",["OpenAI","Claude"],horizontal=True,key="ai_provider")
-        openai_model=st.selectbox("OpenAI modeli",list(OPENAI_MODELS),key="openai_model") if provider=="OpenAI" else "GPT-5.6 Luna"
-        if provider=="Claude": st.caption(f"Claude modeli: `{CLAUDE_MODEL}`")
-        thinking=st.selectbox("Düşünme seviyesi",["Kapalı (Tasarruflu)","Düşük","Orta","Yüksek"],index=0,help="Yüksek seviye daha pahalıdır.")
-        speed=st.slider("Hız",0.7,1.2,1.11,0.01)
-        stability=st.slider("Stabilite",0.0,1.0,0.50,0.01)
-        similarity=st.slider("Benzerlik",0.0,1.0,0.65,0.01)
-        style_strength=st.slider("Stil",0.0,1.0,0.10,0.01)
-        boost=st.toggle("Speaker Boost",value=True)
+    with st.expander("Ses ince ayarları"):
+        speed=st.slider("Hız",0.7,1.2,step=0.01,key="speed")
+        stability=st.slider("Stabilite",0.0,1.0,step=0.01,key="stability")
+        similarity=st.slider("Benzerlik",0.0,1.0,step=0.01,key="similarity")
+        style_strength=st.slider("Stil",0.0,1.0,step=0.01,key="style_strength")
+        boost=st.toggle("Speaker Boost",key="boost")
     with st.expander("Üslup örnekleri"):
         st.caption("İsteğe bağlı: seçilen üslup için örnek bir haber metni. Model yalnızca tonu örnek alır.")
         for name in list(st.session_state.examples):
             st.session_state.examples[name]=st.text_area(name,value=st.session_state.examples[name],height=90,key="ex_"+name)
     tts_min,tts_target,tts_max,cps=estimate(st.session_state.tts_calibration,voice_id or "default",speed,duration_range)
     if st.button("Yeni haber",use_container_width=True,help="Ekrandaki haberi temizler; kayıtlı projeler silinmez."): reset_state(); st.rerun()
+persist(st.session_state,PREFERENCES)
 
 # =================================================
 # HAM HABER
 # =================================================
-st.title("📰 Haber Stüdyosu")
+st.title("Haber Stüdyosu")
 st.session_state.raw_text=st.text_area("Ham haber",value=st.session_state.raw_text,height=200,placeholder="DHA'dan gelen ham haber metnini buraya yapıştır.")
 raw=st.session_state.raw_text.strip()
 if len(raw)>7000: st.warning(f"Ham haber {len(raw):,} karakter. Çok uzun metinler maliyeti artırır.")

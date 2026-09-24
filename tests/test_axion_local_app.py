@@ -61,10 +61,10 @@ def title(at):
 def test_no_password_opens_directly(local_env):
     at = start()
     assert not at.exception
-    assert title(at) == ["📰 Haber Stüdyosu"]
+    assert title(at) == ["Haber Stüdyosu"]
     at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
-    assert title(at) == ["🎬 Video Studio"]
+    assert title(at) == ["Video Studio"]
 
 
 def test_optional_password_still_protects(local_env):
@@ -74,7 +74,7 @@ def test_optional_password_still_protects(local_env):
     assert [e.value for e in at.error] == ["Şifre yanlış."]
     at.text_input[0].input("Gizli-Şifre1").run()
     assert not at.exception
-    assert title(at) == ["📰 Haber Stüdyosu"]
+    assert title(at) == ["Haber Stüdyosu"]
 
 
 def test_shutdown_button_hidden_for_remote_access(local_env):
@@ -86,7 +86,7 @@ def test_save_and_continue_opens_project_in_video_studio(local_env):
     at = with_generated_news(start())
     button(at, "Kaydet ve Video Studio'ya geç").click().run()
     assert not at.exception
-    assert title(at) == ["🎬 Video Studio"]
+    assert title(at) == ["Video Studio"]
     projects = store.list_news_projects()
     assert len(projects) == 1
     assert at.session_state["loaded_news_project"] == projects[0].id
@@ -130,11 +130,32 @@ def test_saved_media_analysis_is_restored(local_env):
     assert any("Proje hazır" in s.value for s in at.success)
 
 
-def test_video_news_text_survives_page_switch(local_env):
-    store.save_news_project(NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3")
+def test_settings_are_remembered_between_sessions(local_env):
+    at = start()
+    at.slider(key="speed").set_value(0.95).run()
+    at.selectbox(key="thinking").select("Orta").run()
+    at.selectbox(key="news_style").select("Son Dakika Dili").run()
+
+    again = start()
+    assert again.slider(key="speed").value == 0.95
+    assert again.selectbox(key="thinking").value == "Orta"
+    assert again.selectbox(key="news_style").value == "Son Dakika Dili"
+
+
+def test_settings_survive_page_switch(local_env):
+    at = start()
+    at.slider(key="stability").set_value(0.8).run()
+    at.switch_page(VIDEO_PAGE).run()
+    at.switch_page(NEWS_PAGE).run()
+    assert at.slider(key="stability").value == 0.8
+
+
+def test_video_studio_shows_no_shot_table_outside_developer_info(local_env):
+    folder = store.save_news_project(NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3")
+    project = store.get_news_project(folder.name)
+    store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, {"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
     at = start()
     at.switch_page(VIDEO_PAGE).run()
-    at.text_area(key="project_news_text").input("Düzenlenmiş haber metni").run()
-    at.switch_page(NEWS_PAGE).run()
-    at.switch_page(VIDEO_PAGE).run()
-    assert at.session_state["project_news_text"] == "Düzenlenmiş haber metni"
+    assert not at.exception
+    assert not at.text_area
+    assert any("Analiz edildi: dha.mp4" in c.value for c in at.caption)

@@ -10,9 +10,10 @@ gatherUsageStats = false
 [client]
 toolbarMode = "minimal"
 
-# Açık/karanlık tema bilgisayarın ayarını izler; ikisinde de Axion kırmızısı.
-[theme.light]
-primaryColor = "#BE1824"
-
-[theme.dark]
-primaryColor = "#E0343F"
+# Axion logosuna uygun beyaz tema: lacivert #123249, açık mavi #BEE1E8, yeşil #D0E491.
+[theme]
+base = "light"
+primaryColor = "#123249"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F7FA"
+textColor = "#1B2B3A"
