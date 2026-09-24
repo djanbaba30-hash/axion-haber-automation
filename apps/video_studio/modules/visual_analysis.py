@@ -57,6 +57,14 @@ class VisualAnalysisResponse(BaseModel):
     images: list[ImageVisualAnalysis]
 
 
+def image_mime_type(image_path: Path) -> str:
+    mapping = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+    mime = mapping.get(image_path.suffix.lower())
+    if not mime:
+        raise ValueError(f"Desteklenmeyen görsel MIME türü: {image_path.suffix}")
+    return mime
+
+
 def encode_image(
     image_path: Path,
 ) -> str:
@@ -284,7 +292,7 @@ def analyze_media_with_luna(
                 {
                     "type": "input_image",
                     "image_url": (
-                        "data:image/jpeg;base64,"
+                        "data:{image_mime_type(frame_path)};base64,"
                         f"{image_base64}"
                     ),
                     "detail": "auto",
