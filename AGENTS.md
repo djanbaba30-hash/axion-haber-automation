@@ -58,6 +58,7 @@ apps/video_studio/             VIDEO STUDIO
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
   modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS cümlesi → ≤3 sn kesitler → sahne penceresi (API yok)
+  modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (analiz karelerinden, numpy/Pillow, API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
@@ -122,7 +123,16 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
   - Klipler `origin="rule"` (sözleşmeye eklendi). Kadraj (Doldur=fill_crop / Bulanık kenar=fit_blur) editör seçer, hatırlanır.
   - `render.render_rough_cut`: her klip ayrı `-ss/-t` girdisi, filtrede tam kare sayısına kırpılır (ses senkronu), concat + TTS.
     Önce `h264_amf` (AMD), hata verirse x264. Dosya önce `.yaziliyor.mp4` adına yazılır.
-- Sıradaki: editör geri bildirimiyle kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
+- Faz 3 Windows'ta doğrulandı: Bayrampaşa videosu hızlıca render edildi, AMD `h264_amf` kullanıldı, editör kaliteden memnun.
+- v1.9.0 akıllı kadraj (Claude, editör isteği: "nereden kırpılacağını anlasın"):
+  - `framing.detect_content_region`: DHA dikey çekimleri 16:9 içinde iki yanı bulanık verir. Analiz karelerinin
+    sütun/satır keskinlik profili (70. yüzdelik; logo etkilemez) → merkezden dışa yürü → sınır çizgisine otur →
+    simetri ve kenar medyanı kontrolü → %1,2 güvenlik payı. Siyah bantlar da yakalanır. Sonuç `Shot.content_region`.
+  - Luna artık `focus_x/focus_y` (ana öznenin merkezi) döndürüyor → `VisualMetadata.focus_point`. `LUNA_PROMPT_VERSION`
+    v2.3 (eski analizler yeniden analiz ister).
+  - `Framing.content_region` + odak (content'e göre). Render önce asıl alanı kırpar; Doldur'da kadrajı odağa ortalar,
+    Bulanık kenar'da arka planı asıl görüntüden üretir.
+- Sıradaki: editörün v1.9.0 testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar
 - Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı (kaba kurguda kaynak ses kullanılmıyor).

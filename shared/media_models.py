@@ -227,6 +227,8 @@ class Shot(BaseModel):
     duration_seconds: float
     analysis_windows: list[AnalysisWindow] = Field(default_factory=list)
     visual: VisualMetadata | None = None
+    # Asıl görüntü alanı (0–1); kenarları bulanık/siyah videolarda (ör. DHA dikey çekim) dolu. None: tüm kare.
+    content_region: Region | None = None
 
     @model_validator(mode="after")
     def validate_range(self) -> "Shot":

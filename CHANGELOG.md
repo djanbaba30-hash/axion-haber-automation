@@ -1,3 +1,19 @@
+# v1.9.0 — Akıllı kadraj — 2026-09-24
+
+## Added
+- Bulanık/siyah kenar tespiti: DHA'nın yatay formata bulanık kenarlarla koyduğu dikey çekimlerde asıl görüntü alanı
+  analiz karelerinden bulunur (API yok). Kurgu bu alandan kadrajlanır; bulanık kenar videoya girmez.
+- Odak noktası: Luna her pencere için ana öznenin konumunu verir (birkaç token). "Doldur" kadrajı bu noktaya ortalanır.
+- "Bulanık kenar" modunda arka plan, DHA'nın bulanık kenarından değil asıl görüntüden üretilir.
+- Geliştirici kurgu tablosunda odak ve kenar kırpma bilgisi.
+
+## Changed
+- Luna prompt sürümü v2.3: önceki analizler için "yeniden analiz et" bilgisi çıkar (yaklaşık yarım sent).
+
+## Verification
+- `make test` geçti; sentetik DHA tipi (bulanık kenar + logo), siyah bantlı, tam kare ve tek yanı düz videolarla
+  tespit testleri ve iki kadraj modunda gerçek FFmpeg render testleri dahil. Gerçek DHA videolarıyla Windows testi bekleniyor.
+
 # v1.8.0 — Faz 3: ilk otomatik kaba kurgu — 2026-09-24
 
 ## Added

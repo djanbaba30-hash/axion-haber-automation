@@ -7,7 +7,7 @@ from typing import Any, Literal
 from openai import OpenAI
 from pydantic import BaseModel
 
-from shared.media_models import EditorialRole, VisualMetadata, VisualType
+from shared.media_models import EditorialRole, FocusPoint, VisualMetadata, VisualType
 
 
 LUNA_MODEL = "gpt-5.6-luna"
@@ -29,6 +29,8 @@ class LunaVisual(BaseModel):
     location: str
     text_visible: bool
     visible_text: str
+    focus_x: float
+    focus_y: float
     confidence: float
 
 
@@ -69,7 +71,13 @@ editorial_role — kurgudaki işlevi:
   detail=yakın plan ayrıntı (hasar, kan, eşya), context=çevre/bağlam, evidence=kanıt (kamera kaydı, belge),
   portrait=konuşan kişi/röportaj, generic_broll=genel dolgu görüntü, other=hiçbiri.
 location: görünen mekân türü (ör. "cadde", "dükkân içi"); belirsizse "unknown".
+focus_x, focus_y: ana öznenin (hasarlı araç, konuşan kişinin yüzü, olay anı) karedeki merkezi, 0-1
+  (sol/üst=0, sağ/alt=1). Kare dikey kadraja kırpılacak; bu nokta kadrajda kalacak.
 confidence: 0-1."""
+
+
+def _unit(value: float) -> float:
+    return min(1.0, max(0.0, float(value)))
 
 
 def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
@@ -82,7 +90,8 @@ def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
         location=item.location.strip() or "unknown",
         text_visible=item.text_visible,
         visible_text=item.visible_text.strip(),
-        confidence=min(1.0, max(0.0, item.confidence)),
+        focus_point=FocusPoint(x=_unit(item.focus_x), y=_unit(item.focus_y)),
+        confidence=_unit(item.confidence),
     ).model_dump(mode="json")
 
 

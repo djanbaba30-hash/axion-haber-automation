@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
-from shared.media_models import EditorialRole, MediaLibrary, VideoAsset, VisualType
+from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
 
 MAX_CLIP_SECONDS = 3.0
 MIN_CLIP_SECONDS = 1.0
@@ -61,6 +61,8 @@ class Candidate:
     confidence: float
     plate: bool
     description: str
+    content_region: Region | None = None
+    focus: FocusPoint | None = None
 
 
 @dataclass
@@ -96,6 +98,8 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
                         confidence=visual.confidence if visual else 0.0,
                         plate=bool(visual and PLATE.search(visual.visible_text.upper())),
                         description=description,
+                        content_region=shot.content_region,
+                        focus=visual.focus_point if visual else None,
                     )
                 )
     return items
@@ -137,6 +141,21 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     return score
 
 
+def clip_framing(mode: FramingMode, candidate: Candidate) -> Framing:
+    """Odak noktası (Luna, tüm kareye göre) → asıl görüntü alanına göre odak."""
+    fx, fy = (candidate.focus.x, candidate.focus.y) if candidate.focus else (0.5, 0.5)
+    region = candidate.content_region
+    if region:
+        fx = (fx - region.x) / region.width
+        fy = (fy - region.y) / region.height
+    return Framing(
+        mode=mode,
+        focus_x=round(min(1.0, max(0.0, fx)), 3),
+        focus_y=round(min(1.0, max(0.0, fy)), 3),
+        content_region=region,
+    )
+
+
 def segment_times(project: EditProject) -> list[tuple[str, float, float]]:
     """(segment_id, başlangıç, bitiş) — boşluksuz; ilk segment 0'da, son segment ses sonunda biter."""
     segments = sorted(project.edit_plan.segments, key=lambda s: s.order)
@@ -164,7 +183,7 @@ def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], 
 
     fps = project.edit_plan.timeline.fps
     total_f = round(project.audio.duration_seconds * fps)
-    framing = Framing(mode=FramingMode(framing_mode))
+    mode = FramingMode(framing_mode)
     usage = _Usage()
     clips: list[Clip] = []
     previous_shot: str | None = None
@@ -196,7 +215,7 @@ def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], 
                     source_out_s=round(source_out, 3),
                     start_f=cursor_f,
                     duration_f=duration_f,
-                    framing=framing,
+                    framing=clip_framing(mode, best),
                     origin=ClipOrigin.RULE,
                     reason=best.description,
                 )
@@ -242,6 +261,8 @@ def clip_rows(edit_project: dict[str, Any]) -> list[dict[str, Any]]:
                     "Cümle": clip["segment_id"],
                     "Shot": clip["shot_id"],
                     "Kaynak (sn)": f"{clip['source_in_s']:.1f}-{clip['source_out_s']:.1f}",
+                    "Odak": f"{clip['framing']['focus_x']:.2f}, {clip['framing']['focus_y']:.2f}",
+                    "Kenar kırpma": "var" if clip["framing"].get("content_region") else "",
                     "Görüntü": clip["reason"],
                 }
             )

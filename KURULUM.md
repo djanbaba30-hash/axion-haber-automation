@@ -67,6 +67,7 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
 5. **3. Video:** Axion her seslendirme cümlesine uygun sahneleri kendisi seçer (ek ücret yok).
    **Kadraj**'ı seç → **Videoyu oluştur**. 1080×1440 MP4 birkaç dakikada hazırlanır; sayfada izleyip **MP4'ü indir**ebilirsin.
    - **Doldur:** yatay görüntü yakınlaştırılır, kenarlar kırpılır. **Bulanık kenar:** görüntünün tamamı görünür.
+   - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; Doldur'da kadraj haberin ana öznesine (araç, konuşan kişi) ortalanır.
    - Video proje klasörüne de `kaba_kurgu.mp4` adıyla kaydedilir. Haberi veya görüntüleri değiştirirsen yeniden oluştur.
    - Bu ilk sürüm kaba kurgudur: sahne seçimini kurallar yapar. Beğenmediğin yerleri şimdilik CapCut'ta düzeltebilirsin.
 

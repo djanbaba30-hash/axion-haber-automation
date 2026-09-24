@@ -17,7 +17,7 @@ from shared.media_models import (
 )
 
 # Prompt/şema değişince artır: eski sürümle yapılmış analiz yeniden istenir.
-LUNA_PROMPT_VERSION = "media-index-v2.2"
+LUNA_PROMPT_VERSION = "media-index-v2.3"
 
 
 def sha256_file(path: Path) -> str:
@@ -97,6 +97,7 @@ def build_video_asset(
                 duration_seconds=float(shot["duration_seconds"]),
                 analysis_windows=windows,
                 visual=visual,
+                content_region=shot.get("content_region"),
             )
         )
 

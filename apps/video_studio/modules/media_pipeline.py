@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from shared.media_models import MediaLibrary
 
+from .framing import detect_content_region
 from .local_media import LocalMediaFile
 from .media_library import build_image_asset, build_media_library, detect_media_type
 from .representative_sampling import extract_representative_frames
@@ -58,7 +59,10 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
     progress(f"{file.name}: sahneler tespit ediliyor")
     shots = detect_shots(proxy_path, metadata["duration_seconds"])
     shots = extract_representative_frames(proxy_path, shots, frame_count=frame_count)
+    progress(f"{file.name}: kadraj alanı belirleniyor")
     for shot in shots:
+        region = detect_content_region([Path(frame["path"]) for frame in shot["analysis_frames"]])
+        shot["content_region"] = region.model_dump() if region else None
         shot["asset_id"] = asset_id
         shot["shot_id"] = f"{asset_id}_shot_{int(shot['shot_number']):03d}"
         for number, window in enumerate(shot["analysis_windows"], 1):

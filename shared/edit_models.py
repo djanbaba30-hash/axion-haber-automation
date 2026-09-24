@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
-from .media_models import MediaAssetRef
+from .media_models import MediaAssetRef, Region
 from .news_package import TTSAlignment, ensure_alignment_matches_text
 
 
@@ -52,11 +52,15 @@ class ClipType(str, Enum):
 
 
 class Framing(BaseModel):
+    """content_region: kaynakta önce kırpılacak asıl görüntü alanı (0–1; bulanık/siyah kenarlar atılır).
+    focus_x/focus_y: FILL_CROP'ta kadrajın ortalanacağı nokta, content_region'a göre (0–1)."""
+
     model_config = ConfigDict(extra="forbid")
     mode: FramingMode = FramingMode.FILL_CROP
     focus_x: float = 0.5
     focus_y: float = 0.5
     zoom: float = 1.0
+    content_region: Region | None = None
 
     @field_validator("focus_x", "focus_y")
     @classmethod

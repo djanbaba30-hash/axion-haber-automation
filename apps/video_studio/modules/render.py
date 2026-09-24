@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from apps.axion_local.store import ROUGH_CUT_FILENAME  # noqa: F401  (sayfa buradan alır)
-from shared.edit_models import ClipType, EditProject, FramingMode, TrackKind
+from shared.edit_models import ClipType, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import MediaLibrary
 
 from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
@@ -26,20 +26,28 @@ def amd_encoder_available() -> bool:
     return " h264_amf " in result.stdout
 
 
-def _clip_filter(index: int, mode: FramingMode, focus_x: float, focus_y: float, width: int, height: int, fps: int, frames: int) -> str:
+def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int, frames: int) -> str:
     size = f"{width}:{height}"
-    if mode == FramingMode.FIT_BLUR:
-        body = (
+    steps = []
+    region = framing.content_region
+    if region:
+        # Önce bulanık/siyah kenarları at: kalan asıl görüntü üzerinden kadrajlanır.
+        steps.append(f"crop=iw*{region.width}:ih*{region.height}:iw*{region.x}:ih*{region.y}")
+    if framing.mode == FramingMode.FIT_BLUR:
+        steps.append(
             f"split[b{index}][f{index}];"
             f"[b{index}]scale={size}:force_original_aspect_ratio=increase,crop={size},boxblur=20:2[bb{index}];"
             f"[f{index}]scale={size}:force_original_aspect_ratio=decrease[ff{index}];"
             f"[bb{index}][ff{index}]overlay=(W-w)/2:(H-h)/2"
         )
     else:
-        body = f"scale={size}:force_original_aspect_ratio=increase,crop={size}:(iw-{width})*{focus_x}:(ih-{height})*{focus_y}"
+        # Kadrajı odak noktasına ortala; görüntü dışına taşmasın diye sınırla.
+        x = f"'clip(iw*{framing.focus_x}-{width / 2},0,iw-{width})'"
+        y = f"'clip(ih*{framing.focus_y}-{height / 2},0,ih-{height})'"
+        steps.append(f"scale={size}:force_original_aspect_ratio=increase,crop={size}:{x}:{y}")
     # tpad + trim: kaynak birkaç kare kısa kalsa bile klip tam `frames` kare olur (ses ile senkron).
     return (
-        f"[{index}:v]{body},setsar=1,fps={fps},format=yuv420p,"
+        f"[{index}:v]{','.join(steps)},setsar=1,fps={fps},format=yuv420p,"
         f"tpad=stop_mode=clone:stop=5,trim=end_frame={frames},setpts=PTS-STARTPTS[v{index}]"
     )
 
@@ -69,10 +77,7 @@ def build_render_command(edit_project: dict[str, Any], media_library: dict[str, 
         seconds = clip.source_out_s - clip.source_in_s
         command += ["-ss", f"{clip.source_in_s:.3f}", "-t", f"{seconds + 0.2:.3f}", "-i", source]
         filters.append(
-            _clip_filter(
-                index, clip.framing.mode, clip.framing.focus_x, clip.framing.focus_y,
-                timeline.width, timeline.height, timeline.fps, clip.duration_f,
-            )
+            _clip_filter(index, clip.framing, timeline.width, timeline.height, timeline.fps, clip.duration_f)
         )
     audio_index = len(clips)
     command += ["-i", project.audio.path]
