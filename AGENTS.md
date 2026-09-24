@@ -93,6 +93,9 @@ Tamamlanan:
 - Arayüz sadeleştirildi: kullanıcıya gerekmeyen ayarlar "Gelişmiş" altında, token/maliyet "Geliştirici bilgileri"
   altında. Video Studio'da EditProject otomatik oluşur (düğme yok).
 - Haber Stüdyosu viral TTS kuralları (v1.2.0): tekrar yasağı, süre hedefi üst sınır, plaka temizleme.
+- Arayüz (v1.6.x): beyaz Axion teması, uygulama içinde logo yok; kenar çubuğu ayarları `data/ayarlar.json`'da hatırlanır;
+  Video Studio'da sahne tablosu yalnızca geliştirici bölümünde. Editör bu sürümleri henüz Windows'ta güncellemedi
+  (`guncelle.bat`); ilk güncellemede masaüstü ikonu Axion X işaretine dönmeli.
 
 **Sıradaki iş — Faz 2 (Video Studio'yu shared/ 2.1 modellerine taşıma), ardından Faz 3 (kaba kurgu MP4):**
 1. `media_pipeline.py` çıktısını `shared.media_models.MediaLibrary` (VideoAsset/Shot) olarak üret; Luna yanıtını
