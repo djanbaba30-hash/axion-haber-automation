@@ -111,8 +111,10 @@ def build_edit_project(
     if not alignment and not tts_text:
         raise ValueError("TTS metni boş; EditProject 2.1 oluşturulamaz.")
     duration = float(audio_duration_seconds or 0.0)
-    if alignment and alignment.duration_seconds > 0:
-        duration = max(duration, alignment.duration_seconds)
+    if alignment:
+        alignment_duration = alignment.duration_seconds()
+        if alignment_duration > 0:
+            duration = max(duration, alignment_duration)
 
     if not audio_path or duration <= 0:
         raise ValueError("EditProject 2.1 için kullanılabilir TTS sesi ve pozitif süre gerekli.")
