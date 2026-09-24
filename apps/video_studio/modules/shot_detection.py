@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 import subprocess
+
+FFMPEG_TIMEOUT_SECONDS = 120
 from pathlib import Path
 from typing import Any
 
@@ -222,6 +224,7 @@ def detect_scene_changes(
         capture_output=True,
         text=True,
         check=False,
+        timeout=FFMPEG_TIMEOUT_SECONDS,
     )
 
     # FFmpeg scdet çıktısı stderr üzerinden gelir.
