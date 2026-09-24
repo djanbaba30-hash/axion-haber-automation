@@ -108,9 +108,10 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
   editöre "yeniden analiz et" bilgisi gösterilir. Luna prompt/şemasını değiştirirsen `LUNA_PROMPT_VERSION`'ı artır.
 
 ### Şu anki durum / sonraki adım
-- Faz 2 kodda tamam. **Editörün Windows'ta doğrulaması bekleniyor:** `guncelle.bat` → aynı haberin görüntülerini yeniden
-  analiz et → Geliştirici bilgileri tablosunda Görüntü/Rol/Açıklama dolu mu, uzun shot pencerelere bölünmüş mü?
-- Sonra Faz 3: API çağrısı olmadan TTS segmentlerini shot pencereleriyle eşleştirip FFmpeg ile 1080x1440 kaba kurgu MP4
+- Faz 2 Windows'ta doğrulandı (v1.7.1, Bayrampaşa videosu): 15 shot'ın hepsinde visual_type/editorial_role/açıklama
+  dolu ve doğru; 71,6 sn röportaj 8 pencereye bölündü (hepsi person/portrait). 22 kare, tek çağrı, $0.0057.
+  Not: Luna plakayı `visible_text`'te okuyor ("34 FPR 116"); Faz 6 blur önerisi bu alanı kullanabilir.
+- **Sıradaki iş Faz 3:** API çağrısı olmadan TTS segmentlerini shot pencereleriyle eşleştirip FFmpeg ile 1080x1440 kaba kurgu MP4
   üretmek. AMD `h264_amf` mevcutsa render adımında tercih edilecek.
 
 ### Bilinen borçlar
