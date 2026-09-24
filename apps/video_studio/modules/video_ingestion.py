@@ -19,7 +19,7 @@ ALLOWED_VIDEO_EXTENSIONS = {
 }
 
 
-def save_uploaded_video(uploaded_file) -> Path:
+def save_uploaded_video(uploaded_file, storage_dir: Path | None = None) -> Path:
     """
     Streamlit UploadedFile nesnesini geçici çalışma alanına kaydeder.
     """
@@ -34,6 +34,14 @@ def save_uploaded_video(uploaded_file) -> Path:
 
     if isinstance(uploaded_file, LocalMediaFile):
         return uploaded_file.path
+
+    if storage_dir is not None:
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        target = storage_dir / original_name
+        if target.exists():
+            target = storage_dir / f"{target.stem}_{abs(hash(uploaded_file.name)) & 0xfffffff}{target.suffix}"
+        target.write_bytes(uploaded_file.getbuffer())
+        return target
 
     temp_file = tempfile.NamedTemporaryFile(
         delete=False,
