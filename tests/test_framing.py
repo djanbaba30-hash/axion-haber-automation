@@ -140,3 +140,17 @@ def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypat
         assert green > 90 and red < 40  # sol kenar da asıl (yeşil) görüntü
     else:
         assert green > 60  # bulanık arka plan asıl görüntüden (yeşil) üretilir, DHA'nın gri kenarından değil
+
+
+def test_real_dha_overshoot_snaps_to_vertical_phone_aspect():
+    """Manavgat videosu (Windows, v1.9.0): bulanık kenarlı sahnelerde tespit ~0.286–0.714 çıktı, gerçek 9:16 alan
+    0.342–0.658. Dar standart orana oturtulunca bulanık kenar kadraja girmez."""
+    from apps.video_studio.modules.framing import _snap_to_vertical_aspect
+
+    start, end = _snap_to_vertical_aspect(0.286, 0.714, 16 / 9)
+    assert abs(start - 0.3418) < 0.002 and abs(end - 0.6582) < 0.002
+    # Kare (1:1) çekim ~0.56 genişlikte: 9:16'ya değil 1:1'e oturur.
+    start, end = _snap_to_vertical_aspect(0.21, 0.79, 16 / 9)
+    assert abs((end - start) - 0.5625) < 0.002
+    # Standart orandan dar tespit (ör. 0.30) olduğu gibi kalır.
+    assert _snap_to_vertical_aspect(0.35, 0.65, 16 / 9) == (0.35, 0.65)

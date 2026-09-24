@@ -1,7 +1,7 @@
 """Kural tabanlı kaba kurgu (Faz 3): TTS cümlelerine sahne penceresi seçer. API çağrısı yok.
 
-Her TTS cümlesinin süresi alignment'tan (yoksa karakter oranından) bulunur, en fazla MAX_CLIP_SECONDS'lik
-kesitlere bölünür; her kesit için Luna açıklaması, rolü ve kullanım geçmişine göre en iyi pencere seçilir.
+Kesmeler seslendirmedeki duraklamalara (cümle sonu, virgül, nefes arası) konur; her sahne MIN–MAX_CLIP_SECONDS.
+Her kesit için o sırada söylenen kelimeler, Luna açıklaması, rol ve kullanım geçmişine göre en iyi pencere seçilir.
 Faz 4'te bu seçimi Luna Edit Planner yapacak; bu modül onun yedeği olarak kalır.
 """
 
@@ -16,8 +16,13 @@ from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH, video_seconds
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
 
-MAX_CLIP_SECONDS = 3.0
-MIN_CLIP_SECONDS = 1.0
+# Sahne süresi: çok hızlı geçiş olmasın (editör: "yarım saniyede bir sahne değişmesin"),
+# 5 sn'den uzun kesintisiz konuşmada araya sahne girebilir.
+MIN_CLIP_SECONDS = 2.0
+IDEAL_CLIP_SECONDS = 3.0
+MAX_CLIP_SECONDS = 5.0
+SENTENCE_END = set(".!?…")
+PAUSE_PUNCTUATION = set(".!?…,;:\"”'’»)")
 EDGE_SECONDS = 0.2  # Shot geçişindeki karışık karelerden kaçın.
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
@@ -136,7 +141,7 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     if repeated:
         score -= 2.0
     if available < need:
-        score -= 1.5
+        score -= 4.0  # Sahne kesit süresine yetmiyorsa kesme duraklama dışına düşer; tercih etme.
     if available < MIN_CLIP_SECONDS / 2:
         score -= 50.0
     return score
@@ -161,18 +166,80 @@ def segment_times(project: EditProject) -> list[tuple[str, float, float]]:
     """(segment_id, başlangıç, bitiş) — boşluksuz; ilk segment 0'da, son segment ses sonunda biter."""
     segments = sorted(project.edit_plan.segments, key=lambda s: s.order)
     duration = project.audio.duration_seconds
-    alignment = project.news.tts_alignment
-    total_chars = max(1, len(project.news.tts_text))
-    starts = []
-    for segment in segments:
-        if alignment and segment.char_start < len(alignment.start_seconds):
-            starts.append(alignment.start_seconds[segment.char_start])
-        else:
-            starts.append(duration * segment.char_start / total_chars)
+    char_starts, _ = _char_times(project)
+    starts = [char_starts[s.char_start] if s.char_start < len(char_starts) else duration for s in segments]
     if starts:
         starts[0] = 0.0
     ends = starts[1:] + [duration]
     return [(s.segment_id, start, end) for s, start, end in zip(segments, starts, ends) if end > start]
+
+
+def _char_times(project: EditProject) -> tuple[list[float], list[float]]:
+    """Her karakterin konuşulma zamanı: alignment'tan; yoksa ses süresine eşit dağıtılır."""
+    alignment = project.news.tts_alignment
+    if alignment and len(alignment.start_seconds) == len(project.news.tts_text):
+        return list(alignment.start_seconds), list(alignment.end_seconds)
+    size = max(1, len(project.news.tts_text))
+    step = project.audio.duration_seconds / size
+    return [i * step for i in range(size)], [(i + 1) * step for i in range(size)]
+
+
+def cut_points(project: EditProject) -> list[tuple[float, float]]:
+    """Sahne değişebilecek anlar: kelime aralarındaki duraklamanın ortası ve gücü.
+
+    Güç: cümle sonu > virgül/iki nokta > düz kelime arası; duraklama uzadıkça artar (nefes payı).
+    """
+    text = project.news.tts_text
+    starts, ends = _char_times(project)
+    points = []
+    for index, char in enumerate(text):
+        if char != " " or index == 0 or index + 1 >= len(text):
+            continue
+        first = index
+        while first > 0 and text[first - 1] in PAUSE_PUNCTUATION:
+            first -= 1
+        pause_start, pause_end = starts[first], ends[index]
+        before = text[index - 1]
+        strength = 0.5 + 4.0 * max(0.0, pause_end - pause_start)
+        if before in SENTENCE_END:
+            strength += 3.0
+        elif before in PAUSE_PUNCTUATION:
+            strength += 1.5
+        points.append(((pause_start + pause_end) / 2, strength))
+    return points
+
+
+def _cut_times(project: EditProject, total: float) -> list[float]:
+    """Kurgu kesme zamanları [0, ..., total]: her sahne MIN–MAX sn, kesmeler duraklamalarda."""
+    points = cut_points(project)
+    tts_end = project.audio.duration_seconds
+    if total - tts_end >= MIN_CLIP_SECONDS:
+        points.append((tts_end, 3.0))  # Seslendirme bitti; sessiz uzatma ayrı sahne olabilir.
+    cuts = [0.0]
+    while total - cuts[-1] > MAX_CLIP_SECONDS:
+        now = cuts[-1]
+        window = [
+            (time, strength) for time, strength in points
+            if now + MIN_CLIP_SECONDS <= time <= now + MAX_CLIP_SECONDS and total - time >= MIN_CLIP_SECONDS
+        ]
+        if window:
+            cuts.append(max(window, key=lambda p: p[1] - 0.4 * abs(p[0] - now - IDEAL_CLIP_SECONDS))[0])
+        else:  # Kelime arası bile yok (çok uzun kelime/sessizlik): ideal sürede kes.
+            cuts.append(now + IDEAL_CLIP_SECONDS)
+    return cuts + [total]
+
+
+def _spoken_text(project: EditProject, start: float, end: float) -> str:
+    starts, _ = _char_times(project)
+    return "".join(char for char, at in zip(project.news.tts_text, starts) if start <= at < end)
+
+
+def _segment_at(project: EditProject, time: float) -> str:
+    timed = segment_times(project)
+    for segment_id, start, end in timed:
+        if start <= time < end:
+            return segment_id
+    return timed[-1][0]
 
 
 def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], framing_mode: str = FramingMode.FILL_CROP.value) -> dict[str, Any]:
@@ -183,29 +250,28 @@ def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], 
         raise ValueError("Kurgu için analiz edilmiş video sahnesi yok.")
 
     fps = project.edit_plan.timeline.fps
-    # Son cümlenin görüntüsü, TTS 20 sn'den kısaysa şablonun en kısa süresine kadar sessiz devam eder.
-    total_f = round(video_seconds(project.audio.duration_seconds) * fps)
+    # Son sahne, TTS 20 sn'den kısaysa şablonun en kısa süresine kadar sessiz devam eder.
+    total = video_seconds(project.audio.duration_seconds)
+    total_f = round(total * fps)
     mode = FramingMode(framing_mode)
     usage = _Usage()
     clips: list[Clip] = []
     previous_shot: str | None = None
-    timed = segment_times(project)
-    texts = {s.segment_id: s.text for s in project.edit_plan.segments}
+    previous_tokens: list[str] = []
+    cuts = _cut_times(project, total)
 
-    for index, (segment_id, start, end) in enumerate(timed):
-        segment_start_f = round(start * fps)
-        segment_end_f = total_f if index == len(timed) - 1 else round(end * fps)
-        segment_tokens = _tokens(texts[segment_id])
-        pieces = max(1, math.ceil((segment_end_f - segment_start_f) / (MAX_CLIP_SECONDS * fps)))
-        cursor_f = segment_start_f
-        while cursor_f < segment_end_f:
-            remaining_pieces = max(1, pieces - sum(1 for c in clips if c.segment_id == segment_id))
-            target_f = math.ceil((segment_end_f - cursor_f) / remaining_pieces)
-            need = target_f / fps
-            opening = cursor_f == 0
-            best = max(candidates, key=lambda c: (_score(c, segment_tokens, opening, previous_shot, usage, need), -c.order))
+    for start, end in zip(cuts, cuts[1:]):
+        # Sahne, o sırada söylenen kelimelere göre seçilir (sessiz uzatmada son söylenenlere göre).
+        tokens = _tokens(_spoken_text(project, start, end)) or previous_tokens
+        previous_tokens = tokens
+        segment_id = _segment_at(project, start)
+        cursor_f, end_f = round(start * fps), (total_f if end >= total else round(end * fps))
+        while cursor_f < end_f:
+            need = (end_f - cursor_f) / fps
+            best = max(candidates, key=lambda c: (_score(c, tokens, cursor_f == 0, previous_shot, usage, need), -c.order))
             source_in, available, _ = _source_range(best, usage, need)
-            duration_f = max(1, min(target_f, math.floor(available * fps)))
+            # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur.
+            duration_f = max(1, min(end_f - cursor_f, math.floor(available * fps)))
             source_out = source_in + duration_f / fps
             clips.append(
                 Clip(

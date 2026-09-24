@@ -51,7 +51,7 @@ def _segment_ranges(tts_text: str) -> list[tuple[int, int]]:
         return []
     ranges: list[tuple[int, int]] = []
     start = 0
-    for match in re.finditer(r"""[.!?…]+(?:["”'’»)]*)\s*""", tts_text):
+    for match in re.finditer(r"""[.!?…]+(?:["”'’»)]*)(?=\s|$)\s*""", tts_text):
         end = match.end()
         content_end = match.start() + len(match.group(0).rstrip())
         if content_end > start:

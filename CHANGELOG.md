@@ -1,3 +1,18 @@
+# v1.9.3 — Doğal kesmeler ve bulanık kenarın tamamen atılması — 2026-09-24
+
+## Changed
+- Sahne geçişleri seslendirmedeki duraklamalara konuyor (cümle sonu, virgül, nefes arası); her sahne 2–5 sn.
+  Önceki sürüm sabit ≤3 sn parçalara bölüyordu, bazı geçişler 1 sn'nin altına düşüyordu.
+- Sahne, o aralıkta söylenen kelimelere göre seçiliyor (cümlenin tamamına göre değil).
+- Yanları bulanık dikey çekimlerde bulunan alan standart orana (9:16, 1:1, 4:3) daraltılıyor; gerçek DHA videosunda
+  kenarda kalan bulanık şerit gideriliyor.
+
+## Fixed
+- "Saat 17.00" gibi saat/sayılardaki nokta cümle sonu sayılıyordu; ayrı ve çok kısa bir sahneye yol açıyordu.
+
+## Verification
+- `make test` geçti (Manavgat videosundaki gerçek tespit değerleriyle regresyon testi dahil). Windows testi bekleniyor.
+
 # v1.9.2 — Video en az 20 saniye — 2026-09-24
 
 ## Changed

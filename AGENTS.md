@@ -57,7 +57,7 @@ apps/video_studio/             VIDEO STUDIO
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
-  modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS cümlesi → ≤3 sn kesitler → sahne penceresi (API yok)
+  modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi (API yok)
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (analiz karelerinden, numpy/Pillow, API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
 
@@ -137,6 +137,15 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
   ikinci kez kırpmasın). Eski ölçüdeki edit_project'ler açılışta yeniden kurulur. Şablonun tamamı ROADMAP'te (Faz 5).
 - v1.9.2: video en az 20 sn (`axion_template.video_seconds`); TTS daha kısaysa son sahne sessiz uzar (`apad`).
   EditProject kuralı artık "timeline ≤ max(TTS, 20 sn)".
+- v1.9.3 (editörün Manavgat testi, yatay video + araya konmuş bulanık kenarlı dikey sahneler):
+  - Bulanık kenar tespiti gerçek DHA'da dışa taşıyordu (%31,7 yerine ~%42 genişlik → kenarda bulanık şerit).
+    `framing._snap_to_vertical_aspect`: yanları bulanık alan en yakın küçük standart orana (9:16, 1:1, 4:3) daraltılır;
+    hata hep "fazla yakınlaştır" yönünde.
+  - Kesmeler artık sabit 3 sn değil: `rough_cut.cut_points` alignment'tan kelime arası duraklamaları puanlar
+    (cümle sonu > virgül > nefes arası, duraklama uzunluğu), `_cut_times` her sahneyi 2–5 sn tutar. Sahne, o aralıkta
+    söylenen kelimelere göre seçilir.
+  - `edit_plan._segment_ranges`: "17.00" gibi sayılardaki nokta artık cümle sonu sayılmıyor (0,8 sn'lik sahne bunun içindi).
+- Açık tasarım sorusu (editöre soruldu): TTS öncesi dikkat çekici kesit / TTS sonrası röportaj ekleme arayüzü.
 - Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar

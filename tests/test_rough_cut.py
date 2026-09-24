@@ -86,7 +86,7 @@ def test_rough_cut_covers_whole_voiceover_without_gaps():
     assert clips[0]["start_f"] == 0
     assert all(a["start_f"] + a["duration_f"] == b["start_f"] for a, b in zip(clips, clips[1:]))
     assert clips[-1]["start_f"] + clips[-1]["duration_f"] == round(21.27 * 30)
-    assert all(c["duration_f"] <= 3 * 30 + 1 for c in clips)
+    assert all(2 * 30 <= c["duration_f"] <= 5 * 30 + 1 for c in clips)  # ne çok hızlı ne çok uzun
     assert all(c["origin"] == "rule" for c in clips)
     assert has_rough_cut(project)
     assert matches_template(project)
@@ -172,3 +172,28 @@ def test_short_voiceover_is_extended_to_template_minimum():
     assert project["audio"]["duration_seconds"] == 15.0
     assert clips[-1]["start_f"] + clips[-1]["duration_f"] == 20 * 30
     assert all(a["start_f"] + a["duration_f"] == b["start_f"] for a, b in zip(clips, clips[1:]))
+
+
+def test_cuts_fall_in_pauses_between_words():
+    project = plan_rough_cut(edit_project(), library())
+    step = 21.27 / len(TTS)
+    for clip in video_clips(project)[1:]:
+        char = TTS[min(len(TTS) - 1, int(clip["start_f"] / 30 / step))]
+        neighbours = TTS[max(0, int(clip["start_f"] / 30 / step) - 1): int(clip["start_f"] / 30 / step) + 2]
+        assert " " in neighbours or char in ".,", f"kesme kelime ortasında: {neighbours!r}"
+
+
+def test_sentence_end_is_preferred_over_word_gap():
+    from apps.video_studio.modules.rough_cut import _cut_times
+
+    project = EditProject.model_validate(edit_project())
+    cuts = _cut_times(project, 21.27)
+    sentence_ends = [21.27 / len(TTS) * (i + 1.5) for i, ch in enumerate(TTS[:-1]) if ch == "." and TTS[i + 1] == " "]
+    assert any(abs(cut - end) < 0.1 for cut in cuts for end in sentence_ends)
+
+
+def test_clock_time_is_not_a_sentence_end():
+    from apps.video_studio.modules.edit_plan import _segment_ranges
+
+    text = "Kaza meydana geldi. Saat 17.00’de ekipler geldi."
+    assert [text[a:b] for a, b in _segment_ranges(text)] == ["Kaza meydana geldi.", "Saat 17.00’de ekipler geldi."]
