@@ -15,7 +15,7 @@ EDIT_PLAN_VERSION = "2.1"
 
 
 class FramingMode(str, Enum):
-    """Kaynağın timeline kadrajına (ör. 1080x1440) yerleştirilme biçimi.
+    """Kaynağın timeline kadrajına (ör. şablonun 960x1226 video alanı) yerleştirilme biçimi.
 
     FILL_CROP: Kaynak kadrajı tamamen dolduracak kadar ölçeklenir; taşan kısım
         focus_x/focus_y merkez alınarak kırpılır. Yatay videodan dikey kesit de budur.

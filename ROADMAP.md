@@ -46,7 +46,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - Editörün görmesi gerekmeyen bilgiler gizli (geliştirici bölümü); son kullanılan ayarlar hatırlanır.
 
 **Video**
-- Kurgu çıktısı 1080×1440. Axion şablonu (başlık, alttan logo şeridi, font) ile birlikte son çıktı 1080×1920.
+- Kurgu çıktısı şablondaki video alanının ölçüsünde: 960×1225 (H.264 için 960×1226). Axion şablonu ile son çıktı 1080×1920.
 - Altyazı yok.
 - Tanık sesi editör kararıdır:
   - dikkat çekici söz → videonun başına, TTS'ten önce;
@@ -61,9 +61,9 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 | 0 ✅ | **Yerel çalışma:** tek uygulama (`axion_local.py`), kalıcı proje klasörü, videoyu diskten alma, ikonla konsolsuz başlatma, Tailscale ile uzaktan erişim | Yükleme sorunu biter |
 | 1 ✅ | **News Studio:** zaman bilgili TTS (`convert_with_timestamps`), metin değişince sesin geçersiz sayılması, NewsPackage'da ses hash'i | TTS cümleleri zamanlanabilir |
 | 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, enum'lu Luna şeması, uzun shot pencereleri (Windows'ta doğrulandı) | Planner'a güvenilir veri |
-| 3 🔶 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile 1080×1440 MP4 | **CapCut'a gerek kalmaz** |
+| 3 🔶 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → `EditProject` | Otomatik kurgu kararı |
-| 5 | **Axion şablon katmanı:** statik şablon PNG + başlık yazısı + logo animasyonu → 1080×1920 | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
+| 5 | **Axion şablon katmanı:** arka plan + başlıklar + slogan yazıları + logo kutusu animasyonu → 1080×1920 (ayrıntı: aşağıda, `shared/axion_template.py`) | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
 | 6 | **Blur:** plaka ve yüz önerisi, yalnızca son videoya giren parçalarda, editör onayıyla | Gizlilik |
 
 ## Ortam
@@ -80,6 +80,25 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - Windows gerçek E2E testinde analiz + EditProject üretimi doğrulandı; 157.28 sn videoda 15 shot, 21.27 sn TTS timeline üretildi.
 - v1.7.1: `unknown`/boş sınıflandırma (eşleme hatası) düzeltildi; uzun shot'lar 10 sn'lik pencerelere bölünüyor.
 
+## Axion Canva şablonu (Faz 5 girdisi, editörden)
+
+Kanvas 1080×1920. Konumlar sol üst köşeye göre piksel; koddaki karşılığı `shared/axion_template.py`.
+
+| Öğe | Konum / boyut | Zaman | Animasyon |
+|---|---|---|---|
+| Video | 960×1225, x=60, y=453 | tüm video | — |
+| Başlık 1 | 960×155, x=60, y=260; Binate Bold 45, glow 100 | 0–9 sn | giriş yok, çıkış "merge" |
+| "TARAFSIZ HABERCİLİĞİN ADRESİ" | başlık kutusunun ortası | 9–11 sn | giriş/çıkış "old tv" (Text Studio) |
+| "BEĞEN, PAYLAŞ, TAKİP ET" | başlık kutusunun ortası | 11–13 sn | giriş/çıkış "old tv" |
+| Başlık 2 | Başlık 1 ile aynı kutu ve yazı tipi | 13 sn → son | giriş "merge", çıkış yok |
+| Axion Haber logo kutusu (yumuşak köşeli) | alttan yükselir | 16–19 sn | "slow baseline": alttan çıkar, geri iner |
+| Arka plan | 1080×1920 | tüm video | 8 arka plan; her gün bir sonraki, aynı gün tüm haberler aynı |
+
+Faz 5'te gerekecek dosyalar (editörden): 8 arka plan, logo kutusu (şeffaf PNG), varsa slogan yazılarının görselleri.
+
 ## Açık sorular
+
+- Şablon zamanları (9/13/16. sn) sabit mi, yoksa video 20 sn'den uzunsa kayıyor mu (ör. logo kutusu hep sondan 4 sn önce)?
+- Binate Bold yerine lisansı serbest, Türkçe karakterli benzer yazı tipi (Faz 5'te örnek çıktıyla karşılaştırılacak).
 
 - Canva şablonundaki fontun adı ve lisansı.

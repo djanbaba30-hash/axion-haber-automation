@@ -26,7 +26,7 @@ from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
 from apps.video_studio.modules.news_package import news_package_to_state
 from apps.video_studio.modules.render import ROUGH_CUT_FILENAME, render_rough_cut
-from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, plan_rough_cut, set_framing
+from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut, set_framing
 
 ANALYSIS_OPTIONS = {
     "Ekonomik — 1 kare / shot": 1,
@@ -64,10 +64,10 @@ def load_project(project: NewsProject) -> None:
         ss.pop("media_library", None)
         ss.pop("analysis_usage", None)
     edit_project = load_project_json(project, EDIT_PROJECT_FILENAME)
-    if edit_project and edit_project.get("project_version") == "2.1" and has_rough_cut(edit_project):
+    if edit_project and edit_project.get("project_version") == "2.1" and has_rough_cut(edit_project) and matches_template(edit_project):
         ss.edit_project = edit_project
     else:
-        # 1.1, bozuk veya kurgusuz eski projeyi kullanma; yeniden üretilsin.
+        # 1.1, bozuk, kurgusuz veya eski ölçüdeki (1080x1440) projeyi kullanma; yeniden üretilsin.
         ss.pop("edit_project", None)
 
 

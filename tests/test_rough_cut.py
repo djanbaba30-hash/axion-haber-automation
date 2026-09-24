@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from apps.video_studio.modules import render
-from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, plan_rough_cut, segment_times, set_framing
+from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut, segment_times, set_framing
 from shared.edit_models import EditProject
 
 TTS = (
@@ -89,6 +89,7 @@ def test_rough_cut_covers_whole_voiceover_without_gaps():
     assert all(c["duration_f"] <= 3 * 30 + 1 for c in clips)
     assert all(c["origin"] == "rule" for c in clips)
     assert has_rough_cut(project)
+    assert matches_template(project)
     assert len(clip_rows(project)) == len(clips)
 
 
@@ -136,7 +137,7 @@ def test_render_command_reports_missing_source(tmp_path):
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
 @pytest.mark.parametrize("framing", ["fill_crop", "fit_blur"])
-def test_render_produces_1080x1440_mp4_matching_voiceover(tmp_path, monkeypatch, framing):
+def test_render_produces_template_sized_mp4_matching_voiceover(tmp_path, monkeypatch, framing):
     monkeypatch.setattr(render, "amd_encoder_available", lambda: False)
     source, audio = tmp_path / "dha.mp4", tmp_path / "tts.mp3"
     subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=duration=12:size=640x360:rate=25", str(source)], check=True)
@@ -158,7 +159,7 @@ def test_render_produces_1080x1440_mp4_matching_voiceover(tmp_path, monkeypatch,
 
     info = json.loads(probe)
     video = next(s for s in info["streams"] if s["codec_type"] == "video")
-    assert (video["width"], video["height"]) == (1080, 1440)
+    assert (video["width"], video["height"]) == (960, 1226)  # Canva şablonundaki video alanı
     assert any(s["codec_type"] == "audio" for s in info["streams"])
     assert abs(float(info["format"]["duration"]) - 4.0) < 0.15
     assert not (tmp_path / "kaba_kurgu.yaziliyor.mp4").exists()

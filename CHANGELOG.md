@@ -1,3 +1,17 @@
+# v1.9.1 — Kurgu ölçüsü Canva şablonuna göre — 2026-09-24
+
+## Changed
+- Kaba kurgu 1080×1440 yerine Canva şablonundaki video alanının ölçüsünde üretiliyor: 960×1226 (alan 960×1225;
+  H.264 çift sayı istediği için 1 px fazla). Canva'da ikinci kez kırpma gerekmez.
+- Eski ölçüdeki kurgu projeleri açılışta yeniden kuruluyor.
+
+## Added
+- `shared/axion_template.py` ve ROADMAP'te Axion Canva şablonunun tam tanımı (Faz 5 için): başlık, slogan ve logo kutusu
+  konum/zaman/animasyonları, yazı tipi, arka plan rotasyonu.
+
+## Verification
+- `make test` geçti.
+
 # v1.9.0 — Akıllı kadraj — 2026-09-24
 
 ## Added

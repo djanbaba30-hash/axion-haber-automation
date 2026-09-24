@@ -65,6 +65,7 @@ shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
   media_models.py              MediaLibrary / VideoAsset / Shot / AnalysisWindow (hedef 2.1 modelleri)
   edit_models.py               EditProject / Timeline / Track / Clip (hedef 2.1 modelleri)
+  axion_template.py            Editörün Canva şablonu: video alanı (kurgu ölçüsü), başlık/slogan/logo konum ve zamanları (Faz 5)
 
 windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı), guncelle.bat,
                                anahtarlar.bat, sorun_giderme.bat, kisayol.ps1, axion_x.ico
@@ -80,7 +81,7 @@ Haber Stüdyosu ──"Kaydet"──► data/projects/<zaman>_<başlık>/
 Video Studio   ──analiz────►   media_library.json (shared MediaLibrary; tekrar açınca yeniden analiz yok)
                                browser upload ise proje içindeki media/ kaynakları kullanır
                ──hazırla───►   edit_project.json (shared EditProject 2.1; video izi rough_cut ile dolu)
-               ──oluştur───►   kaba_kurgu.mp4 (1080x1440, TTS sesiyle)
+               ──oluştur───►   kaba_kurgu.mp4 (960x1226 = Canva şablonunun video alanı, TTS sesiyle)
 ```
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
@@ -132,7 +133,9 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
     v2.3 (eski analizler yeniden analiz ister).
   - `Framing.content_region` + odak (content'e göre). Render önce asıl alanı kırpar; Doldur'da kadrajı odağa ortalar,
     Bulanık kenar'da arka planı asıl görüntüden üretir.
-- Sıradaki: editörün v1.9.0 testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
+- v1.9.1: kurgu çıktısı 1080x1440 yerine şablonun video alanı 960x1226 (`shared/axion_template.py`; editör Canva'da
+  ikinci kez kırpmasın). Eski ölçüdeki edit_project'ler açılışta yeniden kurulur. Şablonun tamamı ROADMAP'te (Faz 5).
+- Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar
 - Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı (kaba kurguda kaynak ses kullanılmıyor).

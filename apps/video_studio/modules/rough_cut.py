@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
 
@@ -235,6 +236,12 @@ def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], 
 def has_rough_cut(edit_project: dict[str, Any] | None) -> bool:
     tracks = ((edit_project or {}).get("edit_plan") or {}).get("timeline", {}).get("tracks", [])
     return any(track.get("kind") == "video" and track.get("clips") for track in tracks)
+
+
+def matches_template(edit_project: dict[str, Any]) -> bool:
+    """Kurgu, şablonun güncel video alanı ölçüsünde mi (eski 1080x1440 projeler yeniden kurulur)?"""
+    timeline = edit_project["edit_plan"]["timeline"]
+    return (timeline.get("width"), timeline.get("height")) == (VIDEO_WIDTH, VIDEO_HEIGHT)
 
 
 def set_framing(edit_project: dict[str, Any], framing_mode: str) -> dict[str, Any]:

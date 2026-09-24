@@ -131,7 +131,7 @@ def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypat
     render.render_rough_cut(project, lib, output)
 
     column = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(output), "-vf", "crop=20:1440:0:0,scale=1:1", "-frames:v", "1",
+        ["ffmpeg", "-v", "error", "-i", str(output), "-vf", "crop=20:ih:0:0,scale=1:1", "-frames:v", "1",
          "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
         capture_output=True, check=True,
     ).stdout

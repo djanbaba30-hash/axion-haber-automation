@@ -25,6 +25,7 @@ from shared.edit_models import (
     Track,
     TrackKind,
 )
+from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH
 from shared.media_models import MediaLibrary
 from shared.news_package import TTSAlignment, ensure_alignment_matches_text
 
@@ -136,7 +137,7 @@ def build_edit_project(
     )
 
     segments = _segments_from_alignment(tts_text, alignment)
-    timeline = Timeline(fps=30, width=1080, height=1440, tracks=[
+    timeline = Timeline(fps=30, width=VIDEO_WIDTH, height=VIDEO_HEIGHT, tracks=[
         Track(id="video_main", kind=TrackKind.VIDEO, clips=[]),
         Track(id="overlay_main", kind=TrackKind.OVERLAY, clips=[]),
         Track(id="audio_main", kind=TrackKind.AUDIO, clips=[
