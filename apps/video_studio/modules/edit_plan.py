@@ -150,8 +150,12 @@ def build_edit_project(
         ]),
     ])
 
+    project_id = str(package.get("metadata", {}).get("project_id") or "")
+    if not project_id:
+        project_id = "news_" + hashlib.sha256((headline_1 + "|" + tts_text).encode("utf-8")).hexdigest()[:16]
+
     project = EditProject(
-        project_id=str(package.get("metadata", {}).get("project_id") or "news_video"),
+        project_id=project_id,
         library_id=_library_id(library),
         news=NewsReference(
             package_schema_version=str(package.get("schema_version") or "1.1"),
