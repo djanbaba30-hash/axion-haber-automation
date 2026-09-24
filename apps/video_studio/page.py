@@ -58,9 +58,10 @@ def load_project(project: NewsProject) -> None:
         ss.pop("media_library", None)
         ss.pop("analysis_usage", None)
     edit_project = load_project_json(project, EDIT_PROJECT_FILENAME)
-    if edit_project:
+    if edit_project and edit_project.get("project_version") == "2.1":
         ss.edit_project = edit_project
     else:
+        # 1.1 veya bozuk eski projeyi sessizce kullanma; 2.1 yeniden üretilsin.
         ss.pop("edit_project", None)
 
 
