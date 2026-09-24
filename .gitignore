@@ -19,3 +19,5 @@ venv/
 *.ogg
 *.flac
 data/
+# Şablon dosyaları (örnek Canva videosu dahil) repoda tutulur.
+!assets/sablon/**

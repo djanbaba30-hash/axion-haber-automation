@@ -37,6 +37,7 @@ Tek uygulama (Streamlit), üç sayfa: **Haber Stüdyosu**, **Video Stüdyosu**, 
 axion_local.py                 Ana giriş: menü, isteğe bağlı şifre, stil (CSS), "Axion'u kapat" (sadece localhost)
 .streamlit/config.toml         Port 8501, headless, 4 GB yükleme sınırı, beyaz Axion teması (lacivert #123249)
 assets/                        axion_mark.png (tarayıcı sekmesi ikonu); windows/axion_x.ico aynı X işareti (masaüstü).
+  sablon/                      Faz 5 şablon dosyaları (arka planlar, logo kutusu, örnek Canva videosu; README)
                                Uygulama içinde logo gösterilmez (editör kararı).
 .streamlit/secrets.toml        API anahtarları (git'te yok; örnek: secrets.toml.example)
 
@@ -108,7 +109,7 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 
 
-## Nerede kaldık (2026-09-24) — Faz 3 ve kod incelemesi tamamlandı, sıradaki Faz 4
+## Nerede kaldık (2026-09-24) — Faz 3 ve kod incelemesi tamamlandı, Faz 4 ertelendi, sıradaki Faz 5
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de (v1.7.1 → v2.4.0). v2.4.0 (inceleme düzeltmeleri,
@@ -138,11 +139,15 @@ seslendirmede saat/sayı okunuşuyla; şablon zamanları sabit (9/13/16. sn), vi
 GPT (`reviews/gpt-faz3.md`) ve Claude (`reviews/claude-faz3.md`) ayrı ayrı inceledi; kararlar ve yapılan düzeltmeler
 Claude raporundaki tablolarda. Luna görsel analizi artık `reasoning.effort="low"`.
 
-### Sıradaki: Faz 4 — Luna Edit Planner
-TTS segmentleri + sahne pencerelerinin açıklamaları → tek Luna metin çağrısı (görsel yok, ucuz) → hangi cümleye hangi
-sahne. Kesme noktaları, kadraj, kaydırma, kesitler ve render `rough_cut`'taki kurallarla aynı kalır; planlayıcı yalnızca
-sahne seçimini iyileştirir. Çağrı başarısız olursa `rough_cut` kural tabanlı seçimle devam eder. Plaka/yüz
-bulanıklaştırma Faz 6.
+### Faz 4 ertelendi (editör kararı, token tasarrufu)
+Luna Edit Planner şimdilik yok. Sahne seçimi şikâyetleri önce `rough_cut` kurallarıyla (API'siz) çözülür; gerekirse
+yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çalışır (her haberde otomatik değil).
+
+### Sıradaki: Faz 5 — Tasarım Stüdyosu (Canva'nın yerine)
+Plan (editör onayladı): 5a şablon otomatik dolar (günün arka planı 02:00'de döner, başlıklar düzeltilebilir, sloganlar,
+logo kutusu) → tek FFmpeg komutuyla 1080x1920 MP4; 5b canlı önizleme + zaman çizelgesi (Streamlit components v2);
+5c elle blur aracı (şekil/boyut/güç/opaklık, anahtar karelerle sürükleyerek takip, isteğe bağlı canlı takip). Yapay
+zekâ yok. Editör şablon dosyalarını `assets/sablon/` klasörüne yükleyecek (README orada); Binate Bold lisansı açık.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
