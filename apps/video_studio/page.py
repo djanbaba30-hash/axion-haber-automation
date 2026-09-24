@@ -132,8 +132,7 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
     try:
         with st.status("Görüntüler analiz ediliyor...", expanded=True) as status:
             media_library, usage = prepare_media_library(
-                media_files, frame_count, analysis_mode, secret("OPENAI_API_KEY"), progress=status.write
-            )
+                media_files, frame_count, analysis_mode, secret("OPENAI_API_KEY"), progress=status.write,\n                storage_dir=(project.folder / "media") if project else None\n            )
             status.update(label="Analiz tamamlandı.", state="complete", expanded=False)
         ss.media_library = media_library
         ss.analysis_usage = usage
@@ -148,8 +147,12 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
 
 media_library = ss.get("media_library")
 if media_library:
-    names = [a.get("source", {}).get("filename", "") for a in media_library.get("assets", []) if a.get("asset_type") == "video"]
-    st.caption("Analiz edildi: " + (", ".join(names) if names else f"{media_library.get('image_count', 0)} görsel"))
+    assets = media_library.get("assets", [])
+    video_count = sum(1 for asset in assets if asset.get("asset_type") == "video")
+    image_count = sum(1 for asset in assets if asset.get("asset_type") == "image")
+    names = [a.get("source", {}).get("filename", "") for a in assets if a.get("asset_type") == "video"]
+    summary = ", ".join(names) if names else f"{image_count} görsel"
+    st.caption(f"Analiz edildi: {summary} · {video_count} video · {image_count} görsel")
 
 
 # =================================================
