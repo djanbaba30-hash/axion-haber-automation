@@ -1,3 +1,46 @@
+# v2.6.0 — Tasarım Stüdyosu: sade Canva, başlık 2 satır kuralı, otomatik son video — 2026-09-24
+
+## Added
+- **Başlıklar videoda 2 satıra sığar (editörün temel kuralı):** başlık videodaki yazıyla (Google Sans Bold 58 px,
+  920 px) piksel olarak ölçülür (`shared/text_layout.py`). Prompt'lara "EN FAZLA 44 KARAKTER" eklendi; sığmayan
+  başlık kalite kontrolünde hata sayılır ve mevcut tek düzeltme çağrısına "yaklaşık x karakter kısalt" hedefi gider.
+  Haber Stüdyosu'nda başlık kutularının altında canlı gösterge: "✅ Videoda: MANSUR YAVAŞ / CHP'DEN İSTİFA ETTİ".
+- **Otomatik son video:** Video Stüdyosu'nda "Videoyu oluştur" kurgudan hemen sonra Axion şablonunu uygular;
+  editör Tasarım Stüdyosu'na gelmeden **Son videoyu indir** hazır. Eski projelerde Tasarım Stüdyosu açılınca üretilir.
+- **Tasarım Stüdyosu yeni arayüz:** solda canlı önizleme (tuval: video, blur/mozaik, çerçeve animasyonu, başlık/slogan/
+  logo/yazı efektleri son videodaki gibi oynar; kare kare ileri/geri, 0,5x/0,25x) ve son video; sağda durum
+  ("hazır ve güncel" / "değişiklikler işlenmedi"), Oluştur, İndir, **Paylaş** ve sekmeler:
+  - **Başlıklar:** metin, giriş/çıkış animasyonu (Birleşerek, Belirerek, Alttan kayarak, Daktilo, Büyüyerek, Yok),
+    **sansür** (seçilen kelimenin üstü çizilir), yazı tipi, kalınlık, boyut, renk, parıltı, BÜYÜK HARF.
+  - **Yazılar:** videoya kalıcı yazı ekleme (metin, stil, görünme aralığı, animasyon; konumu tuvalde sürükleyerek).
+  - **Efektler:** çerçeve stili (sabit, **kovalayan ışıklar** — simetrik, kalından inceye —, nefes alan parıltı,
+    renk akışı, yok), renkler ve hız; sloganlar ve logo kutusu aç/kapat ve efekt seçimi.
+  - **Arka plan:** küçük resimlerden seçim ("Günün" varsayılan, her gün 02:00'de sıradaki).
+  - **Varlıklar:** yazı tipi (.ttf/.otf) ve arka plan ekleme; `data/varliklar/`'a yazılır, `GITHUB_TOKEN` varsa
+    GitHub'a da yüklenir. Değişken fontların kalınlıkları ayrı seçenek olur.
+- **Blur v2:** mozaik efekti; şekiller dikdörtgen/kare (▢ Kare), yuvarlak köşeli, elips/daire; **döndürme** (tutamaç veya
+  açı kaydırıcısı, anahtar karelerle takip edilir); **yumuşak kenar** (opaklık kenara doğru solar); ◆ anahtar kareler
+  arasında gezinme ve silme.
+- **Paylaş düğmesi:** tablette son videoyu doğrudan Android paylaşım menüsüne verir (Instagram, TikTok, YouTube).
+  HTTPS gerektirir: KURULUM'a Tailscale serve adımları eklendi.
+- `.streamlit/secrets.toml.example`: isteğe bağlı `GITHUB_TOKEN`.
+
+## Changed
+- `tasarim.json` sürüm 2; v2.5.0 dosyaları otomatik yükseltilir (başlıklar, arka plan, blurlar korunur).
+- Şablon katmanları: yazılar kelime kelime sprite (parıltı, sansür çizgisi dahil), tek grafik katmanı; çerçeve
+  döngüsel animasyonda yalnızca bir periyot çizilir. Farklı kareler paralel yazılır (4 çekirdekte katman hazırlığı
+  varsayılan tasarımda ~2 sn, kovalayan çerçeveyle ~6 sn).
+- Yazı tipleri `shared/fonts.py` kaydından (repo + uygulamadan eklenenler).
+
+## Verification
+- `make test`: tümü geçti (FFmpeg'siz ortamda FFmpeg testleri atlanır; FFmpeg ile son video testi — 1080x1920,
+  blur + mozaik, ses — geçti).
+- Headless Chromium'da elle denendi: tasarım sayfası, v1 belgesinin yükseltilmesi, efekt seçimi, yazı ekleme ve tuvalde
+  sürükleme (konum kaydı), tuvalde animasyonlar (merge, eski TV, logo, ışık geçişi), "Yeniden oluştur" ile yazı katmanlı
+  ve kovalayan çerçeveli son video.
+- **Denenmedi:** gerçek model çağrısıyla başlık kısaltma (API anahtarı yok), Windows/AMD kodlayıcı, tablette Paylaş
+  (HTTPS), GitHub'a yükleme (yalnızca sahte sunucuyla test).
+
 # v2.5.0 — Tasarım Stüdyosu: Canva'nın yerine Axion şablonu ve elle blur (Faz 5) — 2026-09-24
 
 ## Added

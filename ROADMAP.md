@@ -40,10 +40,16 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - Röportaj veren kişinin adı açık yazılır. Diğer sivil isimler baş harfle yazılır; TTS'te sivil isim kullanılmaz.
 - TTS doğal ve konuşma dilindedir. Her cümle yeni bilgi verir; süreyi doldurmak için metin uzatılmaz.
 - Viral potansiyeli olan yön öne çıkarılır, ama kaynakta olmayan fiil veya abartı kullanılmaz.
+- **Başlıklar videoda 2 satıra sığmalı** (editörün temel kuralı): videodaki yazıyla (Google Sans Bold 58 px, 920 px
+  genişlik) ölçülür. Modele "en fazla 44 karakter" denir; sığmayan başlık kalite kontrolünde düzeltme çağrısını
+  tetikler (ek çağrı yalnızca gerekirse). Haber Stüdyosu başlık kutusunun altında canlı "sığıyor/sığmıyor" gösterir.
 
 **Arayüz**
 - Beyaz zeminli, Axion logosu renklerinde (lacivert, açık mavi, yeşil) sade arayüz; uygulama içinde logo yok.
 - Editörün görmesi gerekmeyen bilgiler gizli (geliştirici bölümü); son kullanılan ayarlar hatırlanır.
+- Tasarım Stüdyosu sade bir Canva'dır: her şey otomatik ve standart gelir (son video hazır), editör isterse değiştirir:
+  başlık metni/yazı tipi/kalınlık/renk, sansür çizgisi, eklenen yazılar, efektleri seçme/kapatma, çerçeve animasyonu,
+  arka plan, blur/mozaik. Yeni yazı tipi ve arka plan uygulamadan eklenir (yerel + GitHub). Alan kompakt kullanılır.
 
 **Video**
 - Kurgu çıktısı şablondaki video alanının ölçüsünde: 960×1225 (H.264 için 960×1226). Axion şablonu ile son çıktı 1080×1920.
@@ -69,7 +75,8 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 | 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, enum'lu Luna şeması, uzun shot pencereleri (Windows'ta doğrulandı) | Planner'a güvenilir veri |
 | 3 ✅ | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 (ertelendi) | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → sahne seçimi. Editör kararı: token harcamamak için şimdilik yapılmıyor; günlük kullanımdaki sahne seçimi şikâyetleri önce kurallarla (API'siz) çözülür. Gerekirse her haberde otomatik değil, yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çalışır. | Daha isabetli sahne seçimi |
-| 5 (yapıldı, Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade, otomatik Canva:** arka plan + başlıklar + slogan yazıları + logo kutusu animasyonu → 1080×1920 (ayrıntı: aşağıda, `shared/axion_template.py`); canlı önizleme + zaman çizelgesi; **elle blur aracı** (şekil/güç/opaklık, sürükleyerek anahtar kare, canlı takip). Şablon dosyaları: `assets/sablon/` | **Canva'ya gerek kalmaz** |
+| 5 (yapıldı, Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
+| 6 (sıradaki) | **Tabletten tam kullanım:** Axion HTTPS ile (Tailscale serve) → ana ekran simgesi + **Paylaş** (Instagram/TikTok/YouTube'a doğrudan; kod hazır, tablette denenecek). DHA videosu: şimdilik uzak masaüstüyle evdeki tarayıcıdan indirme; sonra "bağlantıdan indir" (editör DHA panelindeki video bağlantısını yapıştırır, bilgisayar indirir; bağlantıların oturumsuz çalışıp çalışmadığı denenecek). APK gerekmiyor (aynı web arayüzünü sarmaktan öteye geçmez, bakım yükü getirir). Gofile gerekmiyor (video Tailscale üzerinden doğrudan). | Evde olmadan haber → paylaşım |
 
 ## Ortam
 
@@ -89,6 +96,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 
 Kanvas 1080×1920. Konumlar sol üst köşeye göre piksel; koddaki karşılığı `shared/axion_template.py`. Zamanlar
 editörün Canva örneğinden (`assets/sablon/ornek_canva.mp4`) kare kare ölçüldü.
+Tablodakiler **varsayılanlardır**; editör her animasyonu Tasarım Stüdyosu'nda değiştirebilir veya kapatabilir.
 
 | Öğe | Konum / boyut | Zaman | Animasyon |
 |---|---|---|---|
@@ -109,3 +117,4 @@ videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa kurgu 20 sn'ye tamaml
 
 - Yazı tipi: Canva'daki Binate Bold yerine editörün seçtiği Google Sans Bold (SIL OFL, `assets/sablon/fontlar/`).
   Google Sans biraz daha dar; görünüm editörün Windows testinde değerlendirilecek.
+- DHA panelindeki video bağlantıları giriş yapmadan (başka cihazdan) indirilebiliyor mu? ("bağlantıdan indir" için)

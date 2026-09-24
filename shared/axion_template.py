@@ -15,10 +15,9 @@ CANVAS_HEIGHT = 1920
 VIDEO_SLOT = {"x": 60, "y": 453, "width": 960, "height": 1225}
 VIDEO_WIDTH = 960
 VIDEO_HEIGHT = 1226
-# Video alanının beyaz çerçevesi (alanın içine çizilir) ve yuvarlak köşeleri.
+# Video alanının çerçevesi (alanın içine çizilir; varsayılan beyaz, stili Tasarım Stüdyosu'nda) ve yuvarlak köşeleri.
 FRAME_BORDER = 6
 FRAME_RADIUS = 22
-FRAME_COLOR = (246, 246, 246)
 
 # Zamanlar video uzunluğundan bağımsız, sabittir. Video en az 20 sn; daha uzunsa yalnızca arka plan ve
 # 2. başlık videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa görüntü sessiz devam eder.
@@ -60,5 +59,5 @@ LOGO_GLINT = (17.15, 17.45)
 LOGO_DROP_START = 17.47
 LOGO_DROP_SECONDS = 0.215
 
-# 8 arka plan (arka_plan_1..8.png), her iş günü (02:00'de) bir sonraki; aynı gün tüm haberler aynı arka planı kullanır.
-BACKGROUND_COUNT = 8
+# Arka planlar: assets/sablon/arka_plan_N.png (+ uygulamadan eklenenler); her iş günü (02:00'de) bir sonraki, aynı gün
+# tüm haberler aynı arka planı kullanır (apps/design_studio/assets.py).

@@ -1,4 +1,4 @@
-"""Son video (Faz 5): kaba kurgu + elle blur + Axion şablonu → 1080x1920 MP4, tek FFmpeg komutuyla. API yok."""
+"""Son video (Faz 5): kaba kurgu + elle blur/mozaik + Axion şablonu → 1080x1920 MP4, tek FFmpeg komutuyla. API yok."""
 
 from __future__ import annotations
 
@@ -9,10 +9,19 @@ from typing import Any
 
 from apps.video_studio.modules.ffmpeg_runner import long_job_timeout, run_ffmpeg
 from apps.video_studio.modules.render import AMF, X264, amd_encoder_available
-from shared.axion_template import LOGO_BOX, VIDEO_SLOT
+from shared.axion_template import VIDEO_SLOT
 
-from .blur import sigma, write_mask_sequences
-from .template import STRIP_Y, Layers, logo_y_expression, write_layers
+from .blur import mosaic_block, sigma, write_mask_sequences
+from .design import Design
+from .template import Layers, frame_origin, write_layers
+
+
+def _effect_filter(blur: dict[str, Any], width: int, height: int) -> str:
+    if blur.get("effect") == "mozaik":
+        block = mosaic_block(blur)
+        small_w, small_h = max(2, width // block // 2 * 2), max(2, height // block // 2 * 2)
+        return f"scale={small_w}:{small_h}:flags=area,scale={width}:{height}:flags=neighbor"
+    return f"gblur=sigma={sigma(blur):.1f}"
 
 
 def build_final_command(
@@ -26,25 +35,25 @@ def build_final_command(
     masks: list[Path] | None = None,
 ) -> list[str]:
     x, y, w, h = VIDEO_SLOT["x"], VIDEO_SLOT["y"], VIDEO_SLOT["width"], VIDEO_SLOT["height"]
+    fx, fy = frame_origin()
     duration = f"{seconds:.3f}"
     command = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         "-loop", "1", "-framerate", str(fps), "-t", duration, "-i", str(layers.base),
         "-i", str(rough_cut),
-        "-loop", "1", "-framerate", str(fps), "-t", duration, "-i", str(layers.frame),
-        "-f", "concat", "-safe", "0", "-i", str(layers.top),
-        "-f", "concat", "-safe", "0", "-i", str(layers.logo),
+        "-f", "concat", "-safe", "0", "-i", str(layers.frame),
+        "-f", "concat", "-safe", "0", "-i", str(layers.graphics),
     ]
     # Kaba kurgu 960x1226 (H.264/4:2:0 çift sayı ister); şablon alanı 960x1225 → alt 1 px en sonda kırpılır.
     even_h = h + h % 2
     filters = [f"[1:v]scale={w}:{even_h},setsar=1,fps={fps},format=yuv420p[v0]"]
-    # Elle blur: videonun bulanık kopyası, blur'un maskesi (şekil + opaklık, kare kare konum) ile üstüne bindirilir.
+    # Elle blur/mozaik: videonun işlenmiş kopyası, kutunun maskesiyle (şekil, açı, yumuşak kenar, opaklık) bindirilir.
     for number, (blur, mask) in enumerate(zip(blurs or [], masks or [])):
-        index = 5 + number
+        index = 4 + number
         command += ["-f", "concat", "-safe", "0", "-i", str(mask)]
         filters += [
             f"[v{number}]split=2[v{number}a][v{number}b]",
-            f"[v{number}b]gblur=sigma={sigma(blur):.1f}[b{number}]",
+            f"[v{number}b]{_effect_filter(blur, w, even_h)}[b{number}]",
             f"[{index}:v]fps={fps},format=gray,scale={w}:{even_h}[m{number}]",
             f"[b{number}][m{number}]alphamerge[bm{number}]",
             f"[v{number}a][bm{number}]overlay=0:0,format=yuv420p[v{number + 1}]",
@@ -54,11 +63,10 @@ def build_final_command(
         "[0:v]format=rgba[base]",
         f"[{video}]crop={w}:{h}:0:0[slot]",
         f"[base][slot]overlay={x}:{y}:eof_action=repeat[s1]",
-        "[s1][2:v]overlay=0:0[s2]",
-        f"[3:v]fps={fps},format=rgba[top]",
-        f"[s2][top]overlay=0:{STRIP_Y}[s3]",
-        f"[4:v]fps={fps},format=rgba[logo]",
-        f"[s3][logo]overlay=x={LOGO_BOX['x']}:y='{logo_y_expression()}':eval=frame,format=yuv420p[out]",
+        f"[2:v]fps={fps},format=rgba[frame]",
+        f"[s1][frame]overlay={fx}:{fy}[s2]",
+        f"[3:v]fps={fps},format=rgba[graphics]",
+        "[s2][graphics]overlay=0:0,format=yuv420p[out]",
     ]
     return command + [
         "-filter_complex", ";".join(filters),
@@ -72,16 +80,7 @@ def build_final_command(
     ]
 
 
-def render_final(
-    rough_cut: Path,
-    headline_1: str,
-    headline_2: str,
-    background: int,
-    fps: int,
-    seconds: float,
-    output: Path,
-    blurs: list[dict[str, Any]] | None = None,
-) -> str:
+def render_final(rough_cut: Path, design: Design, background: Path, fps: int, seconds: float, output: Path) -> str:
     """Şablon katmanlarını geçici klasörde hazırlar, videoyu önce geçici ada yazar. Kodlayıcının adını döndürür."""
     if not rough_cut.exists():
         raise FileNotFoundError("Kurgu videosu bulunamadı. Video Stüdyosu'nda videoyu oluştur.")
@@ -90,9 +89,9 @@ def render_final(
     attempts = [("AMD donanım (h264_amf)", AMF)] if amd_encoder_available() else []
     attempts.append(("x264 (işlemci)", X264))
     error = ""
-    blurs = blurs or []
+    blurs = design.blurs
     with tempfile.TemporaryDirectory(prefix="axion_sablon_") as folder:
-        layers = write_layers(Path(folder), headline_1, headline_2, background, fps, seconds)
+        layers = write_layers(Path(folder), design, background, fps, seconds)
         masks = write_mask_sequences(
             Path(folder), blurs, fps, max(1, round(seconds * fps)), VIDEO_SLOT["width"], VIDEO_SLOT["height"] + VIDEO_SLOT["height"] % 2
         )

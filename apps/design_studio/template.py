@@ -1,27 +1,26 @@
-"""Axion şablon katmanları (Faz 5): arka plan, video çerçevesi, başlık/slogan animasyonları, logo kutusu.
+"""Axion şablon katmanları (Faz 5): arka plan, video çerçevesi, başlıklar, sloganlar, logo kutusu, editörün yazıları.
 
-Grafikler Pillow ile PNG olarak hazırlanır, FFmpeg bunları videonun üstüne bindirir (`render.py`). Animasyonlu
-anlar kare kare, sabit anlar tek kare olarak yazılır (FFmpeg concat listesi süreleriyle). API yok.
+Tüm grafikler Pillow ile çizilir (önizleme ile son video aynı), FFmpeg yalnızca bindirir (`render.py`). Yazılar
+kelime kelime "sprite" olarak hazırlanır (parıltı ve sansür çizgisi dahil); efektler kelime başına saydamlık/kayma ve
+blok ölçeği verir (`effects.py`). Animasyonlu anlar kare kare, sabit anlar süreli tek kare yazılır (FFmpeg concat).
 """
 
 from __future__ import annotations
 
-import io
 import math
-from dataclasses import dataclass
-from datetime import date
+import os
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
 
 from shared.axion_template import (
-    BACKGROUND_COUNT,
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
-    FRAME_BORDER,
-    FRAME_COLOR,
     FRAME_RADIUS,
     HEADLINE_1_EXIT,
     HEADLINE_2_ENTER_START,
@@ -29,7 +28,6 @@ from shared.axion_template import (
     HEADLINE_FONT_SIZE,
     HEADLINE_LINE_PITCH,
     HEADLINE_MAX_WIDTH,
-    HEADLINE_MIN_FONT_SIZE,
     LOGO_BOX,
     LOGO_DROP_SECONDS,
     LOGO_DROP_START,
@@ -40,59 +38,26 @@ from shared.axion_template import (
     SLOGANS,
     VIDEO_SLOT,
 )
+from shared.fonts import load_font
+from shared.text_layout import fit_text
+
+from . import effects as fx
+from .design import Design, TextLayer, TextStyle
 
 ASSETS = Path(__file__).resolve().parents[2] / "assets" / "sablon"
-FONT_PATH = ASSETS / "fontlar" / "GoogleSans-Bold.ttf"
-# Arka plan sırası bu iş gününde 1'den başlar; sonra her gün bir sonraki (8'den sonra yine 1).
-BACKGROUND_FIRST_DAY = date(2026, 9, 24)
-
-# Başlık/slogan şeridi: kanvasın bu yatay bandı (video alanının üstü) tek katman olarak bindirilir.
-STRIP_Y = 230
-STRIP_HEIGHT = 220
+HEADLINE_1_END = HEADLINE_1_EXIT[1]
+TEXT_MAX_WIDTH = 960
 GLOW_RADIUS = 6
-GLOW_STRENGTH = 0.38
-TEXT_COLOR = (255, 255, 255)
-
-# "merge" girişi (2. başlık): kelimeler arası gecikme, kelimenin belirme süresi, kayma mesafesi ve süresi.
-WORD_STAGGER = 0.045
-LINE_GAP = 0.1
-WORD_FADE = 0.12
-WORD_SLIDE_PX = 24
-WORD_SLIDE_SECONDS = 0.6
-EXIT_SLIDE_PX = 13
-
-
-def ease_out(p: float) -> float:
-    p = min(1.0, max(0.0, p))
-    return 1 - (1 - p) ** 3
-
-
-def ease_in(p: float) -> float:
-    p = min(1.0, max(0.0, p))
-    return p**3
-
-
-def _clamp(p: float) -> float:
-    return min(1.0, max(0.0, p))
+LOGO_END = LOGO_DROP_START + LOGO_DROP_SECONDS
 
 
 # ---------------------------------------------------------------------------------------------------------------
 # Arka plan ve çerçeve
 # ---------------------------------------------------------------------------------------------------------------
 
-def background_index(day: date) -> int:
-    """İş gününün arka planı (1..8)."""
-    return (day - BACKGROUND_FIRST_DAY).days % BACKGROUND_COUNT + 1
-
-
-def background_path(index: int) -> Path:
-    return ASSETS / f"arka_plan_{index}.png"
-
-
-@lru_cache(maxsize=2)
-def background_image(index: int) -> Image.Image:
-    """Arka plan, 1080x1920'yi tam kaplayacak şekilde ölçeklenip ortadan kırpılır."""
-    image = Image.open(background_path(index)).convert("RGB")
+@lru_cache(maxsize=4)
+def _background(path: str, mtime: float) -> Image.Image:
+    image = Image.open(path).convert("RGB")
     scale = max(CANVAS_WIDTH / image.width, CANVAS_HEIGHT / image.height)
     size = (math.ceil(image.width * scale), math.ceil(image.height * scale))
     image = image.resize(size, Image.LANCZOS)
@@ -100,198 +65,176 @@ def background_image(index: int) -> Image.Image:
     return image.crop((left, top, left + CANVAS_WIDTH, top + CANVAS_HEIGHT))
 
 
-def _rounded_mask(size: tuple[int, int], box: tuple[int, int, int, int], radius: int, supersample: int = 4) -> Image.Image:
+def background_image(path: Path) -> Image.Image:
+    """Arka plan, 1080x1920'yi tam kaplayacak şekilde ölçeklenip ortadan kırpılır."""
+    return _background(str(path), path.stat().st_mtime)
+
+
+def _rounded_mask(size: tuple[int, int], box: tuple[float, float, float, float], radius: float, supersample: int = 4) -> Image.Image:
     big = Image.new("L", (size[0] * supersample, size[1] * supersample), 0)
     ImageDraw.Draw(big).rounded_rectangle([v * supersample for v in box], radius=radius * supersample, fill=255)
     return big.resize(size, Image.LANCZOS)
 
 
-def frame_overlay(index: int) -> Image.Image:
-    """Video alanının üstüne gelen katman: beyaz çerçeve + yuvarlak köşelerin dışında arka plan (tam kanvas, RGBA)."""
-    x, y, w, h = VIDEO_SLOT["x"], VIDEO_SLOT["y"], VIDEO_SLOT["width"], VIDEO_SLOT["height"]
-    size = (CANVAS_WIDTH, CANVAS_HEIGHT)
-    outer = _rounded_mask(size, (x, y, x + w - 1, y + h - 1), FRAME_RADIUS)
-    b = FRAME_BORDER
-    inner = _rounded_mask(size, (x + b, y + b, x + w - 1 - b, y + h - 1 - b), FRAME_RADIUS - b)
-    overlay = Image.new("RGBA", size, (0, 0, 0, 0))
-    # Köşeler (dış yuvarlağın dışı, video alanının içi) arka planı gösterir.
-    slot = Image.new("L", size, 0)
-    ImageDraw.Draw(slot).rectangle((x, y, x + w - 1, y + h), fill=255)
+def frame_origin() -> tuple[int, int]:
+    """Çerçeve katmanının kanvastaki sol üstü (video alanı + parıltı payı)."""
+    return VIDEO_SLOT["x"] - fx.FRAME_PAD, VIDEO_SLOT["y"] - fx.FRAME_PAD
+
+
+@lru_cache(maxsize=4)
+def _corners(path: str, mtime: float) -> Image.Image:
+    """Video alanının yuvarlak köşelerinin dışı arka planla örtülür (çerçeve katmanı boyutunda)."""
+    f = fx.frame_field()
+    ox, oy = frame_origin()
+    pad = fx.FRAME_PAD
+    w, h = VIDEO_SLOT["width"], VIDEO_SLOT["height"]
+    outer = _rounded_mask((f.width, f.height), (pad, pad, pad + w - 1, pad + h - 1), FRAME_RADIUS)
+    slot = Image.new("L", (f.width, f.height), 0)
+    ImageDraw.Draw(slot).rectangle((pad, pad, pad + w - 1, pad + h), fill=255)
     outside = Image.fromarray(np.minimum(np.asarray(slot), 255 - np.asarray(outer)).astype(np.uint8))
-    overlay.paste(background_image(index).convert("RGBA"), (0, 0), outside)
-    ring = Image.fromarray(np.clip(np.asarray(outer).astype(int) - np.asarray(inner), 0, 255).astype(np.uint8))
-    overlay.paste(Image.new("RGBA", size, (*FRAME_COLOR, 255)), (0, 0), ring)
-    return overlay
+    layer = Image.new("RGBA", (f.width, f.height), (0, 0, 0, 0))
+    background = _background(path, mtime).crop((ox, oy, ox + f.width, oy + f.height)).convert("RGBA")
+    layer.paste(background, (0, 0), outside)
+    return layer
+
+
+def frame_overlay(background: Path, style: str = "sabit", color: str = "#F6F6F6", accent: str = "#BEE1E8",
+                  t: float = 0.0, speed: float = 1.0) -> Image.Image:
+    """Çerçeve katmanı (`frame_origin()`'e konur): köşe arka planı + çizgi (stil ve an)."""
+    layer = _corners(str(background), background.stat().st_mtime).copy()
+    if style != "yok":
+        layer.alpha_composite(Image.fromarray(fx.frame_rgba(style, color, accent, t, speed)))
+    return layer
 
 
 # ---------------------------------------------------------------------------------------------------------------
-# Başlıklar
+# Yazılar (kelime sprite'ları)
 # ---------------------------------------------------------------------------------------------------------------
-
-def turkish_upper(text: str) -> str:
-    return text.replace("i", "İ").replace("ı", "I").upper()
-
-
-@lru_cache(maxsize=1)
-def _font_bytes() -> bytes:
-    return FONT_PATH.read_bytes()
-
-
-@lru_cache(maxsize=16)
-def _font(size: int) -> ImageFont.FreeTypeFont:
-    # Bellekten: Windows'ta yol Türkçe karakter içerirse FreeType dosyayı açamayabiliyor.
-    return ImageFont.truetype(io.BytesIO(_font_bytes()), size)
-
-
-def _width(text: str, font: ImageFont.FreeTypeFont) -> float:
-    return font.getlength(text)
-
-
-def _balanced_lines(words: list[str], font: ImageFont.FreeTypeFont, lines: int) -> list[str]:
-    """Kelimeleri `lines` satıra, en geniş satır en kısa olacak şekilde böler."""
-    if lines <= 1 or len(words) <= 1:
-        return [" ".join(words)]
-    best: list[str] | None = None
-    best_width = math.inf
-    for cut in range(1, len(words)):
-        rest = _balanced_lines(words[cut:], font, lines - 1)
-        candidate = [" ".join(words[:cut]), *rest]
-        widest = max(_width(line, font) for line in candidate)
-        if widest < best_width - 0.5:
-            best, best_width = candidate, widest
-    return best or [" ".join(words)]
-
 
 @dataclass
-class Word:
+class WordSprite:
     text: str
     line: int
-    x: float  # şerit içinde sol kenar
-    y: float  # şerit içinde yazının üst hizası (font çizim noktası)
+    image: Image.Image
+    x: int  # kanvasta sprite'ın sol üstü (efektsiz)
+    y: int
 
 
 @dataclass
-class HeadlineLayout:
-    lines: list[str]
-    font_size: int
-    words: list[Word]
+class TextBlock:
+    words: list[WordSprite]
+    center: tuple[float, float]
+    size: int
+    fits: bool = True
+
+    @property
+    def lines(self) -> list[int]:
+        return [w.line for w in self.words]
+
+    def bbox(self) -> tuple[int, int, int, int]:
+        if not self.words:
+            x, y = self.center
+            return round(x), round(y), round(x), round(y)
+        return (min(w.x for w in self.words), min(w.y for w in self.words),
+                max(w.x + w.image.width for w in self.words), max(w.y + w.image.height for w in self.words))
 
 
-def layout_headline(text: str) -> HeadlineLayout:
-    """Başlığı büyük harfe çevirip en fazla 2 satıra yerleştirir (editör satır sonu koyduysa o geçerli).
+def _hex_rgb(color: str) -> tuple[int, int, int]:
+    color = color.lstrip("#")
+    return int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
 
-    Satırlar 920 px'e sığmazsa yazı küçülür; 42 px'te de sığmazsa 3 satıra geçilir (gerekirse daha küçük).
-    """
-    text = turkish_upper(text.strip())
-    manual = [" ".join(line.split()) for line in text.splitlines() if line.strip()]
-    lines: list[str] = []
-    size = HEADLINE_FONT_SIZE
-    for size in range(HEADLINE_FONT_SIZE, HEADLINE_MIN_FONT_SIZE - 1, -2):
-        font = _font(size)
-        if len(manual) > 1:
-            lines = manual
-        else:
-            words = (manual[0] if manual else "").split()
-            lines = next(
-                (_balanced_lines(words, font, n) for n in (1, 2)
-                 if max(_width(l, font) for l in _balanced_lines(words, font, n)) <= HEADLINE_MAX_WIDTH),
-                _balanced_lines(words, font, 2),
-            )
-        if max((_width(line, font) for line in lines), default=0) <= HEADLINE_MAX_WIDTH:
-            break
-    else:  # En küçük boyutta 2 satıra sığmadı: 3 satır, gerekirse daha da küçük.
-        words = " ".join(manual).split()
-        for size in range(HEADLINE_MIN_FONT_SIZE, 29, -2):
-            lines = _balanced_lines(words, _font(size), 3)
-            if max(_width(line, _font(size)) for line in lines) <= HEADLINE_MAX_WIDTH:
-                break
-    font = _font(size)
-    pitch = HEADLINE_LINE_PITCH * size / HEADLINE_FONT_SIZE
+
+@lru_cache(maxsize=512)
+def _word_image(text: str, strike: bool, family: str, style: str, size: int, color: str, glow: float) -> tuple[Image.Image, int, int]:
+    """Kelime sprite'ı ve çizim noktasına göre sol üst kayması."""
+    font = load_font(family, style, size)
+    left, top, right, bottom = font.getbbox(text)
+    margin = GLOW_RADIUS * 3 if glow > 0 else 2
+    image = Image.new("RGBA", (right - left + 2 * margin, bottom - top + 2 * margin), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    origin = (margin - left, margin - top)
+    rgb = _hex_rgb(color)
+    draw.text(origin, text, font=font, fill=(*rgb, 255))
+    if strike:  # sansür: büyük harf yüksekliğinin ortasından çizgi
+        cap_top, cap_bottom = font.getbbox("H")[1], font.getbbox("H")[3]
+        y = origin[1] + (cap_top + cap_bottom) / 2
+        thickness = max(3, round(size * 0.09))
+        draw.rectangle((margin - 2, y - thickness / 2, image.width - margin + 2, y + thickness / 2), fill=(*rgb, 255))
+    if glow > 0:
+        alpha = image.getchannel("A").filter(ImageFilter.GaussianBlur(GLOW_RADIUS))
+        halo = Image.new("RGBA", image.size, (*rgb, 0))
+        halo.putalpha(alpha.point(lambda v: int(v * glow)))
+        image = Image.alpha_composite(halo, image)
+    return image, left - margin, top - margin
+
+
+def build_block(text: str, style: TextStyle, center: tuple[float, float], max_width: float, max_lines: int,
+                shrink: bool, pitch_ratio: float = HEADLINE_LINE_PITCH / HEADLINE_FONT_SIZE) -> TextBlock:
+    """Metni satırlara yerleştirir (büyük harf yüksekliği bloğu `center`'da ortalanır), kelime sprite'larını hazırlar."""
+    min_size = max(16, style.size - 16) if shrink else style.size
+    fitted = fit_text(text, style.family, style.style, style.size, min_size, max_width, max_lines, style.upper)
+    font = load_font(style.family, style.style, fitted.size)
+    pitch = fitted.size * pitch_ratio
     cap_top, cap_bottom = font.getbbox("H")[1], font.getbbox("H")[3]
-    block = pitch * (len(lines) - 1) + (cap_bottom - cap_top)
-    first_top = HEADLINE_CENTER_Y - block / 2 - STRIP_Y - cap_top
-    space = _width(" ", font)
-    words_out: list[Word] = []
-    for number, line in enumerate(lines):
-        x = (CANVAS_WIDTH - _width(line, font)) / 2
-        y = first_top + number * pitch
-        for word in line.split(" "):
-            words_out.append(Word(word, number, x, y))
-            x += _width(word, font) + space
-    return HeadlineLayout(lines, size, words_out)
+    height = pitch * (len(fitted.lines) - 1) + (cap_bottom - cap_top)
+    first = center[1] - height / 2 - cap_top
+    space = font.getlength(" ")
+    words: list[WordSprite] = []
+    for number, line in enumerate(fitted.lines):
+        x = center[0] - font.getlength(" ".join(t.text for t in line)) / 2
+        y = first + number * pitch
+        for token in line:
+            image, ox, oy = _word_image(token.text, token.strike, style.family, style.style, fitted.size, style.color, style.glow)
+            words.append(WordSprite(token.text, number, image, round(x + ox), round(y + oy)))
+            x += font.getlength(token.text) + space
+    return TextBlock(words, center, fitted.size, fitted.fits)
 
 
-def _glow(text_layer: Image.Image) -> Image.Image:
-    """Yazının altına beyaz, yumuşak parıltı ekler (Canva "glow")."""
-    alpha = text_layer.getchannel("A").filter(ImageFilter.GaussianBlur(GLOW_RADIUS))
-    glow = Image.new("RGBA", text_layer.size, (*TEXT_COLOR, 0))
-    glow.putalpha(alpha.point(lambda v: int(v * GLOW_STRENGTH)))
-    return Image.alpha_composite(glow, text_layer)
+def headline_block(text: str, style: TextStyle) -> TextBlock:
+    return build_block(text, style, (CANVAS_WIDTH / 2, HEADLINE_CENTER_Y), HEADLINE_MAX_WIDTH, 2, shrink=True)
 
 
-def render_headline(layout: HeadlineLayout, alphas: list[float] | None = None, offsets: list[float] | None = None) -> Image.Image:
-    """Başlık şeridi (1080 x STRIP_HEIGHT, RGBA); kelime başına saydamlık ve yatay kayma."""
-    font = _font(layout.font_size)
-    strip = Image.new("RGBA", (CANVAS_WIDTH, STRIP_HEIGHT), (0, 0, 0, 0))
-    for index, word in enumerate(layout.words):
-        alpha = 1.0 if alphas is None else alphas[index]
-        if alpha <= 0.004:
+def layer_block(layer: TextLayer) -> TextBlock:
+    return build_block(layer.text, layer, (layer.x * CANVAS_WIDTH, layer.y * CANVAS_HEIGHT), TEXT_MAX_WIDTH, 8, shrink=False)
+
+
+def _blit(canvas: Image.Image, image: Image.Image, x: int, y: int) -> None:
+    """Kanvas dışına taşan kısmı kırparak bindirir (Pillow negatif hedef kabul etmez)."""
+    left, top = max(0, -x), max(0, -y)
+    right, bottom = min(image.width, canvas.width - x), min(image.height, canvas.height - y)
+    if right <= left or bottom <= top:
+        return
+    if (left, top, right, bottom) != (0, 0, image.width, image.height):
+        image = image.crop((left, top, right, bottom))
+    canvas.alpha_composite(image, (x + left, y + top))
+
+
+def _with_alpha(image: Image.Image, alpha: float) -> Image.Image:
+    if alpha >= 0.999:
+        return image
+    faded = image.copy()
+    faded.putalpha(image.getchannel("A").point(lambda v: int(v * alpha)))
+    return faded
+
+
+def draw_block(canvas: Image.Image, block: TextBlock, state: fx.BlockState) -> None:
+    cx, cy = block.center
+    for sprite, word in zip(block.words, state.words):
+        if word.alpha <= 0.004:
             continue
-        dx = 0.0 if offsets is None else offsets[index]
-        layer = Image.new("RGBA", strip.size, (0, 0, 0, 0))
-        ImageDraw.Draw(layer).text((word.x + dx, word.y), word.text, font=font, fill=(*TEXT_COLOR, round(255 * alpha)))
-        strip = Image.alpha_composite(strip, layer)
-    return _glow(strip)
-
-
-def headline_exit_params(layout: HeadlineLayout, p: float) -> tuple[list[float], list[float]]:
-    """1. başlık çıkışı ("merge"): blok sola kayar, önce 1. satır, sonra diğerleri söner. p: 0..1."""
-    dx = -EXIT_SLIDE_PX * ease_in(p)
-    alphas = []
-    for word in layout.words:
-        if word.line == 0:
-            alphas.append(1 - _clamp((p - 0.35) / 0.2))
-        else:
-            alphas.append(1 - ease_in((p - 0.55) / 0.45))
-    return alphas, [dx] * len(layout.words)
-
-
-def _enter_order(layout: HeadlineLayout) -> list[float]:
-    """Her kelimenin giriş başlangıcı (sn): 1. satır sağdan sola, sonraki satırlar soldan sağa."""
-    order: list[int] = []
-    for line in sorted({w.line for w in layout.words}):
-        indexes = [i for i, w in enumerate(layout.words) if w.line == line]
-        order += list(reversed(indexes)) if line == 0 else indexes
-    stagger = min(WORD_STAGGER, 0.55 / max(1, len(order)))
-    starts = [0.0] * len(layout.words)
-    delay = 0.0
-    previous_line = layout.words[order[0]].line if order else 0
-    for index in order:
-        if layout.words[index].line != previous_line:
-            delay += LINE_GAP  # satır arası kısa bekleme
-            previous_line = layout.words[index].line
-        starts[index] = delay
-        delay += stagger
-    return starts
-
-
-def headline_enter_seconds(layout: HeadlineLayout) -> float:
-    return max(_enter_order(layout), default=0.0) + WORD_SLIDE_SECONDS
-
-
-def headline_enter_params(layout: HeadlineLayout, seconds: float) -> tuple[list[float], list[float]]:
-    """2. başlık girişi ("merge"): kelimeler sırayla belirir; 1. satır sağdan, diğerleri soldan kayarak oturur."""
-    alphas, offsets = [], []
-    for word, start in zip(layout.words, _enter_order(layout)):
-        local = seconds - start
-        direction = 1 if word.line == 0 else -1
-        alphas.append(_clamp(local / WORD_FADE))
-        offsets.append(direction * WORD_SLIDE_PX * (1 - ease_out(local / WORD_SLIDE_SECONDS)))
-    return alphas, offsets
+        image = sprite.image
+        x, y = sprite.x + word.dx, sprite.y + word.dy
+        if abs(state.scale - 1) > 0.001:
+            size = (max(1, round(image.width * state.scale)), max(1, round(image.height * state.scale)))
+            mid_x, mid_y = x + image.width / 2, y + image.height / 2
+            image = image.resize(size, Image.BILINEAR)
+            x = cx + (mid_x - cx) * state.scale - size[0] / 2
+            y = cy + (mid_y - cy) * state.scale - size[1] / 2
+        _blit(canvas, _with_alpha(image, word.alpha), round(x), round(y))
 
 
 # ---------------------------------------------------------------------------------------------------------------
-# Sloganlar ("old tv")
+# Sloganlar ve logo kutusu
 # ---------------------------------------------------------------------------------------------------------------
 
 @lru_cache(maxsize=4)
@@ -300,100 +243,44 @@ def slogan_image(file: str) -> Image.Image:
     return image.resize((round(image.width * SLOGAN_SCALE), round(image.height * SLOGAN_SCALE)), Image.LANCZOS)
 
 
-def old_tv_scale(openness: float) -> tuple[float, float]:
-    """Açıklık (0 kapalı .. 1 tam) → (yatay, dikey) ölçek: nokta → ince çizgi → tam yazı."""
-    a = _clamp(openness)
-    sx = _clamp((a - 0.08) / 0.30)
-    sx = sx * sx * (3 - 2 * sx)
-    sy = 0.2 + 0.25 * a / 0.38 if a < 0.38 else 0.45 + 0.55 * ease_out((a - 0.38) / 0.3)
-    return max(sx, 0.02 if a > 0 else 0.0), sy
+def slogan_center() -> tuple[float, float]:
+    return CANVAS_WIDTH / 2, HEADLINE_CENTER_Y - 4
 
 
-def _rgb_split(image: Image.Image, shift: int) -> Image.Image:
+def rgb_split(image: Image.Image, shift: int) -> Image.Image:
     """Eski TV renk kayması: kırmızı sola, mavi sağa."""
     if shift <= 0:
         return image
-    array = np.asarray(image).astype(np.uint8)
-    out = np.zeros((array.shape[0], array.shape[1] + 2 * shift, 4), dtype=np.uint8)
-    width = array.shape[1]
-    red = np.zeros_like(out)
-    red[:, 0:width] = array
-    green = np.zeros_like(out)
-    green[:, shift:shift + width] = array
-    blue = np.zeros_like(out)
-    blue[:, 2 * shift:2 * shift + width] = array
-    out[..., 0] = red[..., 0]
-    out[..., 1] = green[..., 1]
-    out[..., 2] = blue[..., 2]
-    out[..., 3] = np.maximum(np.maximum(red[..., 3], green[..., 3]), blue[..., 3])
+    array = np.asarray(image)
+    height, width = array.shape[:2]
+    out = np.zeros((height, width + 2 * shift, 4), dtype=np.uint8)
+    alpha = np.zeros((height, width + 2 * shift), dtype=np.uint8)
+    for channel, offset in ((0, 0), (1, shift), (2, 2 * shift)):
+        out[:, offset:offset + width, channel] = array[..., channel]
+        alpha[:, offset:offset + width] = np.maximum(alpha[:, offset:offset + width], array[..., 3])
+    out[..., 3] = alpha
     return Image.fromarray(out)
 
 
-def render_slogan(file: str, openness: float, frame: int = 0) -> Image.Image:
-    strip = Image.new("RGBA", (CANVAS_WIDTH, STRIP_HEIGHT), (0, 0, 0, 0))
-    sx, sy = old_tv_scale(openness)
-    if sx <= 0 or sy <= 0:
-        return strip
-    image = slogan_image(file)
-    size = (max(1, round(image.width * sx)), max(1, round(image.height * sy)))
-    shaped = image.resize(size, Image.BILINEAR)
-    if openness < 0.97:
-        shaped = _rgb_split(shaped, round(7 * (1 - openness)) + 1)
-        if frame % 2:  # titreşim
-            shaped.putalpha(shaped.getchannel("A").point(lambda v: int(v * 0.8)))
-    center_y = HEADLINE_CENTER_Y - 4 - STRIP_Y
-    strip.alpha_composite(shaped, (round((CANVAS_WIDTH - shaped.width) / 2), round(center_y - shaped.height / 2)))
-    return strip
+def draw_sprite(canvas: Image.Image, image: Image.Image, center: tuple[float, float], state: fx.SpriteState) -> None:
+    if state.alpha <= 0.004 or state.sx <= 0 or state.sy <= 0:
+        return
+    if (state.sx, state.sy) != (1.0, 1.0):
+        image = image.resize((max(1, round(image.width * state.sx)), max(1, round(image.height * state.sy))), Image.BILINEAR)
+    image = rgb_split(image, state.split)
+    alpha = state.alpha * (0.8 if state.flicker else 1.0)
+    _blit(canvas, _with_alpha(image, alpha), round(center[0] - image.width / 2), round(center[1] - image.height / 2 + state.dy))
 
 
-# ---------------------------------------------------------------------------------------------------------------
-# Üst şerit zaman çizelgesi
-# ---------------------------------------------------------------------------------------------------------------
-
-def top_state(t: float, frame: int, h2_enter_seconds: float) -> tuple:
-    """t anında üst şeridin durumu. Aynı durum = aynı görüntü (sabit anlar tek kare yazılır)."""
-    exit_start, exit_end = HEADLINE_1_EXIT
-    if t < exit_start:
-        return ("h1",)
-    if t < exit_end:
-        return ("h1_exit", round((t - exit_start) / (exit_end - exit_start), 4))
-    for number, slogan in enumerate(SLOGANS):
-        (in_start, in_end), (out_start, out_end) = slogan["enter"], slogan["exit"]
-        if in_start <= t < in_end:
-            return ("slogan", number, round((t - in_start) / (in_end - in_start), 4), frame % 2)
-        if in_end <= t < out_start:
-            return ("slogan", number, 1.0, 0)
-        if out_start <= t < out_end:
-            return ("slogan", number, round(1 - (t - out_start) / (out_end - out_start), 4), frame % 2)
-    if t < HEADLINE_2_ENTER_START:
-        return ("blank",)
-    local = t - HEADLINE_2_ENTER_START
-    if local < h2_enter_seconds:
-        return ("h2_enter", round(local, 4))
-    return ("h2",)
+@lru_cache(maxsize=1)
+def _logo_image() -> Image.Image:
+    logo = Image.open(ASSETS / "logo.png").convert("RGBA")
+    width = LOGO_BOX["logo_width"]
+    return logo.resize((width, round(logo.height * width / logo.width)), Image.LANCZOS)
 
 
-def render_top(state: tuple, headline_1: HeadlineLayout, headline_2: HeadlineLayout) -> Image.Image:
-    kind = state[0]
-    if kind == "h1":
-        return render_headline(headline_1)
-    if kind == "h1_exit":
-        return render_headline(headline_1, *headline_exit_params(headline_1, state[1]))
-    if kind == "slogan":
-        _, number, openness, frame = state
-        return render_slogan(SLOGANS[number]["file"], openness, frame)
-    if kind == "h2_enter":
-        return render_headline(headline_2, *headline_enter_params(headline_2, state[1]))
-    if kind == "h2":
-        return render_headline(headline_2)
-    return Image.new("RGBA", (CANVAS_WIDTH, STRIP_HEIGHT), (0, 0, 0, 0))
-
-
-# ---------------------------------------------------------------------------------------------------------------
-# Logo kutusu
-# ---------------------------------------------------------------------------------------------------------------
-
-def render_logo_box(glint: float | None = None) -> Image.Image:
+@lru_cache(maxsize=32)
+def logo_box(glint: float | None = None) -> Image.Image:
     """Beyaz, yumuşak köşeli kutu + Axion Haber logosu; glint 0..1 ise üzerinden çapraz ışık geçer."""
     w, h, radius = LOGO_BOX["width"], LOGO_BOX["height"], LOGO_BOX["radius"]
     mask = _rounded_mask((w, h), (0, 0, w - 1, h + radius), radius)  # alt köşeler kanvasın dışında kalır
@@ -414,39 +301,81 @@ def render_logo_box(glint: float | None = None) -> Image.Image:
     return box
 
 
-@lru_cache(maxsize=1)
-def _logo_image() -> Image.Image:
-    logo = Image.open(ASSETS / "logo.png").convert("RGBA")
-    width = LOGO_BOX["logo_width"]
-    return logo.resize((width, round(logo.height * width / logo.width)), Image.LANCZOS)
+def logo_center() -> tuple[float, float]:
+    return LOGO_BOX["x"] + LOGO_BOX["width"] / 2, LOGO_BOX["rest_y"] + LOGO_BOX["height"] / 2
 
 
-def logo_y(t: float) -> float:
-    """Logo kutusunun üst kenarının y'si (1920 = görünmüyor)."""
-    rise = CANVAS_HEIGHT - LOGO_BOX["rest_y"]
-    if t < LOGO_RISE_START or t >= LOGO_DROP_START + LOGO_DROP_SECONDS:
-        return float(CANVAS_HEIGHT)
-    if t < LOGO_DROP_START:
-        return CANVAS_HEIGHT - rise * (1 - math.exp(-(t - LOGO_RISE_START) / LOGO_RISE_TAU))
-    top = CANVAS_HEIGHT - rise * (1 - math.exp(-(LOGO_DROP_START - LOGO_RISE_START) / LOGO_RISE_TAU))
-    return top + (CANVAS_HEIGHT - top) * ((t - LOGO_DROP_START) / LOGO_DROP_SECONDS) ** 1.5
+# ---------------------------------------------------------------------------------------------------------------
+# Grafik katmanı zaman çizelgesi
+# ---------------------------------------------------------------------------------------------------------------
+
+@dataclass
+class Scene:
+    """Bir tasarımın zaman içindeki tüm grafikleri (çerçeve hariç)."""
+    design: Design
+    seconds: float
+    headline_1: TextBlock
+    headline_2: TextBlock
+    layers: list[tuple[TextLayer, TextBlock]] = field(default_factory=list)
+
+    def items(self, t: float, frame: int) -> list[tuple[str, object]]:
+        d = self.design
+        out: list[tuple[str, object]] = []
+        h1 = fx.text_state(d.headline_1.enter, d.headline_1.exit, self.headline_1.lines, 0.0, HEADLINE_1_END, t)
+        if h1:
+            out.append(("h1", h1))
+        if d.slogans.enabled:
+            for number, slogan in enumerate(SLOGANS):
+                state = fx.slogan_state(d.slogans.effect, slogan["enter"][0], slogan["exit"][1], t, frame)
+                if state:
+                    out.append((f"s{number}", state))
+        h2 = fx.text_state(d.headline_2.enter, d.headline_2.exit, self.headline_2.lines, HEADLINE_2_ENTER_START,
+                           self.seconds + 1, t)
+        if h2:
+            out.append(("h2", h2))
+        if d.logo.enabled:
+            state = fx.logo_state(d.logo.effect, LOGO_RISE_START, LOGO_END, LOGO_BOX["rest_y"], LOGO_BOX["height"], t,
+                                  LOGO_RISE_TAU, LOGO_DROP_START, LOGO_GLINT)
+            if state:
+                out.append(("logo", state))
+        for layer, block in self.layers:
+            state = fx.text_state(layer.enter, layer.exit, block.lines, layer.start, layer.end, t)
+            if state:
+                out.append((f"t:{layer.id}", state))
+        return out
+
+    def key(self, t: float, frame: int) -> tuple:
+        parts = []
+        for name, state in self.items(t, frame):
+            if isinstance(state, fx.BlockState):
+                parts.append((name, fx.state_key(state)))
+            else:
+                s = state
+                parts.append((name, round(s.alpha, 3), round(s.sx, 3), round(s.sy, 3), round(s.dy, 1), s.split, s.flicker,
+                              None if s.glint is None else round(s.glint, 3)))
+        return tuple(parts)
+
+    def render(self, t: float, frame: int) -> Image.Image:
+        canvas = Image.new("RGBA", (CANVAS_WIDTH, CANVAS_HEIGHT), (0, 0, 0, 0))
+        blocks = {"h1": self.headline_1, "h2": self.headline_2, **{f"t:{l.id}": b for l, b in self.layers}}
+        for name, state in self.items(t, frame):
+            if name in blocks:
+                draw_block(canvas, blocks[name], state)
+            elif name == "logo":
+                glint = state.glint
+                draw_sprite(canvas, logo_box(None if glint is None else round(glint, 3)), logo_center(), state)
+            else:
+                draw_sprite(canvas, slogan_image(SLOGANS[int(name[1:])]["file"]), slogan_center(), state)
+        return canvas
 
 
-def logo_y_expression() -> str:
-    """logo_y() ile aynı eğri, FFmpeg overlay ifadesi olarak (t = videonun zamanı)."""
-    rise = CANVAS_HEIGHT - LOGO_BOX["rest_y"]
-    s, tau, d, n = LOGO_RISE_START, LOGO_RISE_TAU, LOGO_DROP_START, LOGO_DROP_SECONDS
-    top = CANVAS_HEIGHT - rise * (1 - math.exp(-(d - s) / tau))
-    return (
-        f"if(lt(t,{s}),{CANVAS_HEIGHT},"
-        f"if(lt(t,{d}),{CANVAS_HEIGHT}-{rise}*(1-exp(-(t-{s})/{tau})),"
-        f"if(lt(t,{d + n:.3f}),{top:.3f}+{CANVAS_HEIGHT - top:.3f}*pow((t-{d})/{n},1.5),{CANVAS_HEIGHT})))"
+def build_scene(design: Design, seconds: float) -> Scene:
+    return Scene(
+        design, seconds,
+        headline_block(design.headline_1.text, design.headline_style),
+        headline_block(design.headline_2.text, design.headline_style),
+        [(layer, layer_block(layer)) for layer in design.texts if layer.text.strip()],
     )
-
-
-def logo_state(t: float) -> float | None:
-    start, end = LOGO_GLINT
-    return round((t - start) / (end - start), 4) if start <= t < end else None
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -456,14 +385,18 @@ def logo_state(t: float) -> float | None:
 @dataclass
 class Layers:
     base: Path       # arka plan (1080x1920)
-    frame: Path      # çerçeve + köşeler (RGBA)
-    top: Path        # üst şerit concat listesi
-    logo: Path       # logo kutusu concat listesi
+    frame: Path      # çerçeve (köşeler + çizgi) concat listesi; `frame_origin()`'e konur
+    graphics: Path   # yazılar, sloganlar, logo concat listesi (tam kanvas)
 
 
-def write_sequence(folder: Path, prefix: str, fps: int, total_frames: int, state_at, render) -> Path:
-    """Durumu değişen her kare için PNG yazar; sabit anlar tek kare + süre (FFmpeg concat listesi)."""
+def write_sequence(folder: Path, prefix: str, fps: int, total_frames: int, state_at: Callable, render: Callable) -> Path:
+    """Durumu değişen kareler için PNG yazar; aynı durum tekrar gelirse aynı PNG kullanılır (döngüler ucuz).
+
+    Önce tüm karelerin durumu hesaplanır (hızlı), sonra her farklı durum paralel çizilip yazılır.
+    """
     entries: list[tuple[str, int]] = []
+    names: dict = {}
+    order: list = []
     previous = object()
     for frame in range(total_frames):
         state = state_at(frame / fps, frame)
@@ -472,9 +405,16 @@ def write_sequence(folder: Path, prefix: str, fps: int, total_frames: int, state
             entries[-1] = (name, count + 1)
             continue
         previous = state
-        name = f"{prefix}_{len(entries):05d}.png"
-        render(state).save(folder / name, compress_level=1)
-        entries.append((name, 1))
+        if state not in names:
+            names[state] = f"{prefix}_{len(names):05d}.png"
+            order.append(state)
+        entries.append((names[state], 1))
+
+    def save(state) -> None:
+        render(state).save(folder / names[state], compress_level=1)
+
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
+        list(pool.map(save, order))  # Pillow ve zlib GIL'i bırakır: çekirdek sayısı kadar hızlanır
     lines = ["ffconcat version 1.0"]
     for name, count in entries:
         lines += [f"file '{name}'", f"duration {count / fps:.6f}"]
@@ -484,30 +424,38 @@ def write_sequence(folder: Path, prefix: str, fps: int, total_frames: int, state
     return path
 
 
-def write_layers(folder: Path, headline_1: str, headline_2: str, background: int, fps: int, seconds: float) -> Layers:
+def write_layers(folder: Path, design: Design, background: Path, fps: int, seconds: float) -> Layers:
     folder.mkdir(parents=True, exist_ok=True)
     base = folder / "zemin.png"
     background_image(background).save(base, compress_level=1)
-    frame = folder / "cerceve.png"
-    frame_overlay(background).save(frame, compress_level=1)
-    layout_1, layout_2 = layout_headline(headline_1), layout_headline(headline_2)
-    enter_seconds = headline_enter_seconds(layout_2)
     total = max(1, round(seconds * fps))
-    top = write_sequence(
-        folder, "ust", fps, total,
-        lambda t, f: top_state(t, f, enter_seconds),
-        lambda state: render_top(state, layout_1, layout_2),
+    settings = design.frame
+    frame = write_sequence(
+        folder, "cerceve", fps, total,
+        lambda t, f: fx.frame_state_key(settings.style, t, settings.speed, fps),
+        lambda key: frame_overlay(background, settings.style, settings.color, settings.accent,
+                                  key[1] / fps if len(key) > 1 else 0.0, settings.speed),
     )
-    logo = write_sequence(folder, "logo", fps, total, lambda t, f: logo_state(t), render_logo_box)
-    return Layers(base, frame, top, logo)
+    scene = build_scene(design, seconds)
+    first_time: dict[tuple, tuple[float, int]] = {}
+
+    def graphics_key(t: float, f: int) -> tuple:
+        key = scene.key(t, f)
+        first_time.setdefault(key, (t, f))
+        return key
+
+    graphics = write_sequence(folder, "grafik", fps, total, graphics_key, lambda key: scene.render(*first_time[key]))
+    return Layers(base, frame, graphics)
 
 
-def preview_image(background: int, headline: str, video_frame: Image.Image | None = None, width: int = 360) -> Image.Image:
-    """Şablonun sabit hâli (arka plan + video karesi + çerçeve + başlık), küçük önizleme."""
+def preview_image(design: Design, background: Path, seconds: float, t: float = 4.0,
+                  video_frame: Image.Image | None = None, width: int = 360) -> Image.Image:
+    """Şablonun t anındaki hâli (küçük önizleme; testler ve kontrol için)."""
     canvas = background_image(background).convert("RGBA")
     if video_frame is not None:
         x, y, w, h = VIDEO_SLOT["x"], VIDEO_SLOT["y"], VIDEO_SLOT["width"], VIDEO_SLOT["height"]
         canvas.alpha_composite(video_frame.convert("RGBA").resize((w, h)), (x, y))
-    canvas.alpha_composite(frame_overlay(background))
-    canvas.alpha_composite(render_headline(layout_headline(headline)), (0, STRIP_Y))
+    frame = design.frame
+    canvas.alpha_composite(frame_overlay(background, frame.style, frame.color, frame.accent, t, frame.speed), frame_origin())
+    canvas.alpha_composite(build_scene(design, seconds).render(t, round(t * 30)))
     return canvas.convert("RGB").resize((width, round(width * CANVAS_HEIGHT / CANVAS_WIDTH)), Image.LANCZOS)

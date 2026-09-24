@@ -13,6 +13,7 @@ from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
+    FINAL_VIDEO_FILENAME,
     MEDIA_LIBRARY_FILENAME,
     ROUGH_CUT_FILENAME,
     NewsProject,
@@ -22,6 +23,7 @@ from apps.axion_local.store import (
     load_project_json,
     save_project_json,
 )
+from apps.design_studio.pipeline import render_project_final
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
@@ -93,6 +95,7 @@ def invalidate_cut(project: NewsProject) -> None:
     ss.pop("edit_project", None)
     (project.folder / EDIT_PROJECT_FILENAME).unlink(missing_ok=True)
     (project.folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
+    (project.folder / FINAL_VIDEO_FILENAME).unlink(missing_ok=True)
 
 
 def save_soundbites(project: NewsProject, soundbites: list[Soundbite]) -> None:
@@ -290,6 +293,7 @@ if ready and not ss.get("edit_project"):
         ss.edit_project = edit_project
         save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
         (project.folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
+        (project.folder / FINAL_VIDEO_FILENAME).unlink(missing_ok=True)
 
 edit_project = ss.get("edit_project")
 with st.expander("4. Video", expanded=True):
@@ -314,14 +318,27 @@ with st.expander("4. Video", expanded=True):
                 ss.edit_project = edit_project
                 ss.render_encoder = encoder
                 save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
+                # Son video (1080x1920, Axion şablonu) hemen standart ayarlarla (ve varsa editörün tasarımıyla) hazırlanır.
+                try:
+                    with st.spinner("Axion şablonu uygulanıyor..."):
+                        render_project_final(project)
+                except (RuntimeError, ValueError, FileNotFoundError) as error:
+                    ss.final_error = str(error)
+                else:
+                    ss.pop("final_error", None)
                 st.rerun()
-        if output.exists():
-            st.video(str(output))
+        final = project.folder / FINAL_VIDEO_FILENAME
+        if ss.get("final_error"):
+            st.warning("Kurgu hazır ama şablon uygulanamadı; Tasarım Stüdyosu'nda yeniden dene.")
+        if final.exists() or output.exists():
+            shown = final if final.exists() else output
+            st.video(str(shown))
             download_col, design_col = st.columns(2)
             download_col.download_button(
-                "MP4'ü indir", output.read_bytes(), file_name=f"{project.id}.mp4", mime="video/mp4", use_container_width=True,
+                "⬇️ Son videoyu indir" if final.exists() else "MP4'ü indir", shown.read_bytes(), file_name=f"{project.id}.mp4",
+                mime="video/mp4", use_container_width=True,
             )
-            if design_col.button("Tasarım Stüdyosu'na geç →", use_container_width=True):
+            if design_col.button("🎨 Tasarım Stüdyosu'nda düzenle →", use_container_width=True):
                 st.switch_page(DESIGN_PAGE)
         else:
             st.caption(

@@ -15,6 +15,7 @@ from apps.news_studio.prompts.news import build_news_prompt, build_correction_pr
 from apps.news_studio.tts.calibration import load as load_calibration, estimate, update as update_calibration
 from apps.news_studio.tts.service import synthesize
 from apps.news_studio.validation.news import validate_news_output, find_censorship_warnings
+from shared.text_layout import check_headline
 from apps.news_studio.validation.speakable import make_speakable
 from apps.axion_local.preferences import persist, remember
 from apps.axion_local.settings import require_secrets, secret
@@ -179,6 +180,11 @@ if st.session_state.icerik:
     h1,h2=st.columns(2)
     bound_text(h1.text_input,"1. başlık","baslik1")
     bound_text(h2.text_input,"2. başlık","baslik2")
+    for col,key in ((h1,"baslik1"),(h2,"baslik2")):
+        text=st.session_state.get(key,"").strip()
+        if text:  # Videodaki yazıyla ölçülür: editör başlığı düzeltirken sığıp sığmadığını hemen görür.
+            fit=check_headline(text)
+            col.caption(("✅ Videoda: " if fit.fits else f"⚠️ Videoda 2 satıra sığmıyor, ~{fit.over_chars} karakter kısalt: ")+" / ".join(fit.lines))
     if st.button("↻ Başlıkları yeniden üret",help="Sadece başlıklar için küçük bir yapay zekâ çağrısı yapar."):
         try:
             h,u=regenerate_headlines(openai_client(),anthropic_client(),provider,openai_model,st.session_state.icerik)

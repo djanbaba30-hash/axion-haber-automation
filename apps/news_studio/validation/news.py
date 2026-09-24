@@ -2,6 +2,8 @@ import re
 from dataclasses import dataclass
 from itertools import combinations
 
+from shared.text_layout import check_headline
+
 from ..config import TTS_HARD_MIN_RATIO, TTS_TOLERANCE_CHARS
 from .speakable import make_speakable, unreadable_numbers
 
@@ -113,6 +115,10 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
         if not value: errors.append(f"{name} boş.")
     for i,h in enumerate((result.baslik1,result.baslik2),1):
         if h and count_words(h)>9: errors.append(f"{i}. başlık 9 kelimeden uzun.")
+        fit=check_headline(h) if h else None
+        if fit and not fit.fits:
+            # Videodaki gerçek yazıyla (Google Sans Bold 58 px) ölçülür; düzeltme çağrısına somut hedef verilir.
+            errors.append(f"{i}. başlık videoda 2 satıra sığmıyor ({len(h)} karakter): anlamı koruyarak yaklaşık {fit.over_chars} karakter kısalt, en fazla 44 karakter.")
     cap=len(result.icerik); tts=len(result.tts); raw=len(raw_text.strip())
     if cap>2200: errors.append(f"Paylaşım metni (caption) {cap} karakter; en fazla 2200 olmalı.")
     if raw>=2200 and cap<850: errors.append("Uzun ham haber için paylaşım metni (caption) gereğinden fazla kısa.")

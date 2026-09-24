@@ -169,6 +169,9 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
         return "x264 (işlemci)"
 
     monkeypatch.setattr("apps.video_studio.modules.render.render_rough_cut", fake_render)
+    finals = []
+    monkeypatch.setattr("apps.design_studio.pipeline.render_final",
+                        lambda rough, design, background, fps, seconds, output: finals.append(design) or output.write_bytes(b"final") or "x264")
     project = saved_project(media_library([{
         "shot_id": "video_001_shot_001", "asset_id": "video_001", "shot_number": 1,
         "start_seconds": 0.0, "end_seconds": 30.0, "duration_seconds": 30.0,
@@ -181,7 +184,11 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert rendered and all(view is not None for view in rendered[0])
     assert (project.folder / store.ROUGH_CUT_FILENAME).exists()
     assert any(b.label == "Videoyu yeniden oluştur" for b in at.button)
-    assert any(b.label == "Tasarım Stüdyosu'na geç →" for b in at.button)
+    # Kurguyla birlikte son video (Axion şablonu) de hazır: editör indirmeye hazır videoyu görür.
+    assert finals and finals[0].headline_1.text == "KAZA"
+    assert (project.folder / store.FINAL_VIDEO_FILENAME).exists()
+    assert any(b.label == "⬇️ Son videoyu indir" for b in at.get("download_button"))
+    assert any(b.label == "🎨 Tasarım Stüdyosu'nda düzenle →" for b in at.button)
 
 def test_outdated_media_analysis_asks_for_reanalysis(local_env):
     project = saved_project({"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
@@ -227,33 +234,55 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
     (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
     calls = []
 
-    def fake_render(rough, headline_1, headline_2, background, fps, seconds, output, blurs):
-        calls.append((headline_1, headline_2, background, blurs))
+    def fake_render(rough, design, background, fps, seconds, output):
+        calls.append(design.model_copy(deep=True))
         output.write_bytes(b"final")
         return "x264"
 
     monkeypatch.setattr("apps.design_studio.render.render_final", fake_render)
+    monkeypatch.setattr("apps.design_studio.pipeline.render_final", fake_render)
     at = open_page(project, DESIGN_PAGE, "design_project_id")
     assert not at.exception
     assert title(at) == ["Tasarım Stüdyosu"]
-    # Başlıklar haberden gelir ve düzeltilebilir; paylaşım metni kopyalanmaya hazır.
-    assert [t.value for t in at.text_area] == ["KAZA", "B"]
-    assert [c.value for c in at.code] == ["Haber"]
-    assert at.selectbox(key=f"tasarim_arka_plan_{project.id}").value == 0  # günün arka planı
+    # Editör geldiğinde son video standart şablonla hazırdır (başlıklar haberden).
+    assert len(calls) == 1 and calls[0].headline_1.text == "KAZA" and calls[0].headline_2.text == "B"
+    assert any("güncel" in s.value for s in at.success)
+    assert any(b.label == "⬇️ İndir" for b in at.get("download_button"))
+    assert [c.value for c in at.code] == ["Haber"]  # paylaşım metni
 
-    at.text_area(key=f"tasarim_b1_{project.id}").set_value("KAZA\nYERİ").run()
+    pid = project.id
+    at.text_area(key=f"ds_{pid}_h1_text").set_value("KAZA\nYERİ").run()
     saved = json.loads((project.folder / store.DESIGN_FILENAME).read_text(encoding="utf-8"))
-    assert saved["headline_1"] == "KAZA\nYERİ"
+    assert saved["version"] == 2 and saved["headline_1"]["text"] == "KAZA\nYERİ"
+    assert any("işlenmedi" in w.value for w in at.warning)
 
-    button(at, "🎬 Son videoyu oluştur").click().run()
+    # Sansür: seçilen kelimenin üstü çizilir (metinde ~~ ile saklanır).
+    at.multiselect(key=f"ds_{pid}_h1_strike").select("2. YERİ").run()
+    assert at.text_area(key=f"ds_{pid}_h1_text").value == "KAZA\n~~YERİ~~"
+
+    button(at, "🎬 Yeniden oluştur").click().run()
     assert not at.exception
-    assert calls and calls[0][0] == "KAZA\nYERİ" and calls[0][3] == []
-    assert any(b.label == "Son videoyu indir" for b in at.get("download_button"))
-    assert not at.warning
+    assert calls[-1].headline_1.text == "KAZA\n~~YERİ~~"
+    assert any("güncel" in s.value for s in at.success)
 
-    at.text_area(key=f"tasarim_b2_{project.id}").set_value("YENİ").run()
-    assert at.warning  # değişiklik son videoya işlenmedi
-    assert any(b.label == "🎬 Son videoyu yeniden oluştur" for b in at.button)
+
+def test_design_studio_effects_and_text_layers_are_saved(local_env, monkeypatch):
+    import json
+
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    monkeypatch.setattr("apps.design_studio.pipeline.render_final", lambda *a: a[5].write_bytes(b"final") or "x264")
+    at = open_page(project, DESIGN_PAGE, "design_project_id")
+    pid = project.id
+    at.selectbox(key=f"ds_{pid}_frame_style").select("kovalayan").run()
+    at.toggle(key=f"ds_{pid}_slogans_on").set_value(False).run()
+    button(at, "➕ Yazı ekle").click().run()
+    at.text_area(key=f"ds_{pid}_t_yazi1_text").set_value("Ankara").run()
+    assert not at.exception
+    saved = json.loads((project.folder / store.DESIGN_FILENAME).read_text(encoding="utf-8"))
+    assert saved["frame"]["style"] == "kovalayan"
+    assert saved["slogans"]["enabled"] is False
+    assert [t["text"] for t in saved["texts"]] == ["Ankara"]
 
 
 def test_design_studio_waits_for_rough_cut(local_env):

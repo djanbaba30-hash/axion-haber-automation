@@ -11,3 +11,5 @@ Tasarım Stüdyosu son videoyu (1080×1920) bu dosyalarla kurar. Ölçü ve zama
 | `ornek_canva.mp4` | Editörün Canva'dan çıkmış örnek videosu | Animasyon zamanları bundan ölçüldü (yalnızca başvuru; uygulama kullanmaz). |
 
 Bir dosyayı değiştirmek için aynı adla yeniden yüklemek yeterli (ör. yeni bir arka plan için `arka_plan_3.png`).
+Yeni yazı tipi veya arka plan Tasarım Stüdyosu → **📦 Varlıklar** sekmesinden de eklenebilir: önce bilgisayarda
+`data/varliklar/` altına yazılır, `GITHUB_TOKEN` tanımlıysa buraya da yüklenir.

@@ -32,6 +32,8 @@ BAŞLIKLAR
 - baslik1: olayın nerede/nasıl yaşandığını ve etkisini anlat.
 - baslik2: sonuç, kritik sayı veya en önemli güncel gelişmeye odaklan.
 - İkisi de TAMAMEN BÜYÜK HARF; kısa, vurucu ve en fazla 9 kelime.
+- Her başlık videoda 2 satıra sığmalı: boşluklar dahil EN FAZLA 44 KARAKTER. Uzunsa ayrıntıyı at,
+  kelimeyi kısalt; özneyi ve fiili koru (ör. "KONTROLDEN ÇIKAN TIR 3 OTOMOBİLE ÇARPTI").
 - İki başlık aynı bilgiyi tekrarlamasın; birlikte olayın en çarpıcı yönlerini anlatsın.
 - Vurucu ol ama kaynakta olmayan fiil veya abartı ekleme (ör. "çarptı" ise "ezdi" yazma).
 
@@ -82,7 +84,7 @@ HEADLINE_SYSTEM_PROMPT = r"""
 Axion Haber Baş Editörüsün. Verilen caption'a göre iki YENİ başlık üret.
 - baslik1: olayın nasıl/nerede yaşandığını ve etkisini anlat.
 - baslik2: sonuç, kritik sayı veya en önemli gelişmeye odaklan.
-- İkisi de TAMAMEN BÜYÜK HARF ve en fazla 9 kelime.
+- İkisi de TAMAMEN BÜYÜK HARF, en fazla 9 kelime ve boşluklar dahil EN FAZLA 44 KARAKTER (videoda 2 satır).
 - Yeni bilgi uydurma.
 - Yalnızca yapılandırılmış baslik1 ve baslik2 alanlarını üret.
 """

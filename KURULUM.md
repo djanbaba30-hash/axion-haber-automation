@@ -81,20 +81,31 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
        (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar.
      - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
      - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
-5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'na geç** veya sol menü): Canva'nın yerini alır.
-   - Şablon kendiliğinden dolar: günün arka planı (her gün 02:00'de sıradakine geçer, aynı gün tüm haberlerde aynı),
-     video çerçevesi, 1. başlık (0–9 sn), iki slogan, 2. başlık (13. sn'den sona), 16. sn civarında logo kutusu.
-   - Başlıkları buradan düzeltebilirsin; satırı istediğin yerden bölmek için Enter'a bas. Arka planı elle de seçebilirsin.
-   - Sağdaki önizlemede videoyu oynatıp ileri geri sarabilirsin (başlık ve sloganlar önizlemede sabit görünür,
-     animasyonları son videoda).
-   - **Blur (plaka, yüz):** **+ Blur ekle** → kutu o anda belirir. Şekil (dikdörtgen, yuvarlak köşeli, elips), güç ve
-     opaklığı ayarla. Videoyu plakanın göründüğü ana getir, kutuyu plakanın üstüne sürükle (köşedeki yuvarlakla
-     boyutlandır). Plaka hareket ediyorsa başka bir ana geç ve kutuyu yeniden sürükle: her sürükleme o anda bir
-     anahtar kare olur, kutu aralarda kendiliğinden kayar. **Başlangıç: şu an** / **Bitiş: şu an** ile blurun
-     görüneceği aralığı belirle. **Canlı takip** işaretliyken kutuya basılı tut: video yavaş oynar, sen fareyle
-     plakayı takip ettikçe yol kaydedilir. Blurlar projeye kendiliğinden kaydedilir.
-   - **Son videoyu oluştur** → 1080×1920 MP4 (sesiyle). **Son videoyu indir** ile al; paylaşım metni altında hazır.
-     Başlık, arka plan veya blurda değişiklik yaparsan uyarı çıkar; videoyu yeniden oluştur.
+     - Kurgu bitince Axion şablonu (arka plan, başlıklar, sloganlar, logo) hemen uygulanır: **Son videoyu indir**.
+5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'nda düzenle** veya sol menü): Canva'nın yerini alır.
+   **Videoyu oluştur** dediğinde son video (1080×1920, şablonlu) zaten hazırlanır; bir şey değiştirmeyeceksen
+   Video Stüdyosu'ndan **Son videoyu indir** yeterli. Tasarım Stüdyosu'nda:
+   - Solda **canlı önizleme**: videonun son hâli (başlık animasyonları, sloganlar, logo, çerçeve, blurlar) oynar.
+     Altındaki zaman çizelgesine tıklayıp sararsın; ⏮ ⏭ ile kare kare gidersin.
+   - Sağ üstte durum: "hazır ve güncel" ya da "değişiklikler işlenmedi" → **Yeniden oluştur**. **İndir** ve tablette
+     **Paylaş** (Instagram, TikTok, YouTube'a doğrudan; bkz. 3. bölüm) buradadır.
+   - **✏️ Başlıklar:** metni düzelt (Enter ile satırı böl), giriş/çıkış animasyonunu seç ya da "Yok" ile kapat.
+     **✂️ Sansür** kutusundan kelime seçersen videoda üstü çizilir. Yazı tipi, kalınlık, boyut, renk, parıltı,
+     BÜYÜK HARF iki başlık için ortaktır. "⚠️ sığmadı" görürsen başlığı kısalt.
+   - **🔤 Yazılar:** **Yazı ekle** → metin, yazı tipi, renk, görünme aralığı, giriş/çıkış animasyonu. Yerini önizlemede
+     yazıyı sürükleyerek ayarla.
+   - **✨ Efektler:** video çerçevesi (sabit, kovalayan ışıklar, nefes alan parıltı, renk akışı, çizgi yok), renkleri ve
+     hızı; sloganları ve logo kutusunu aç/kapat, efektlerini seç.
+   - **🖼️ Arka plan:** her gün 02:00'de sıradaki gelir; istersen başka birine tıkla.
+   - **📦 Varlıklar:** yeni yazı tipi (.ttf/.otf) veya arka plan ekle; hemen kullanılır. `GITHUB_TOKEN` girdiysen
+     (`windows\anahtarlar.bat`) repoya da yüklenir.
+   - **Blur / mozaik (plaka, yüz):** önizlemenin altında **+ Blur** veya **+ Mozaik** → kutu o anda belirir.
+     Efekt, şekil (dikdörtgen/kare, yuvarlak köşeli, elips/daire), güç, opaklık, **yumuşak kenar** ve **açı** ayarlanır.
+     Kutuyu sürükle; sağ alt yuvarlakla boyutlandır, üstteki yuvarlakla döndür (**▢ Kare** kare yapar). Plaka hareket
+     ediyorsa başka bir ana geç ve kutuyu yeniden taşı/döndür: her değişiklik o anda bir anahtar kare olur (◆), kutu
+     aralarda kendiliğinden kayar ve döner. **Başla/Bitir: şimdi** ile görüneceği aralığı belirle. **Canlı takip**
+     işaretliyken kutuya basılı tut: video yavaş oynar, sen plakayı takip ettikçe yol kaydedilir.
+   - Her değişiklik projeye kendiliğinden kaydedilir.
 
 Videolar başka bir klasördeyse Video Stüdyosu'nda **⚙️ Ayarlar**'daki klasör kutusuna o klasörün yolunu yazman yeterli.
 Telefondan/tabletten çalışırken dosyayı **Tarayıcıdan yükle** seçeneğiyle de gönderebilirsin.
@@ -117,6 +128,20 @@ Bağlanamıyorsan:
 
 Uzaktan kullanacaksan bilgisayarın uyumasını kapat: Ayarlar → Sistem → Güç → **Ekran ve uyku** →
 "Prize takılıyken cihazı uyku moduna geçir": **Hiçbir zaman**.
+
+### Tabletten doğrudan Instagram/TikTok/YouTube'a paylaşma (HTTPS, bir kerelik ayar)
+
+Tasarım Stüdyosu'ndaki **📤 Paylaş** düğmesi son videoyu tabletin paylaşım menüsüne verir (Gofile vb. gerekmez).
+Tarayıcılar bunu yalnızca **https** adreslerinde izin verir; Tailscale bunu ücretsiz sağlar:
+
+1. https://login.tailscale.com/admin/dns → **MagicDNS** açık olsun, **HTTPS Certificates** → **Enable**.
+2. Evdeki bilgisayarda (Axion açıkken) Komut İstemi'ni aç ve bir kez şunu yaz: `tailscale serve --bg 8501`
+   (ayar kalıcıdır; bilgisayar yeniden başlasa da geçerli).
+3. Tablette şu adresi aç: `https://BILGISAYAR-ADI.XXXX.ts.net` (tam adresi komutun çıktısında veya Tailscale
+   uygulamasında görürsün). Chrome menüsünden **Ana ekrana ekle** dersen uygulama gibi açılır.
+4. **📤 Paylaş** → Instagram/TikTok/YouTube'u seç. İstersen **İndir** ile Galeri'ye de kaydedebilirsin.
+
+Bu adım henüz editörün tabletinde denenmedi; çalışmazsa http adresiyle devam et (İndir her zaman çalışır).
 
 ## 4. Bilgisayarın tamamına uzaktan erişim (Firefox, DHA paneli vb.)
 
