@@ -74,7 +74,7 @@ def test_luna_schema_forces_known_categories_and_maps_all_fields():
     item = WindowVisualAnalysis(
         window_id="w", description=" Konuşan esnaf ", visual_type="person", editorial_role="portrait",
         visible_people=True, location="dükkân önü", text_visible=True, visible_text="BERBER", confidence=1.3,
-        subject_left=0.6, subject_right=1.4, subject_top=0.5, subject_bottom=0.1,
+        subject_left=0.6, subject_right=1.4, subject_top=0.5, subject_bottom=0.1, side_bars=True,
     )
     visual = _visual_metadata(item)
     assert visual["description"] == "Konuşan esnaf"
@@ -83,5 +83,29 @@ def test_luna_schema_forces_known_categories_and_maps_all_fields():
     # Sınır dışı değerler kırpılır, ters verilen kenarlar düzeltilir; odak kutunun merkezi.
     assert visual["subject_region"] == {"x": 0.6, "y": 0.1, "width": 0.4, "height": 0.4}
     assert visual["focus_point"] == {"x": 0.8, "y": 0.3}
+    assert visual["side_bars"] is True
     with pytest.raises(ValueError):
         WindowVisualAnalysis(**{**item.model_dump(), "visual_type": "olay yeri"})
+
+
+def test_luna_side_bars_flag_locks_missed_vertical_footage_to_the_centre(tmp_path):
+    """Kars yangını (Windows testi): dumanlı/gece dikey çekimde keskinlik tespiti kaçırdı, kadraj yatay kaydırılırken
+    bulanık kenara girdi. Luna'nın "yanları dolgulu dikey çekim" işareti ortadaki 9:16 alanı kilitler."""
+    from apps.video_studio.modules.video_asset import build_video_asset
+
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"video")
+    metadata = {"original_filename": "video.mp4", "original_path": str(video), "duration_seconds": 4.0,
+                "file_size_bytes": 5, "video": {"width": 1920, "height": 1080}}
+    shots = [{
+        "shot_id": "s1", "asset_id": "video_001", "shot_number": 1, "start_seconds": 0.0, "end_seconds": 4.0,
+        "duration_seconds": 4.0, "content_region": None,
+        "analysis_windows": [{"window_id": "w1", "start_seconds": 0.0, "end_seconds": 4.0, "frames": []}],
+    }]
+    visuals = {"w1": {"description": "Yangın", "visual_type": "event", "side_bars": True,
+                      "subject_region": {"x": 0.3, "y": 0.1, "width": 0.4, "height": 0.8}}}
+    shot = build_video_asset(metadata, shots, visuals, {"model": "luna"}, "Ekonomik", 1, "video_001")["shots"][0]
+    region = shot["content_region"]
+    assert region["y"] == 0.0 and region["height"] == 1.0
+    assert abs(region["x"] + region["width"] / 2 - 0.5) < 0.001  # ortada
+    assert 0.34 <= region["x"] <= 0.37 and region["width"] <= 0.3164  # 9:16 alanın içinde, bulanık kenar dışarıda

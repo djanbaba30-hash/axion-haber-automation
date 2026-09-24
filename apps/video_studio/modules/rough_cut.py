@@ -25,10 +25,9 @@ MAX_CLIP_SECONDS = 5.0
 SENTENCE_END = set(".!?…")
 PAUSE_PUNCTUATION = set(".!?…,;:\"”'’»)")
 EDGE_SECONDS = 0.2
-# Geniş özne kaydırması: özne kadrajdan bu oranda genişse kaydır; hız saniyede kare genişliğinin %2,5'i
-# (editör: %4 biraz hızlıydı).
+# Özne kaydırması: özne kadrajdan bu oranda büyükse kaydır; hız saniyede kare genişliğinin %3'ü (editör ayarı).
 PAN_MIN_RATIO = 1.15
-PAN_SPEED = 0.025  # Shot geçişindeki karışık karelerden kaçın.
+PAN_SPEED = 0.03  # Shot geçişindeki karışık karelerden kaçın.
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
 ROLE_BONUS = {
@@ -180,19 +179,21 @@ def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, dire
         sx0 = sx1 = focus.x * a
         sy0 = sy1 = focus.y
     center_x, center_y = (sx0 + sx1) / 2, (sy0 + sy1) / 2
-    pan = 0.0
-    if sx1 - sx0 > view_w * PAN_MIN_RATIO:
-        pan = min(sx1 - sx0 - view_w, PAN_SPEED * a * seconds)
+    distance = PAN_SPEED * a * seconds  # kaynak piksel oranında, her iki eksende aynı hız
+    # Editör kuralı: yanları dolgulu dikey çekimde yalnızca yukarı/aşağı; tam 16:9'da her yön (yatay, dikey, çapraz).
+    pan_x = min(sx1 - sx0 - view_w, distance) if candidate.content_region is None and sx1 - sx0 > view_w * PAN_MIN_RATIO else 0.0
+    pan_y = min(sy1 - sy0 - view_h, distance) if sy1 - sy0 > view_h * PAN_MIN_RATIO else 0.0
     floor = lambda v: math.floor(v * 10_000) / 10_000  # noqa: E731 — x + width 1'i aşmasın
 
-    def region(mid_x: float) -> Region:
+    def region(mid_x: float, mid_y: float) -> Region:
         x = min(max(mid_x - view_w / 2, cx), cx + cw - view_w)
-        y = min(max(center_y - view_h / 2, cy), cy + ch - view_h)
+        y = min(max(mid_y - view_h / 2, cy), cy + ch - view_h)
         return Region(x=floor(x / a), y=floor(y), width=floor(view_w / a), height=floor(view_h))
 
-    if pan <= 0:
-        return region(center_x), None
-    first, last = region(center_x - direction * pan / 2), region(center_x + direction * pan / 2)
+    if pan_x <= 0 and pan_y <= 0:
+        return region(center_x, center_y), None
+    first = region(center_x - direction * pan_x / 2, center_y - direction * pan_y / 2)
+    last = region(center_x + direction * pan_x / 2, center_y + direction * pan_y / 2)
     return (first, last) if first != last else (first, None)
 
 

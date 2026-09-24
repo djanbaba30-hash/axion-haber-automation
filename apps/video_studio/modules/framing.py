@@ -93,6 +93,12 @@ def _snap_to_vertical_aspect(start: float, end: float, frame_aspect: float) -> t
     return center - snapped / 2, center + snapped / 2
 
 
+def standard_vertical_region(frame_aspect: float) -> Region:
+    """Ortalanmış 9:16 telefon görüntüsü (DHA'nın yanları bulanık verdiği dikey çekimin varsayılan yeri)."""
+    width = (9 / 16) / frame_aspect - 2 * SAFETY_INSET
+    return Region(x=math.ceil((1 - width) / 2 * 10_000) / 10_000, y=0.0, width=math.floor(width * 10_000) / 10_000, height=1.0)
+
+
 def detect_content_region(frame_paths: list[Path]) -> Region | None:
     """Karelerdeki asıl görüntü alanı (0–1). Tüm kare doluysa None."""
     profiles = [_profiles(Path(path)) for path in frame_paths if Path(path).exists()]

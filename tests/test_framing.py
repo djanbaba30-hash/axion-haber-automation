@@ -223,3 +223,20 @@ def test_narrow_subject_fills_the_frame(tmp_path, monkeypatch):
     assert view["x"] <= 0.72 and view["x"] + view["width"] >= 0.84
     row = [dominant(p) for p in rgb_row(output, 10)]
     assert "r" not in row and row[-1] == "b"  # kadraj sağa, özneye kaydı; dolgu yok (en üst satır da görüntü)
+
+
+
+def test_vertical_footage_pans_only_up_or_down_and_full_frame_may_pan_any_way():
+    """Editör kuralı: yanları dolgulu dikey çekimde kaydırma yalnızca dikey; tam 16:9'da yatay/dikey/çapraz."""
+    from apps.video_studio.modules.rough_cut import _view_regions
+
+    vertical = candidate(None, Region(x=0.36, y=0, width=0.28, height=1))
+    vertical.subject = Region(x=0.0, y=0.0, width=1.0, height=1.0)  # Luna tüm kareyi özne demiş olsa bile
+    start, end = _view_regions(vertical, 960 / 1226, seconds=4.0, direction=1)
+    assert end is not None and start.x == end.x and start.y != end.y  # yatay kayma yok, dikey var
+    assert start.x >= 0.36 and start.x + start.width <= 0.64 + 1e-9  # bulanık kenara hiç girmez
+
+    full = candidate(None)
+    full.subject = Region(x=0.0, y=0.0, width=1.0, height=1.0)
+    start, end = _view_regions(full, 960 / 1226, seconds=4.0, direction=1)
+    assert end is not None and start.x != end.x  # tam karede yatay kaydırma serbest

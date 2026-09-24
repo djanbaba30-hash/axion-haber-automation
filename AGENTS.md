@@ -186,6 +186,13 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
 - v2.2.1: haberler en fazla 3 iş günü saklanır (`store.KEEP_DAYS`, editör kararı). `axion_local.clean_up_for_day`
   her iş günü bir kez eski proje klasörlerini (`store.delete_old_projects`, yalnızca YYYYMMDD-HHMMSS_ adlı klasörler)
   ve `history.sqlite3` kayıtlarını (`delete_runs_before`) siler. İndirilenler'deki kaynak videolara dokunulmaz.
+- v2.3.0 (editörün Kars yangını testi: dumanlı/gece dikey çekimde bulanık kenar kadraja girdi):
+  - Kök neden: keskinlik tespiti (framing.py) duman/gece/yumuşak görüntüde kaçırdı → sahne tam 16:9 sanıldı → yatay
+    kaydırma bulanık kenara girdi. Yedek: Luna `side_bars` (dikey çekim, yanlar dolgulu) → `VisualMetadata.side_bars`;
+    tespit yoksa ve Luna "evet" derse `video_asset` ortadaki 9:16 alanı (`framing.standard_vertical_region`) kullanır.
+    Prompt v2.5 (yeniden analiz).
+  - Kaydırma kuralı (editör): içerik alanı olan (dikey) sahnede yalnızca yukarı/aşağı; tam karede her yön (x ve y
+    ayrı ayrı, çapraz olabilir). Hız %3/sn.
 - **Faz 3 sonu:** editör bu sürümü test edecek, ardından Claude ve GPT tüm kodu ayrı ayrı gözden geçirecek
   (hata, optimizasyon, sadeleştirme); düzeltmelerden sonra Faz 4'e geçilir (Luna Edit Planner: tek metin çağrısı,
   rough_cut yedek kalır). Plaka/yüz bulanıklaştırma ROADMAP'te Faz 6.

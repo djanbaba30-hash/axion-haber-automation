@@ -33,6 +33,7 @@ class LunaVisual(BaseModel):
     subject_right: float
     subject_top: float
     subject_bottom: float
+    side_bars: bool
     confidence: float
 
 
@@ -75,6 +76,7 @@ editorial_role — kurgudaki işlevi:
 location: görünen mekân türü (ör. "cadde", "dükkân içi"); belirsizse "unknown".
 subject_left/right/top/bottom: haberin ana öznesinin (hasarlı araç, konuşan kişi, olay anı) TAMAMINI içeren kutu,
   0-1 (sol/üst=0, sağ/alt=1). Kare dikey kadraja kırpılacak; bu kutu kesilmeyecek. Genel planda kutu geniş olur.
+side_bars: görüntü dikey (telefon) çekilmiş ve yatay karenin iki yanı bulanık kopya veya siyah dolguysa true.
 confidence: 0-1."""
 
 
@@ -95,6 +97,7 @@ def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
         text_visible=item.text_visible,
         visible_text=item.visible_text.strip(),
         focus_point=FocusPoint(x=(left + right) / 2, y=(top + bottom) / 2),
+        side_bars=item.side_bars,
         subject_region=Region(x=left, y=top, width=right - left, height=bottom - top) if right > left and bottom > top else None,
         confidence=_unit(item.confidence),
     ).model_dump(mode="json")

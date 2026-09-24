@@ -1,3 +1,18 @@
+# v2.3.0 — Dikey çekimlerde güvenli kaydırma — 2026-09-24
+
+## Fixed
+- Dumanlı, gece veya yumuşak görüntülü dikey çekimlerde (Kars yangını) bulanık kenar tespit edilemiyor, kadraj yatay
+  kayarken DHA'nın bulanık kenarına giriyordu. Luna artık her sahne için "dikey çekim, yanları dolgulu" bilgisini de
+  veriyor; tespit kaçırırsa görüntü ortadaki 9:16 alana kilitlenir.
+
+## Changed
+- Kaydırma kuralı: yanları dolgulu dikey çekimde yalnızca yukarı/aşağı; tam 16:9 görüntüde yatay, dikey veya çapraz.
+- Kaydırma hızı saniyede kare genişliğinin %3'ü.
+- Luna prompt v2.5: önceki analizler için yeniden analiz istenir.
+
+## Verification
+- `make test` geçti (Kars durumu ve kaydırma yönü regresyon testleri dahil). Windows testi bekleniyor.
+
 # v2.2.1 — Haberler 3 gün saklanır — 2026-09-24
 
 ## Changed

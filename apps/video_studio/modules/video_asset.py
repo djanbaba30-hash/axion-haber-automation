@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
+from .framing import standard_vertical_region
 from shared.media_models import (
     AnalysisFrame,
     AnalysisWindow,
@@ -17,7 +18,7 @@ from shared.media_models import (
 )
 
 # Prompt/şema değişince artır: eski sürümle yapılmış analiz yeniden istenir.
-LUNA_PROMPT_VERSION = "media-index-v2.4"
+LUNA_PROMPT_VERSION = "media-index-v2.5"
 
 
 def sha256_file(path: Path) -> str:
@@ -87,6 +88,10 @@ def build_video_asset(
         ]
         # Shot özeti: ilk analiz edilmiş pencere (tek pencereli shot'ta aynısı).
         visual = next((w.visual for w in windows if w.visual is not None), None)
+        content_region = shot.get("content_region")
+        if content_region is None and any(w.visual and w.visual.side_bars for w in windows):
+            # Keskinlik tespiti kaçırdı (duman, gece, yumuşak görüntü) ama Luna yanları dolgulu dikey çekim diyor.
+            content_region = standard_vertical_region(width / height)
         parsed_shots.append(
             Shot(
                 shot_id=shot_id,
@@ -97,7 +102,7 @@ def build_video_asset(
                 duration_seconds=float(shot["duration_seconds"]),
                 analysis_windows=windows,
                 visual=visual,
-                content_region=shot.get("content_region"),
+                content_region=content_region,
             )
         )
 
