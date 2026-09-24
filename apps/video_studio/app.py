@@ -48,6 +48,42 @@ from modules.visual_analysis import (
 )
 
 
+def secret(name: str) -> str | None:
+    try:
+        value = st.secrets.get(name)
+    except Exception:
+        return None
+    return str(value).strip() if value else None
+
+
+def require_secrets() -> None:
+    missing = [name for name in ("APP_PASSWORD", "OPENAI_API_KEY") if not secret(name)]
+    if missing:
+        st.error("Eksik Streamlit secret: " + ", ".join(missing))
+        st.code('APP_PASSWORD = "..."\nOPENAI_API_KEY = "..."')
+        st.stop()
+
+
+def check_password() -> bool:
+    expected = secret("APP_PASSWORD")
+    if not expected:
+        st.error("APP_PASSWORD secret tanımlı değil.")
+        return False
+    if st.session_state.get("video_password_correct"):
+        return True
+
+    def entered() -> None:
+        st.session_state.video_password_correct = (
+            st.session_state.get("video_password", "") == expected
+        )
+        st.session_state.pop("video_password", None)
+
+    st.text_input("Şifre", type="password", key="video_password", on_change=entered)
+    if st.session_state.get("video_password_correct") is False and "video_password" not in st.session_state:
+        st.error("Şifre yanlış.")
+    return False
+
+
 # =================================================
 # ANALİZ SEÇENEKLERİ
 # =================================================
@@ -69,6 +105,10 @@ st.set_page_config(
     page_icon="🎬",
     layout="wide",
 )
+
+require_secrets()
+if not check_password():
+    st.stop()
 
 
 # =================================================
