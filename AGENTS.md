@@ -135,6 +135,8 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
     Bulanık kenar'da arka planı asıl görüntüden üretir.
 - v1.9.1: kurgu çıktısı 1080x1440 yerine şablonun video alanı 960x1226 (`shared/axion_template.py`; editör Canva'da
   ikinci kez kırpmasın). Eski ölçüdeki edit_project'ler açılışta yeniden kurulur. Şablonun tamamı ROADMAP'te (Faz 5).
+- v1.9.2: video en az 20 sn (`axion_template.video_seconds`); TTS daha kısaysa son sahne sessiz uzar (`apad`).
+  EditProject kuralı artık "timeline ≤ max(TTS, 20 sn)".
 - Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar

@@ -113,9 +113,16 @@ def test_duplicate_media_refs_are_rejected():
         project(media=[ref, ref])
 
 
-def test_timeline_cannot_exceed_tts_duration():
-    with pytest.raises(ValidationError, match="TTS süresini"):
+def test_timeline_cannot_exceed_tts_or_template_minimum():
+    with pytest.raises(ValidationError, match="izin verilen süreyi"):
         project([media_clip(seconds=30.0)], audio_seconds=5.0)
+    with pytest.raises(ValidationError, match="izin verilen süreyi"):
+        project([media_clip(seconds=30.0)], audio_seconds=25.0)
+
+
+def test_short_tts_may_run_to_template_minimum():
+    # Şablon videosu en az 20 sn: TTS 5 sn olsa da görüntü 20 sn sürebilir (sonu sessiz).
+    assert project([media_clip(seconds=20.0)], audio_seconds=5.0)
 
 
 def test_overlapping_clips_in_same_track_are_rejected():

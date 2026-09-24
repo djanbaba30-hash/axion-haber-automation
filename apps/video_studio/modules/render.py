@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from apps.axion_local.store import ROUGH_CUT_FILENAME  # noqa: F401  (sayfa buradan alır)
+from shared.axion_template import video_seconds
 from shared.edit_models import ClipType, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import MediaLibrary
 
@@ -83,13 +84,14 @@ def build_render_command(edit_project: dict[str, Any], media_library: dict[str, 
     command += ["-i", project.audio.path]
     joined = "".join(f"[v{i}]" for i in range(len(clips)))
     filters.append(f"{joined}concat=n={len(clips)}:v=1:a=0[video]")
+    filters.append(f"[{audio_index}:a]apad[audio]")  # TTS bitince sessizlik (video en az 20 sn)
     command += [
         "-filter_complex", ";".join(filters),
-        "-map", "[video]", "-map", f"{audio_index}:a",
+        "-map", "[video]", "-map", "[audio]",
         *encoder,
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
-        "-t", f"{project.audio.duration_seconds:.3f}",
+        "-t", f"{video_seconds(project.audio.duration_seconds):.3f}",
         "-movflags", "+faststart",
         str(output),
     ]
@@ -100,7 +102,7 @@ def render_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any]
     """MP4'ü önce geçici ada yazar, başarılıysa yerine koyar. Kullanılan kodlayıcının adını döndürür."""
     output.parent.mkdir(parents=True, exist_ok=True)
     partial = output.with_name(output.stem + ".yaziliyor.mp4")
-    duration = float(edit_project["audio"]["duration_seconds"])
+    duration = video_seconds(edit_project["audio"]["duration_seconds"])
     attempts = [("AMD donanım (h264_amf)", AMF)] if amd_encoder_available() else []
     attempts.append(("x264 (işlemci)", X264))
     error = ""

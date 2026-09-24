@@ -1,3 +1,13 @@
+# v1.9.2 — Video en az 20 saniye — 2026-09-24
+
+## Changed
+- Şablon videosu en az 20 sn: seslendirme daha kısaysa kurgu 20 sn'ye tamamlanır, son sahne sessiz devam eder.
+  EditProject doğrulaması "timeline ≤ TTS" yerine "timeline ≤ max(TTS, 20 sn)".
+- Şablon zamanları (9/13/16. sn) sabit olarak kaydedildi (editör onayı).
+
+## Verification
+- `make test` geçti (15 sn TTS → 20 sn kurgu ve 4 sn TTS → 20 sn MP4 render testleri dahil).
+
 # v1.9.1 — Kurgu ölçüsü Canva şablonuna göre — 2026-09-24
 
 ## Changed

@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH
+from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH, video_seconds
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
 
@@ -183,7 +183,8 @@ def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], 
         raise ValueError("Kurgu için analiz edilmiş video sahnesi yok.")
 
     fps = project.edit_plan.timeline.fps
-    total_f = round(project.audio.duration_seconds * fps)
+    # Son cümlenin görüntüsü, TTS 20 sn'den kısaysa şablonun en kısa süresine kadar sessiz devam eder.
+    total_f = round(video_seconds(project.audio.duration_seconds) * fps)
     mode = FramingMode(framing_mode)
     usage = _Usage()
     clips: list[Clip] = []

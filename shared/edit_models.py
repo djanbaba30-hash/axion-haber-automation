@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
+from .axion_template import MIN_VIDEO_SECONDS, video_seconds
 from .media_models import MediaAssetRef, Region
 from .news_package import TTSAlignment, ensure_alignment_matches_text
 
@@ -349,11 +350,13 @@ class EditProject(BaseModel):
             if clip.segment_id is not None and clip.segment_id not in segment_ids:
                 raise ValueError(f"Clip {clip.id} segment_id {clip.segment_id!r} segmentlerde yok.")
 
-        max_frames = math.ceil(self.audio.duration_seconds * timeline.fps) + 1
+        # Şablon videosu en az MIN_VIDEO_SECONDS; TTS daha kısaysa görüntü sessiz devam eder.
+        allowed = video_seconds(self.audio.duration_seconds)
+        max_frames = math.ceil(allowed * timeline.fps) + 1
         if timeline.end_f > max_frames:
             raise ValueError(
-                f"Timeline süresi ({timeline.end_f} frame) TTS süresini "
-                f"({self.audio.duration_seconds:.2f} sn) aşıyor."
+                f"Timeline süresi ({timeline.end_f} frame) izin verilen süreyi "
+                f"({allowed:.2f} sn: TTS, en az {MIN_VIDEO_SECONDS:.0f} sn) aşıyor."
             )
         return self
 

@@ -15,6 +15,16 @@ VIDEO_SLOT = {"x": 60, "y": 453, "width": 960, "height": 1225}
 VIDEO_WIDTH = 960
 VIDEO_HEIGHT = 1226
 
+# Zamanlar video uzunluğundan bağımsız, sabittir. Video en az 20 sn; daha uzunsa yalnızca arka plan ve
+# 2. başlık videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa görüntü sessiz devam eder.
+MIN_VIDEO_SECONDS = 20.0
+
+
+def video_seconds(tts_seconds: float) -> float:
+    """Kurgu/video süresi: seslendirme süresi, en az MIN_VIDEO_SECONDS."""
+    return max(float(tts_seconds), MIN_VIDEO_SECONDS)
+
+
 # Başlıklar: Binate Bold, 45 pt, "glow" efekti (yoğunluk 100). İkisi de aynı kutuda: 960x155, x=60, y=260.
 HEADLINE_BOX = {"x": 60, "y": 260, "width": 960, "height": 155}
 HEADLINE_FONT = {"family": "Binate Bold", "size": 45, "glow_intensity": 100}

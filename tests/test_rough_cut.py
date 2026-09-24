@@ -161,5 +161,14 @@ def test_render_produces_template_sized_mp4_matching_voiceover(tmp_path, monkeyp
     video = next(s for s in info["streams"] if s["codec_type"] == "video")
     assert (video["width"], video["height"]) == (960, 1226)  # Canva şablonundaki video alanı
     assert any(s["codec_type"] == "audio" for s in info["streams"])
-    assert abs(float(info["format"]["duration"]) - 4.0) < 0.15
+    assert abs(float(info["format"]["duration"]) - 20.0) < 0.15  # 4 sn TTS, şablon en az 20 sn
     assert not (tmp_path / "kaba_kurgu.yaziliyor.mp4").exists()
+
+
+def test_short_voiceover_is_extended_to_template_minimum():
+    text = "Otomobil dükkâna çarptı. Beş kişi yaralandı."
+    project = plan_rough_cut(edit_project(text=text, duration=15.0), library())
+    clips = video_clips(project)
+    assert project["audio"]["duration_seconds"] == 15.0
+    assert clips[-1]["start_f"] + clips[-1]["duration_f"] == 20 * 30
+    assert all(a["start_f"] + a["duration_f"] == b["start_f"] for a, b in zip(clips, clips[1:]))

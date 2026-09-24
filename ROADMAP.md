@@ -94,11 +94,13 @@ Kanvas 1080×1920. Konumlar sol üst köşeye göre piksel; koddaki karşılığ
 | Axion Haber logo kutusu (yumuşak köşeli) | alttan yükselir | 16–19 sn | "slow baseline": alttan çıkar, geri iner |
 | Arka plan | 1080×1920 | tüm video | 8 arka plan; her gün bir sonraki, aynı gün tüm haberler aynı |
 
+Zamanlar video uzunluğundan bağımsız, sabittir. Video **en az 20 sn**; daha uzunsa yalnızca arka plan ve 2. başlık
+videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa kurgu 20 sn'ye tamamlanır (son sahne sessiz devam eder).
+
 Faz 5'te gerekecek dosyalar (editörden): 8 arka plan, logo kutusu (şeffaf PNG), varsa slogan yazılarının görselleri.
 
 ## Açık sorular
 
-- Şablon zamanları (9/13/16. sn) sabit mi, yoksa video 20 sn'den uzunsa kayıyor mu (ör. logo kutusu hep sondan 4 sn önce)?
 - Binate Bold yerine lisansı serbest, Türkçe karakterli benzer yazı tipi (Faz 5'te örnek çıktıyla karşılaştırılacak).
 
 - Canva şablonundaki fontun adı ve lisansı.
