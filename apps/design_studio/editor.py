@@ -22,76 +22,145 @@ from .template import TextBlock
 
 HTML = """
 <div class="ax">
-  <div class="stage-wrap"><canvas class="stage"></canvas><video class="vid" playsinline preload="auto"></video></div>
-  <div class="bar">
+  <div class="topbar">
+    <div class="modes"><button data-mode="edit" class="on">🎨 Düzenle</button><button data-mode="final">🎬 Son video</button></div>
+    <div class="ctx"></div>
+  </div>
+  <div class="main">
+    <aside class="left panel"></aside>
+    <div class="center">
+      <div class="stage-wrap">
+        <canvas class="stage"></canvas>
+        <video class="finalvid" controls playsinline></video>
+        <div class="msg-final">Son video henüz yok. Kenar çubuğundan <b>Oluştur</b>.</div>
+        <video class="vid" playsinline preload="auto"></video>
+      </div>
+    </div>
+    <aside class="right panel"></aside>
+  </div>
+  <div class="transport">
     <button class="back" type="button" title="1 kare geri">⏮</button>
     <button class="play" type="button">▶</button>
     <button class="fwd" type="button" title="1 kare ileri">⏭</button>
     <span class="time">0,0 / 0,0 sn</span>
     <select class="speed" title="Oynatma hızı"><option value="1">1x</option><option value="0.5">0,5x</option><option value="0.25">0,25x</option></select>
+    <span class="grow"></span>
+    <button class="t-add-text" type="button">➕ Yazı</button>
+    <button class="t-add-blur" type="button">◍ Blur</button>
+    <button class="t-add-mosaic" type="button">▦ Mozaik</button>
   </div>
-  <div class="timeline"><div class="rows"></div><div class="head"></div></div>
-  <div class="tools">
-    <button class="add-blur" type="button" title="Bulanıklaştırma kutusu ekle">+ Blur</button>
-    <button class="add-mosaic" type="button" title="Mozaik kutusu ekle">+ Mozaik</button>
-    <span class="chips"></span>
-  </div>
-  <div class="edit">
-    <div class="grid">
-      <label>Efekt<select class="effect"></select></label>
-      <label>Şekil<select class="shape"></select></label>
-      <label>Güç<input class="strength" type="range" min="1" max="10" step="1"></label>
-      <label>Opaklık<input class="opacity" type="range" min="10" max="100" step="5"></label>
-      <label>Yumuşak kenar<input class="feather" type="range" min="0" max="100" step="5"></label>
-      <label>Açı<input class="angle" type="range" min="-180" max="180" step="1"></label>
-    </div>
-    <div class="btns">
-      <button class="square" type="button" title="Genişliğe göre kare yap">▢ Kare</button>
-      <button class="set-start" type="button">⇤ Başla: şimdi</button>
-      <button class="set-end" type="button">Bitir: şimdi ⇥</button>
-      <button class="prev-key" type="button" title="Önceki anahtar kare">◆◀</button>
-      <button class="next-key" type="button" title="Sonraki anahtar kare">▶◆</button>
-      <button class="del-key" type="button" title="Bu andaki anahtar kareyi sil">◆✕</button>
-      <button class="del-blur" type="button" title="Kutuyu sil">🗑</button>
-    </div>
-    <label class="live"><input class="track" type="checkbox"> Canlı takip: kutuya basılı tut, video yavaş oynarken sürükle</label>
-    <div class="hint"></div>
-  </div>
+  <div class="tl"><div class="tracks"></div><div class="playhead"></div></div>
 </div>
 """
 
 CSS = """
-.ax { font-family: var(--st-font, sans-serif); color: var(--st-text-color, #1B2B3A); font-size: 13px; max-width: 400px; }
-.stage-wrap { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 10px; overflow: hidden;
-  background: #0d1f24; touch-action: none; user-select: none; box-shadow: 0 6px 18px rgba(18,50,73,.18); }
-.stage { width: 100%; height: 100%; display: block; cursor: crosshair; }
+.ax { --navy: #123249; --sky: #BEE1E8; --lime: #D0E491; --line: #e1e7ee; --soft: #f5f8fb; --label: 74px;
+  font-family: var(--st-font, sans-serif); color: #1B2B3A; font-size: 13px; container-type: inline-size; }
+button, select, input, textarea { font-family: inherit; font-size: 13px; }
+button, select { border: 1px solid #cfd8e2; background: #fff; color: var(--navy); border-radius: 8px; padding: 5px 9px; cursor: pointer; }
+button:hover { border-color: var(--navy); }
+button.on { background: var(--sky); border-color: var(--navy); }
+.muted { color: #6b7c8c; } .small { font-size: 12px; }
+/* üst çubuk (Canva araç çubuğu) */
+.topbar { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  padding: 6px 8px; box-shadow: 0 2px 8px rgba(18,50,73,.06); min-height: 42px; flex-wrap: wrap; }
+.modes { display: inline-flex; gap: 2px; background: var(--soft); border-radius: 9px; padding: 2px; }
+.modes button { border: 0; background: transparent; }
+.modes button.on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.ctx { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex: 1; }
+.ctx .tag { font-weight: 600; color: var(--navy); margin-right: 4px; }
+.ctx select { max-width: 160px; }
+.size { display: inline-flex; align-items: center; border: 1px solid #cfd8e2; border-radius: 8px; }
+.size button { border: 0; padding: 5px 9px; } .size b { min-width: 28px; text-align: center; }
+.color { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 30px;
+  border: 1px solid #cfd8e2; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.color span { border-bottom: 4px solid; line-height: 16px; }
+.color input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+.tool { min-width: 34px; } .tool.danger:hover { border-color: #e5484d; color: #e5484d; }
+.glow { display: inline-flex; gap: 4px; align-items: center; } .glow input { width: 80px; accent-color: var(--navy); }
+.seg { display: inline-flex; border: 1px solid #cfd8e2; border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; } .seg.wide { display: flex; margin: 6px 0; } .seg.wide button { flex: 1; }
+/* üç sütun */
+.main { display: grid; grid-template-columns: minmax(210px, 1fr) auto minmax(210px, 1fr); gap: 14px; margin: 12px 0; align-items: start; }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; max-height: 660px; overflow: auto; }
+.panel h4 { margin: 10px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #4b5d6e; }
+.panel h4:first-child { margin-top: 0; }
+.center { display: flex; justify-content: center; }
+.stage-wrap { position: relative; height: clamp(360px, calc(100vh - 400px), 640px); aspect-ratio: 9 / 16; border-radius: 14px; overflow: hidden;
+  background: #0d1f24; touch-action: none; user-select: none; box-shadow: 0 10px 28px rgba(18,50,73,.22); }
+.stage, .finalvid { width: 100%; height: 100%; display: block; } .stage { cursor: crosshair; }
+.finalvid { display: none; background: #000; }
+.msg-final { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: #fff; padding: 20px; text-align: center; }
 .vid { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; top: 0; }
-.bar { display: flex; gap: 6px; align-items: center; margin: 8px 0 6px; }
-button, select { border: 1px solid #c9d3df; background: #fff; color: #123249; border-radius: 7px; padding: 3px 8px;
-  cursor: pointer; font-size: 13px; }
-button:hover { border-color: #123249; }
-.play { min-width: 40px; font-size: 15px; background: #123249; color: #fff; border-color: #123249; }
-.time { font-variant-numeric: tabular-nums; margin-left: 2px; flex: 1; }
-.timeline { position: relative; background: #f1f4f8; border-radius: 7px; padding: 3px 0; cursor: pointer; touch-action: none; }
-.row { position: relative; height: 14px; margin: 2px 0; }
-.seg { position: absolute; top: 1px; height: 12px; border-radius: 3px; opacity: .9; font-size: 9px; color: #fff; overflow: hidden;
-  white-space: nowrap; padding-left: 3px; box-sizing: border-box; line-height: 12px; }
-.row.sel .seg { outline: 2px solid #123249; }
-.key { position: absolute; top: 3px; width: 8px; height: 8px; margin-left: -4px; transform: rotate(45deg); background: #fff; border: 1px solid #123249; }
-.head { position: absolute; top: 0; bottom: 0; width: 2px; background: #e5484d; pointer-events: none; }
-.tools { display: flex; gap: 6px; align-items: center; margin: 8px 0 4px; flex-wrap: wrap; }
-.add-blur, .add-mosaic { background: #123249; color: #fff; border-color: #123249; }
-.chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
-.chip { border-radius: 12px; padding: 2px 9px; }
-.chip.sel { background: #BEE1E8; border-color: #123249; }
-.edit { background: #f7f9fb; border: 1px solid #e3e9ef; border-radius: 8px; padding: 6px 8px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
-.grid label { display: flex; flex-direction: column; font-size: 11px; color: #4b5d6e; gap: 2px; }
-.grid input[type=range] { width: 100%; accent-color: #123249; }
-.btns { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 4px; }
-.btns button { padding: 2px 7px; }
-.live { display: flex; gap: 6px; align-items: center; font-size: 12px; }
-.hint { font-size: 11px; color: #6b7c8c; margin-top: 2px; }
+/* panel öğeleri */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
+.card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 10px; font-size: 12px; }
+.card.on { background: #e9f6f9; border: 2px solid var(--navy); }
+.demo { font-weight: 800; font-size: 20px; color: #7a3ff2; display: inline-flex; height: 26px; }
+.demo i { font-style: normal; display: inline-block; }
+.demo-merge i:nth-child(odd) { animation: mergeL 1.6s infinite; } .demo-merge i:nth-child(even) { animation: mergeR 1.6s infinite; }
+@keyframes mergeL { 0%,15% { transform: translateX(-10px); opacity: 0 } 50%,100% { transform: none; opacity: 1 } }
+@keyframes mergeR { 0%,15% { transform: translateX(10px); opacity: 0 } 50%,100% { transform: none; opacity: 1 } }
+.demo-fade i { animation: fadeA 1.6s infinite; } @keyframes fadeA { 0%,10% { opacity: 0 } 50%,100% { opacity: 1 } }
+.demo-slide i { animation: slideA 1.6s infinite; } .demo-slide i:nth-child(2) { animation-delay: .12s } .demo-slide i:nth-child(3) { animation-delay: .24s }
+@keyframes slideA { 0%,10% { transform: translateY(12px); opacity: 0 } 45%,100% { transform: none; opacity: 1 } }
+.demo-typewriter i { animation: typeA 1.6s infinite steps(1); } .demo-typewriter i:nth-child(2) { animation-delay: .25s } .demo-typewriter i:nth-child(3) { animation-delay: .5s }
+@keyframes typeA { 0% { opacity: 0 } 20%,100% { opacity: 1 } }
+.demo-pop { animation: popA 1.6s infinite; } @keyframes popA { 0%,10% { transform: scale(.5); opacity: 0 } 40% { transform: scale(1.1); opacity: 1 } 55%,100% { transform: scale(1) } }
+.demo-old_tv { animation: tvA 1.6s infinite; } @keyframes tvA { 0%,10% { transform: scale(.05,.08) } 25% { transform: scale(1,.12) } 50%,100% { transform: none } }
+.demo-slow_baseline { animation: baseA 1.6s infinite; } @keyframes baseA { 0%,10% { transform: translateY(16px); opacity: 0 } 60%,100% { transform: none; opacity: 1 } }
+.demo-yok { color: #9aa7b4; }
+.fdemo { width: 24px; height: 32px; border-radius: 5px; background: #0d1f24; display: block; }
+.frames { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); } .frames .card { padding: 6px 2px; font-size: 11px; }
+.f-sabit { box-shadow: inset 0 0 0 3px #f6f6f6; } .f-yok { box-shadow: inset 0 0 0 1px #33444f; }
+.f-nefes { animation: breathe 2.4s infinite; } @keyframes breathe { 0%,100% { box-shadow: inset 0 0 0 2px #f6f6f6, 0 0 2px #BEE1E8 } 50% { box-shadow: inset 0 0 0 4px #fff, 0 0 12px #BEE1E8 } }
+.f-kovalayan { background: conic-gradient(from 0deg, #fff 0 8%, #0d1f24 8% 50%, #fff 50% 58%, #0d1f24 58%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; padding: 3px; }
+.f-akis { background: conic-gradient(#f6f6f6, #BEE1E8, #D0E491, #f6f6f6);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; padding: 3px; }
+.bgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.bg { aspect-ratio: 9 / 16; padding: 0; background-size: cover; background-position: center; position: relative; border-radius: 8px; border: 2px solid transparent; }
+.bg.on { border-color: var(--navy); box-shadow: 0 0 0 2px var(--sky); }
+.bg span { position: absolute; bottom: 2px; left: 2px; right: 2px; font-size: 10px; background: rgba(18,50,73,.75); color: #fff; border-radius: 4px; }
+.slider { display: block; margin: 6px 0 10px; } .slider span { display: flex; justify-content: space-between; font-size: 12px; color: #4b5d6e; }
+.slider input { width: 100%; accent-color: var(--navy); height: 24px; }
+.row2, .row3 { display: grid; gap: 6px; align-items: end; margin: 4px 0; } .row2 { grid-template-columns: 1fr 1fr auto; } .row3 { grid-template-columns: 1fr 1fr 1fr; }
+.row2 label { display: flex; flex-direction: column; font-size: 11px; color: #4b5d6e; } .row2 input[type=number] { width: 100%; box-sizing: border-box; padding: 5px; border: 1px solid #cfd8e2; border-radius: 8px; }
+.color-row { display: flex !important; flex-direction: row !important; align-items: center; gap: 6px; } .color-row input { width: 40px; height: 28px; border: 0; background: none; }
+.stack { display: flex; flex-direction: column; gap: 6px; } .big { padding: 10px; font-size: 14px; text-align: left; } .wide { width: 100%; text-align: left; }
+textarea { width: 100%; box-sizing: border-box; border: 1px solid #cfd8e2; border-radius: 8px; padding: 6px; resize: vertical; }
+.switch { display: flex; gap: 8px; align-items: center; } .switch input { width: 18px; height: 18px; accent-color: var(--navy); }
+.big-switch { margin: 10px 0 4px; padding: 8px; background: var(--soft); border-radius: 8px; font-weight: 600; }
+/* oynatma ve zaman çizelgesi (Canva düzeni) */
+.transport { display: flex; gap: 6px; align-items: center; background: #fff; border: 1px solid var(--line); border-bottom: 0;
+  border-radius: 12px 12px 0 0; padding: 6px 10px; }
+.transport .play { min-width: 42px; background: var(--navy); color: #fff; border-color: var(--navy); font-size: 15px; }
+.transport .time { font-variant-numeric: tabular-nums; min-width: 100px; } .transport .grow { flex: 1; }
+.tl { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 0 0 12px 12px; padding: 4px 10px 10px; touch-action: none; user-select: none; }
+.tl.dim { opacity: .45; pointer-events: none; }
+.trow { display: flex; align-items: stretch; height: 30px; margin: 4px 0; } .trow.tall { height: 44px; } .trow.ruler { height: 18px; margin: 0; }
+.tlabel { width: var(--label); flex: none; font-size: 11px; color: #6b7c8c; display: flex; align-items: center; }
+.ttrack { position: relative; flex: 1; background: var(--soft); border-radius: 7px; cursor: pointer; }
+.ruler .ttrack { background: transparent; }
+.tick { position: absolute; top: 10px; width: 1px; height: 6px; background: #c5cfd9; font-style: normal; }
+.tick.major { top: 0; height: 16px; }
+.tick { font-size: 10px; color: #6b7c8c; text-indent: 3px; line-height: 10px; white-space: nowrap; }
+.clip { position: absolute; top: 0; bottom: 0; border-radius: 7px; background: var(--c); color: #fff; overflow: hidden; box-sizing: border-box;
+  display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.clip span { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.clip img { height: 22px; border-radius: 4px; }
+.clip.off { opacity: .35; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.35) 0 4px, transparent 4px 9px); }
+.clip.sel { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--navy); z-index: 2; }
+.clip.drag { cursor: grab; }
+.clip .edge { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; background: rgba(255,255,255,.35); }
+.clip .edge.l { left: 0; } .clip .edge.r { right: 0; }
+.clip .key { position: absolute; top: 50%; width: 9px; height: 9px; margin: -5px 0 0 -5px; transform: rotate(45deg); background: #fff; border: 1px solid var(--navy); }
+.film { position: absolute; inset: 0; border-radius: 7px; background-size: 100% 100%; background-color: #26343f; }
+.bgtrack { position: absolute; inset: 0; border-radius: 7px; background-size: auto 100%; background-repeat: repeat-x; opacity: .9; }
+.playhead { position: absolute; top: 2px; bottom: 6px; width: 2px; background: #e5484d; pointer-events: none; z-index: 5; }
+.playhead::before { content: ""; position: absolute; top: -2px; left: -5px; width: 12px; height: 12px; border-radius: 50%; background: #e5484d; }
+/* dar ekran (tablet dikey): sütunlar alt alta */
+@container (max-width: 860px) { .main { grid-template-columns: 1fr; } .center { order: -1; } .panel { max-height: none; } }
 """
 
 JS = Path(__file__).with_name("editor.js").read_text(encoding="utf-8")
@@ -165,41 +234,3 @@ def design_editor(data: dict[str, Any], key: str) -> dict[str, Any] | None:
     result = mount(data=data, key=key, default={"edits": None}, on_edits_change=lambda: None)
     return result.edits
 
-
-SHARE_HTML = """<button class="share" type="button">📤 Paylaş</button><div class="msg"></div>"""
-SHARE_CSS = """
-.share { width: 100%; border: 1px solid #c9d3df; background: #fff; color: #123249; border-radius: 8px; padding: 7px 10px;
-  font-size: 14px; cursor: pointer; font-family: var(--st-font, sans-serif); }
-.share:hover { border-color: #123249; }
-.msg { font-size: 11px; color: #6b7c8c; margin-top: 3px; font-family: var(--st-font, sans-serif); }
-"""
-SHARE_JS = """
-export default function (component) {
-  const { data, parentElement } = component;
-  const button = parentElement.querySelector('.share');
-  const msg = parentElement.querySelector('.msg');
-  button.onclick = async () => {
-    if (!navigator.share || !window.isSecureContext) {
-      msg.textContent = 'Paylaşım için Axion https adresiyle açılmalı (Tailscale serve). Şimdilik İndir ile al.';
-      return;
-    }
-    try {
-      button.disabled = true; msg.textContent = 'Hazırlanıyor...';
-      const blob = await (await fetch(data.url)).blob();
-      const file = new File([blob], data.filename, { type: 'video/mp4' });
-      if (navigator.canShare && !navigator.canShare({ files: [file] })) { msg.textContent = 'Bu cihaz video paylaşımını desteklemiyor.'; return; }
-      await navigator.share({ files: [file], text: data.text || '' });
-      msg.textContent = '';
-    } catch (e) {
-      msg.textContent = e && e.name === 'AbortError' ? '' : 'Paylaşılamadı: ' + e;
-    } finally { button.disabled = false; }
-  };
-}
-"""
-
-
-
-def share_button(video: Path, filename: str, text: str, key: str) -> None:
-    """Telefon/tablette Android paylaşım menüsünü açar (Instagram, TikTok, YouTube...). HTTPS gerektirir."""
-    mount = _component("axion_paylas", html=SHARE_HTML, css=SHARE_CSS, js=SHARE_JS)
-    mount(data={"url": media_url(video, "video/mp4", "paylas"), "filename": filename, "text": text}, key=key)

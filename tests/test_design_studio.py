@@ -332,3 +332,33 @@ def test_upload_to_github_creates_or_updates_file(monkeypatch):
     assert method == "PUT" and address == "https://api.github.com/repos/sahip/repo/contents/assets/sablon/fontlar/Yeni.ttf"
     payload = _json.loads(body)
     assert payload["branch"] == "main" and "sha" not in payload
+
+
+def test_editor_patch_changes_design_but_not_headline_texts():
+    from apps.design_studio.design import apply_editor_patch
+
+    design = load_design(None, "KAZA", "B", 20.0)
+    patch = {
+        "headline_1": {"text": "BAŞKA", "enter": "fade", "exit": "slide"},
+        "headline_style": {"family": "Google Sans", "style": "Bold", "size": 64, "color": "#D0E491", "glow": 0.2, "upper": True},
+        "frame": {"style": "kovalayan", "color": "#FFFFFF", "accent": "#BEE1E8", "speed": 1.5},
+        "background": "arka_plan_2.png",
+        "texts": [{"id": "t1", "text": "Ankara", "start": 3, "end": 99, "x": 0.5, "y": 0.9}],
+        "blurs": [_blur(effect="mozaik")],
+        "slogans": {"enabled": False, "effect": "fade"},
+    }
+    updated = apply_editor_patch(design, patch, 20.0)
+    assert updated.headline_1.text == "KAZA"  # metin kenar çubuğundan gelir
+    assert (updated.headline_1.enter, updated.headline_1.exit) == ("fade", "slide")
+    assert updated.headline_style.size == 64 and updated.frame.style == "kovalayan"
+    assert updated.background == "arka_plan_2.png" and updated.slogans.enabled is False
+    assert updated.texts[0].end == 20.0 and updated.blurs[0]["effect"] == "mozaik"
+    assert apply_editor_patch(design, "bozuk", 20.0) is design
+
+
+def test_strike_toggle_by_word_index_keeps_lines():
+    from shared.text_layout import toggle_strike
+
+    assert toggle_strike("Bir iki\nüç", 1) == "Bir ~~iki~~\nüç"
+    assert toggle_strike("Bir ~~iki~~\nüç", 1) == "Bir iki\nüç"
+    assert toggle_strike("Bir iki", 9) == "Bir iki"

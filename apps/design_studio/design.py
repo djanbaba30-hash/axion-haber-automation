@@ -149,3 +149,29 @@ def signature_payload(design: Design) -> dict[str, Any]:
     payload = dump_design(design)
     payload.pop("rendered", None)
     return payload
+
+
+EDITOR_FIELDS = ("headline_style", "slogans", "logo", "frame", "background", "texts", "blurs")
+
+
+def apply_editor_patch(design: Design, patch: Any, duration: float) -> Design:
+    """Tarayıcı editörünün gönderdiği tasarımı uygular. Başlık metinleri kenar çubuğundan gelir, burada korunur;
+    başlıklardan yalnızca animasyonlar alınır. Geçersiz değerler varsayılana döner."""
+    if not isinstance(patch, dict):
+        return design
+    data = dump_design(design)
+    for name in EDITOR_FIELDS:
+        if name in patch:
+            data[name] = patch[name]
+    for name in ("headline_1", "headline_2"):
+        if isinstance(patch.get(name), dict):
+            data[name] = {**data[name], **{k: v for k, v in patch[name].items() if k in ("enter", "exit")}}
+    try:
+        updated = Design.model_validate(data)
+    except ValueError:
+        return design
+    updated.blurs = clean_blurs(updated.blurs, duration)
+    for layer in updated.texts:
+        layer.end = min(max(layer.end, layer.start + 0.2), duration)
+        layer.start = min(layer.start, max(0.0, layer.end - 0.2))
+    return updated

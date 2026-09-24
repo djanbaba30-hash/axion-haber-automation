@@ -50,6 +50,9 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - Tasarım Stüdyosu sade bir Canva'dır: her şey otomatik ve standart gelir (son video hazır), editör isterse değiştirir:
   başlık metni/yazı tipi/kalınlık/renk, sansür çizgisi, eklenen yazılar, efektleri seçme/kapatma, çerçeve animasyonu,
   arka plan, blur/mozaik. Yeni yazı tipi ve arka plan uygulamadan eklenir (yerel + GitHub). Alan kompakt kullanılır.
+- Tasarım Stüdyosu düzeni (editör, v2.7.0): kenar çubuğunda durum, Yeniden oluştur, İndir ve başlık metinleri; ortada
+  video; üstte Canva gibi yazı araç çubuğu (sansür = S̶ + kelimeye dokun); solda animasyon kartları / blur ayarları;
+  sağda arka plan ve çerçeve; altta Canva gibi katmanlı zaman çizelgesi. Paylaşım metni ve Paylaş düğmesi burada yok.
 
 **Video**
 - Kurgu çıktısı şablondaki video alanının ölçüsünde: 960×1225 (H.264 için 960×1226). Axion şablonu ile son çıktı 1080×1920.
@@ -76,7 +79,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 | 3 ✅ | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 (ertelendi) | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → sahne seçimi. Editör kararı: token harcamamak için şimdilik yapılmıyor; günlük kullanımdaki sahne seçimi şikâyetleri önce kurallarla (API'siz) çözülür. Gerekirse her haberde otomatik değil, yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çalışır. | Daha isabetli sahne seçimi |
 | 5 (yapıldı, Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
-| 6 (sıradaki) | **Tabletten tam kullanım:** Axion HTTPS ile (Tailscale serve) → ana ekran simgesi + **Paylaş** (Instagram/TikTok/YouTube'a doğrudan; kod hazır, tablette denenecek). DHA videosu: şimdilik uzak masaüstüyle evdeki tarayıcıdan indirme; sonra "bağlantıdan indir" (editör DHA panelindeki video bağlantısını yapıştırır, bilgisayar indirir; bağlantıların oturumsuz çalışıp çalışmadığı denenecek). APK gerekmiyor (aynı web arayüzünü sarmaktan öteye geçmez, bakım yükü getirir). Gofile gerekmiyor (video Tailscale üzerinden doğrudan). | Evde olmadan haber → paylaşım |
+| 6 (sıradaki) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. DHA paneli giriş istediği ve bağlantılar oturumsuz inmediği için (editör doğruladı) DHA videoları uzak masaüstüyle evdeki tarayıcıdan indirilir; büyük dosya tabletten yüklenmez. Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Açık iş: tablet dokunmatiğinde editörün kullanım denemesi. | Evde olmadan haber → video |
 
 ## Ortam
 
@@ -117,4 +120,3 @@ videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa kurgu 20 sn'ye tamaml
 
 - Yazı tipi: Canva'daki Binate Bold yerine editörün seçtiği Google Sans Bold (SIL OFL, `assets/sablon/fontlar/`).
   Google Sans biraz daha dar; görünüm editörün Windows testinde değerlendirilecek.
-- DHA panelindeki video bağlantıları giriş yapmadan (başka cihazdan) indirilebiliyor mu? ("bağlantıdan indir" için)

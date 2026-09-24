@@ -145,3 +145,24 @@ def preview_video(rough_cut: Path, folder: Path) -> Path:
         return preview
     partial.unlink(missing_ok=True)
     return rough_cut
+
+
+FILMSTRIP_FILENAME = "tasarim_serit.jpg"
+
+
+def filmstrip(video: Path, folder: Path, seconds: float, frames: int = 16, height: int = 64) -> Path | None:
+    """Zaman çizelgesindeki video izi için kare şeridi (tek JPEG, tek FFmpeg komutu). Olmazsa None."""
+    strip = folder / FILMSTRIP_FILENAME
+    if strip.exists() and strip.stat().st_mtime >= video.stat().st_mtime:
+        return strip
+    folder.mkdir(parents=True, exist_ok=True)
+    rate = frames / max(1.0, seconds)
+    command = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(video),
+        "-vf", f"fps={rate:.4f},scale=-2:{height},tile={frames}x1", "-frames:v", "1", "-q:v", "4", str(strip),
+    ]
+    try:
+        result = run_ffmpeg(command, long_job_timeout(None), "Zaman çizelgesi kareleri")
+    except (RuntimeError, OSError, subprocess.SubprocessError):
+        return None
+    return strip if result.returncode == 0 and strip.exists() else None

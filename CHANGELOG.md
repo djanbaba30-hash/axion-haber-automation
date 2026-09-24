@@ -1,3 +1,33 @@
+# v2.7.0 — Tasarım Stüdyosu Canva düzeninde — 2026-09-24
+
+Editör v2.6.0'ı denedi: işlevler çalışıyor, düzen kullanışsızdı (boş alanlar, dağınık araçlar, zor zaman çizelgesi).
+
+## Changed
+- **Yeni düzen (Canva örneğiyle):**
+  - Kenar çubuğu: son video durumu, **Yeniden oluştur**, **İndir**, iki başlığın metni (sığma göstergesiyle),
+    yazı tipi / arka plan ekleme.
+  - Ortada video (ekran yüksekliğine göre boyutlanır); **Düzenle / Son video** geçişi.
+  - Üstte seçili öğeye göre araç çubuğu: yazı için yazı tipi, kalınlık, − boyut +, renk, **S̶ sansür**, aA, parıltı;
+    blur için efekt, şekil, 1:1, sil.
+  - Solda seçili öğenin paneli: yazılar için **animasyon kartları** (Girişte / Çıkışta, hareketli önizlemeyle),
+    eklenen yazının metni ve zamanı; blur için geniş kaydırıcılar (güç, opaklık, yumuşak kenar, açı), zaman, anahtar
+    kareler, canlı takip.
+  - Sağda arka plan küçük resimleri, video çerçevesi kartları, renkler, hız, slogan/logo seçimi.
+  - Altta **katmanlı zaman çizelgesi**: Başlık (başlıklar + sloganlar), Yazı, Logo, Blur/Mozaik (anahtar karelerle),
+    Video (kare şeridi), Arka plan; saniye cetveli, sürüklenebilir oynatma çizgisi; yazı ve blur klipleri sürüklenerek
+    kaydırılır, kenarından uzatılır.
+- **Sansür Canva gibi:** başlığı/yazıyı seç, S̶'ye bas, videoda kelimeye dokun (üstü çizilir, tekrar dokununca kalkar).
+- Tasarım sayfası tüm ekran genişliğini kullanır.
+
+## Removed
+- Paylaş düğmesi (editör: kullanışsız) ve tasarım sayfasındaki paylaşım metni. KURULUM'daki HTTPS/Paylaş adımları
+  yerine "tabletten çalışırken videolar nerede durur" açıklaması.
+
+## Verification
+- `make test` geçti. Headless Chromium'da: başlığa dokunup seçme, animasyon kartı, boyut, sansür (kelimeye dokununca
+  metinde ~~…~~), blur ekleme, zaman çizelgesinde blur klibini taşıma (anahtar kareler birlikte) ve uzatma denendi.
+- Windows'ta ve tablet dokunmatiğinde denenmedi.
+
 # v2.6.0 — Tasarım Stüdyosu: sade Canva, başlık 2 satır kuralı, otomatik son video — 2026-09-24
 
 ## Added

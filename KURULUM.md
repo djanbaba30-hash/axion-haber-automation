@@ -84,28 +84,25 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      - Kurgu bitince Axion şablonu (arka plan, başlıklar, sloganlar, logo) hemen uygulanır: **Son videoyu indir**.
 5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'nda düzenle** veya sol menü): Canva'nın yerini alır.
    **Videoyu oluştur** dediğinde son video (1080×1920, şablonlu) zaten hazırlanır; bir şey değiştirmeyeceksen
-   Video Stüdyosu'ndan **Son videoyu indir** yeterli. Tasarım Stüdyosu'nda:
-   - Solda **canlı önizleme**: videonun son hâli (başlık animasyonları, sloganlar, logo, çerçeve, blurlar) oynar.
-     Altındaki zaman çizelgesine tıklayıp sararsın; ⏮ ⏭ ile kare kare gidersin.
-   - Sağ üstte durum: "hazır ve güncel" ya da "değişiklikler işlenmedi" → **Yeniden oluştur**. **İndir** ve tablette
-     **Paylaş** (Instagram, TikTok, YouTube'a doğrudan; bkz. 3. bölüm) buradadır.
-   - **✏️ Başlıklar:** metni düzelt (Enter ile satırı böl), giriş/çıkış animasyonunu seç ya da "Yok" ile kapat.
-     **✂️ Sansür** kutusundan kelime seçersen videoda üstü çizilir. Yazı tipi, kalınlık, boyut, renk, parıltı,
-     BÜYÜK HARF iki başlık için ortaktır. "⚠️ sığmadı" görürsen başlığı kısalt.
-   - **🔤 Yazılar:** **Yazı ekle** → metin, yazı tipi, renk, görünme aralığı, giriş/çıkış animasyonu. Yerini önizlemede
-     yazıyı sürükleyerek ayarla.
-   - **✨ Efektler:** video çerçevesi (sabit, kovalayan ışıklar, nefes alan parıltı, renk akışı, çizgi yok), renkleri ve
-     hızı; sloganları ve logo kutusunu aç/kapat, efektlerini seç.
-   - **🖼️ Arka plan:** her gün 02:00'de sıradaki gelir; istersen başka birine tıkla.
-   - **📦 Varlıklar:** yeni yazı tipi (.ttf/.otf) veya arka plan ekle; hemen kullanılır. `GITHUB_TOKEN` girdiysen
-     (`windows\anahtarlar.bat`) repoya da yüklenir.
-   - **Blur / mozaik (plaka, yüz):** önizlemenin altında **+ Blur** veya **+ Mozaik** → kutu o anda belirir.
-     Efekt, şekil (dikdörtgen/kare, yuvarlak köşeli, elips/daire), güç, opaklık, **yumuşak kenar** ve **açı** ayarlanır.
-     Kutuyu sürükle; sağ alt yuvarlakla boyutlandır, üstteki yuvarlakla döndür (**▢ Kare** kare yapar). Plaka hareket
-     ediyorsa başka bir ana geç ve kutuyu yeniden taşı/döndür: her değişiklik o anda bir anahtar kare olur (◆), kutu
-     aralarda kendiliğinden kayar ve döner. **Başla/Bitir: şimdi** ile görüneceği aralığı belirle. **Canlı takip**
-     işaretliyken kutuya basılı tut: video yavaş oynar, sen plakayı takip ettikçe yol kaydedilir.
-   - Her değişiklik projeye kendiliğinden kaydedilir.
+   Video Stüdyosu'ndan **Son videoyu indir** yeterli. Tasarım Stüdyosu Canva gibi düzenlenmiştir:
+   - **Sol kenar çubuğu:** son videonun durumu ("hazır ve güncel" / "değişiklikler işlenmedi"), **Yeniden oluştur**,
+     **İndir**, iki başlığın metni (Enter ile satırı böl) ve **Yazı tipi / arka plan ekle**.
+   - **Ortada video:** son hâli oynar (animasyonlar, çerçeve, blur dahil). Bir öğeye (başlık, yazı, logo, blur) dokun.
+   - **Üst çubuk (seçili yazı için):** yazı tipi, kalınlık, − boyut +, renk, **S̶ sansür** (bas, sonra videoda
+     kelimeye dokun: üstü çizilir; tekrar dokununca kalkar), **aA** büyük harf, ✨ parıltı. İki başlığın stili ortaktır.
+   - **Sol panel:** seçili yazının **animasyonu** (Girişte / Çıkışta: Birleşerek, Belirerek, Alttan kayarak, Daktilo,
+     Büyüyerek, Yok); eklediğin yazının metni ve zamanı; blur seçiliyse geniş blur ayarları.
+   - **Sağ panel:** arka plan (Günün = her gün 02:00'de sıradaki), video çerçevesi (sabit, kovalayan ışıklar, nefes alan
+     parıltı, renk akışı, yok), renkler ve hız, sloganlar ve logo (efekt seç veya kapat).
+   - **Altta zaman çizelgesi:** Başlık, Yazı, Logo, Blur, Video ve Arka plan izleri. Tıklayıp sar; klibe dokunup seç;
+     eklediğin yazı ve blur kliplerini sürükleyerek kaydır, kenarından tutup uzat/kısalt. **➕ Yazı**, **◍ Blur**,
+     **▦ Mozaik** buradan eklenir.
+   - **Blur / mozaik (plaka, yüz):** efekt (bulanık/mozaik), şekil (dikdörtgen/kare, yuvarlak köşeli, elips/daire),
+     güç, opaklık, **yumuşak kenar**, **açı**. Kutuyu sürükle; sağ alt yuvarlakla boyutlandır, üstteki yuvarlakla döndür
+     (**1:1** kare yapar). Plaka hareket ediyorsa başka bir ana geç ve kutuyu yeniden taşı/döndür: her değişiklik o anda
+     bir anahtar kare olur (◆), kutu aralarda kendiliğinden kayar. **Canlı takip** açıkken kutuya basılı tut: video
+     yavaş oynar, sen plakayı takip ettikçe yol kaydedilir.
+   - **🎬 Son video** (üst çubukta) oluşturulmuş MP4'ü oynatır. Her değişiklik projeye kendiliğinden kaydedilir.
 
 Videolar başka bir klasördeyse Video Stüdyosu'nda **⚙️ Ayarlar**'daki klasör kutusuna o klasörün yolunu yazman yeterli.
 Telefondan/tabletten çalışırken dosyayı **Tarayıcıdan yükle** seçeneğiyle de gönderebilirsin.
@@ -129,19 +126,13 @@ Bağlanamıyorsan:
 Uzaktan kullanacaksan bilgisayarın uyumasını kapat: Ayarlar → Sistem → Güç → **Ekran ve uyku** →
 "Prize takılıyken cihazı uyku moduna geçir": **Hiçbir zaman**.
 
-### Tabletten doğrudan Instagram/TikTok/YouTube'a paylaşma (HTTPS, bir kerelik ayar)
+### Tabletten çalışırken videolar nerede durur?
 
-Tasarım Stüdyosu'ndaki **📤 Paylaş** düğmesi son videoyu tabletin paylaşım menüsüne verir (Gofile vb. gerekmez).
-Tarayıcılar bunu yalnızca **https** adreslerinde izin verir; Tailscale bunu ücretsiz sağlar:
-
-1. https://login.tailscale.com/admin/dns → **MagicDNS** açık olsun, **HTTPS Certificates** → **Enable**.
-2. Evdeki bilgisayarda (Axion açıkken) Komut İstemi'ni aç ve bir kez şunu yaz: `tailscale serve --bg 8501`
-   (ayar kalıcıdır; bilgisayar yeniden başlasa da geçerli).
-3. Tablette şu adresi aç: `https://BILGISAYAR-ADI.XXXX.ts.net` (tam adresi komutun çıktısında veya Tailscale
-   uygulamasında görürsün). Chrome menüsünden **Ana ekrana ekle** dersen uygulama gibi açılır.
-4. **📤 Paylaş** → Instagram/TikTok/YouTube'u seç. İstersen **İndir** ile Galeri'ye de kaydedebilirsin.
-
-Bu adım henüz editörün tabletinde denenmedi; çalışmazsa http adresiyle devam et (İndir her zaman çalışır).
+Tabletin tarayıcısında açtığın Axion aslında evdeki bilgisayarda çalışır; tabletteki dosyalara erişemez, tablet de
+bilgisayardaki dosyaları görmez. Bu yüzden büyük DHA videolarını tablete indirip yüklemek gerekmez, önerilmez de:
+- DHA videosunu **uzak masaüstüyle evdeki bilgisayarın tarayıcısından** indir (4. bölüm); video bilgisayarda kalır.
+- Axion'da her şey (analiz, kurgu, tasarım) bilgisayarda yapılır; tablete yalnızca küçük önizlemeler gelir.
+- Bitince **İndir** ile son videoyu (~10–20 MB) tablete al ve paylaş.
 
 ## 4. Bilgisayarın tamamına uzaktan erişim (Firefox, DHA paneli vb.)
 

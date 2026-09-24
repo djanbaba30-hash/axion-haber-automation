@@ -68,8 +68,8 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
 
 apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
-  page.py                      Sayfa: solda canlı önizleme/son video; sağda durum+Oluştur/İndir/Paylaş ve sekmeler
-                               (Başlıklar, Yazılar, Efektler, Arka plan, Varlıklar)
+  page.py                      Sayfa: kenar çubuğunda durum, Yeniden oluştur/İndir, başlık metinleri, varlık ekleme;
+                               ana alanda tek editör bileşeni (tasarımın geri kalanı orada)
   design.py                    tasarim.json v2 (Pydantic): başlık stili, başlıklar+efektler, yazı katmanları, slogan/logo,
                                çerçeve, arka plan, blurlar; v1 (v2.5.0) otomatik yükseltilir
   effects.py                   Efekt kütüphanesi: yazı giriş/çıkış, slogan, logo, çerçeve stilleri (numpy alanı)
@@ -79,7 +79,9 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
   render.py                    Tek FFmpeg komutu: kurgu → blur/mozaik → arka plan/çerçeve/grafik → son_video.mp4
   pipeline.py                  Projenin son videosu: tasarımı oku, üret, imzayı kaydet (Video Stüdyosu da çağırır)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
-  editor.py, editor.js         Tarayıcı editörü (components v2): tuval, efektlerin JS eşi, blur/yazı sürükleme; Paylaş
+  editor.py, editor.js         Canva benzeri tarayıcı editörü (components v2): üst araç çubuğu (yazı stili, sansür),
+                               sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
+                               zaman çizelgesi; tasarımı kendisi tutar, her değişiklikte `edits` ile Python'a gönderir
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
@@ -129,12 +131,11 @@ Varlıklar ──────────────────►   data/varl
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 
 
-## Nerede kaldık (2026-09-24) — Faz 5 (Tasarım Stüdyosu, v2.6.0) yapıldı, editörün Windows testi bekleniyor
+## Nerede kaldık (2026-09-24) — Faz 5 (Tasarım Stüdyosu, v2.7.0: Canva düzeni) yapıldı, editörün Windows testi bekleniyor
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
-Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. v2.5.0 (ilk Tasarım Stüdyosu) ve v2.6.0 (sade Canva:
-stiller, yazılar, efektler, çerçeve animasyonu, blur/mozaik v2, otomatik son video, başlık 2 satır kuralı) henüz
-Windows'ta denenmedi.
+Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. Editör v2.6.0'ı Windows'ta açtı ("her şey çalışıyor
+gibi") ve düzen istedi; v2.7.0 Canva düzeni (kenar çubuğu + araç çubuğu + paneller + zaman çizelgesi) henüz denenmedi.
 
 ### Şu an çalışan akış
 1. **Haber Stüdyosu:** ham haber → GPT/Claude (tek çağrı + gerekirse tek düzeltme çağrısı) → başlıklar, paylaşım
@@ -149,7 +150,7 @@ Windows'ta denenmedi.
      eşleşmesi + kavram grupları + rol; kadraj hep tam dolu (bulanık dolgu yok), özneye göre; özne büyükse yavaş
      kaydırma (dikey çekimde yalnız yukarı/aşağı). Video en az 20 sn.
    - Render: tek FFmpeg komutu, 960x1226 (Canva şablonundaki video alanı), önce AMD `h264_amf`, olmazsa x264.
-3. **Tasarım Stüdyosu (v2.6.0, sade Canva):** Video Stüdyosu kurguyla birlikte standart şablonlu `son_video.mp4`'ü de
+3. **Tasarım Stüdyosu (v2.7.0, sade Canva):** Video Stüdyosu kurguyla birlikte standart şablonlu `son_video.mp4`'ü de
    üretir. Editör isterse değiştirir: başlık metni/stili/animasyonu, ~~sansür~~, eklenen yazılar (sürükleyerek konum),
    slogan/logo efektleri (kapatılabilir), çerçeve (sabit, kovalayan ışıklar, nefes, renk akışı, yok), arka plan,
    blur/mozaik (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Canlı önizleme (tuval) son videonun aynısını
@@ -175,7 +176,7 @@ Gerçek model çağrısıyla editörün denemesi bekleniyor (AGENTS kural 5).
 
 ### Sıradaki: editörün Windows testi, sonra Faz 6 (tabletten tam kullanım)
 Editör Windows'ta dener: animasyonların Canva'ya benzerliği, Google Sans, arayüz, blur/mozaik, render süresi (AMF).
-Faz 6 planı ROADMAP'te: HTTPS (Tailscale serve) + Paylaş (kod hazır), DHA için uzak masaüstü, "bağlantıdan indir".
+Faz 6 planı ROADMAP'te: tablette kullanım (DHA videoları uzak masaüstüyle bilgisayara; Paylaş ve APK yok).
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
@@ -184,6 +185,8 @@ Faz 6 planı ROADMAP'te: HTTPS (Tailscale serve) + Paylaş (kod hazır), DHA iç
 - Arayüz testleri AppTest ile; tarayıcıya özgü davranışlar (ör. v2.2.0'daki metin kutusu hatası) AppTest'te görünmeyebilir.
   Tasarım editörü (JS) AppTest'te çalışmaz; Playwright/Chromium ile elle denendi (test paketinde değil). Efekt
   formülleri `effects.py` ile `editor.js`'te iki kez yazılı: birini değiştiren ötekini de değiştirmeli.
+- Editör tasarımı tarayıcıda tutar (başlık metinleri hariç: kenar çubuğu); Python yalnızca haber değişince yükler.
+  Yazı stili/metni değişince atlas PNG'leri Python'da yeniden çizilir (tek yeniden çalıştırma gecikmesi).
 - Tasarım önizlemesi videoyu Streamlit'in medya sunucusuyla verir (`runtime.media_file_mgr`, iç API; streamlit sürümü
   sabit). Olmazsa gömülü veriye (data URL) düşer.
 

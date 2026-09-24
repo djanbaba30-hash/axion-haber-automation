@@ -157,3 +157,16 @@ def headline_char_budget() -> int:
     per_char = font.getlength(sample) / len(sample)
     return int(2 * HEADLINE_MAX_WIDTH * 0.85 / per_char)
 
+
+
+def toggle_strike(text: str, index: int) -> str:
+    """`index`. kelimenin (metindeki sırasıyla, 0'dan) sansür çizgisini açar/kapatır; satır sonları korunur."""
+    out, position = [], 0
+    for line in parse_lines(text, upper=False):
+        parts = []
+        for token in line:
+            struck = token.strike != (position == index)
+            parts.append(f"{STRIKE}{token.text}{STRIKE}" if struck else token.text)
+            position += 1
+        out.append(" ".join(parts))
+    return "\n".join(out)
