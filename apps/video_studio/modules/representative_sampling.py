@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,10 @@ MIN_FRAME_COUNT = 1
 
 MAX_FRAME_COUNT = 4
 
+# Uzun shot'lar (ör. 70 sn röportaj) bu uzunlukta pencerelere bölünür;
+# "kare sayısı" pencere başına uygulanır.
+WINDOW_SECONDS = 10.0
+
 
 # -------------------------------------------------
 # Ana fonksiyon
@@ -28,8 +33,9 @@ def extract_representative_frames(
     frame_count: int = DEFAULT_FRAME_COUNT,
 ) -> list[dict[str, Any]]:
     """
-    Her shot için kullanıcı tarafından belirlenen
-    sayıda temsilci frame çıkarır.
+    Her shot'ı en fazla WINDOW_SECONDS uzunlukta pencerelere böler
+    ve her pencere için kullanıcı tarafından belirlenen sayıda
+    temsilci frame çıkarır.
 
     Amaç:
         Shot'ın genel görsel içeriğini Luna'ya
@@ -74,30 +80,33 @@ def extract_representative_frames(
         if duration <= 0:
             continue
 
-        timestamps = (
-            calculate_representative_timestamps(
-                start_seconds,
-                end_seconds,
-                frame_count,
-            )
-        )
-
+        windows = []
         frame_paths = []
+        frame_index = 0
 
-        for frame_index, timestamp in enumerate(
-            timestamps,
-            start=1,
+        for window_start, window_end in split_into_windows(
+            start_seconds,
+            end_seconds,
         ):
 
-            frame_path = extract_single_frame(
-                video_path,
-                timestamp,
-                shot["shot_number"],
-                frame_index,
-            )
+            window_frames = []
 
-            frame_paths.append(
-                {
+            for timestamp in calculate_representative_timestamps(
+                window_start,
+                window_end,
+                frame_count,
+            ):
+
+                frame_index += 1
+
+                frame_path = extract_single_frame(
+                    video_path,
+                    timestamp,
+                    shot["shot_number"],
+                    frame_index,
+                )
+
+                frame = {
                     "frame_index": frame_index,
                     "timestamp_seconds": round(
                         timestamp,
@@ -105,9 +114,22 @@ def extract_representative_frames(
                     ),
                     "path": str(frame_path),
                 }
+                window_frames.append(frame)
+                frame_paths.append(frame)
+
+            windows.append(
+                {
+                    "start_seconds": round(window_start, 3),
+                    "end_seconds": round(window_end, 3),
+                    "frames": window_frames,
+                }
             )
 
         shot_data = dict(shot)
+
+        shot_data[
+            "analysis_windows"
+        ] = windows
 
         shot_data[
             "analysis_frames"
@@ -117,6 +139,7 @@ def extract_representative_frames(
             "sampling"
         ] = {
             "method": "representative",
+            "window_count": len(windows),
             "frame_count": len(
                 frame_paths
             ),
@@ -127,6 +150,24 @@ def extract_representative_frames(
         )
 
     return results
+
+
+# -------------------------------------------------
+# Uzun shot'ı pencerelere böl
+# -------------------------------------------------
+
+def split_into_windows(
+    start_seconds: float,
+    end_seconds: float,
+    max_seconds: float = WINDOW_SECONDS,
+) -> list[tuple[float, float]]:
+    """Shot'ı en fazla max_seconds uzunlukta, eşit pencerelere böler (deterministik)."""
+
+    duration = end_seconds - start_seconds
+    count = max(1, math.ceil(duration / max_seconds - 1e-9))
+    step = duration / count
+    bounds = [start_seconds + step * index for index in range(count)] + [end_seconds]
+    return list(zip(bounds[:-1], bounds[1:]))
 
 
 # -------------------------------------------------

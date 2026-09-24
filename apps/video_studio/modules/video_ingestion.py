@@ -36,12 +36,7 @@ def save_uploaded_video(uploaded_file, storage_dir: Path | None = None) -> Path:
         return uploaded_file.path
 
     if storage_dir is not None:
-        storage_dir.mkdir(parents=True, exist_ok=True)
-        target = storage_dir / original_name
-        if target.exists():
-            target = storage_dir / f"{target.stem}_{abs(hash(uploaded_file.name)) & 0xfffffff}{target.suffix}"
-        target.write_bytes(uploaded_file.getbuffer())
-        return target
+        return store_upload(uploaded_file, storage_dir)
 
     temp_file = tempfile.NamedTemporaryFile(
         delete=False,
@@ -312,3 +307,22 @@ def format_duration(seconds: float) -> str:
         f"{minutes:02d}:"
         f"{remaining_seconds:02d}"
     )
+
+
+def store_upload(uploaded_file, storage_dir: Path) -> Path:
+    """Tarayıcıdan yüklenen dosyayı proje klasörüne yazar.
+
+    Aynı ad ve boyutta dosya zaten varsa (yeniden analiz) tekrar yazmaz; farklıysa numaralı ad verir.
+    """
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    name = Path(uploaded_file.name)
+    size = int(getattr(uploaded_file, "size", 0) or len(uploaded_file.getbuffer()))
+    target = storage_dir / name.name
+    number = 1
+    while target.exists():
+        if target.stat().st_size == size:
+            return target
+        number += 1
+        target = storage_dir / f"{name.stem}_{number}{name.suffix}"
+    target.write_bytes(uploaded_file.getbuffer())
+    return target

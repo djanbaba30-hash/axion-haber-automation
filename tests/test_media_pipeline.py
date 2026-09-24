@@ -24,16 +24,19 @@ def make_video(path):
     )
 
 
+VISUAL = {"description": "Hasarlı araç", "visual_type": "vehicle", "editorial_role": "detail", "confidence": 0.9}
+
+
 def fake_luna(shots, images, api_key):
-    for shot in shots:
-        for frame in shot["analysis_frames"]:
+    windows = [w for shot in shots for w in shot["analysis_windows"]]
+    for window in windows:
+        for frame in window["frames"]:
             assert Path(frame["path"]).exists()
-    analyzed = [
-        {**shot, "visual_asset": {"visual_type": "olay yeri", "subjects": ["Hasarlı araç"], "editorial_role": "genel plan", "confidence": 0.9}}
-        for shot in shots
-    ]
-    analyzed_images = [{**image, "visual_asset": {"visual_type": "fotoğraf"}} for image in images]
-    return analyzed, analyzed_images, {"model": "test", "estimated_cost_usd": 0.001, "api_calls": 1}
+    return (
+        {w["window_id"]: VISUAL for w in windows},
+        {image["asset_id"]: {**VISUAL, "visual_type": "graphic"} for image in images},
+        {"model": "test", "estimated_cost_usd": 0.001, "api_calls": 1},
+    )
 
 
 def test_local_video_and_image_become_media_library(tmp_path, monkeypatch):
@@ -48,11 +51,14 @@ def test_local_video_and_image_become_media_library(tmp_path, monkeypatch):
         [LocalMediaFile(video), LocalMediaFile(image)], 1, "Ekonomik", "sk-test", progress=messages.append
     )
 
-    assert (library["video_count"], library["image_count"]) == (1, 1)
-    video_asset = library["assets"][0]
+    assert media_pipeline.is_current_media_library(library)
+    video_asset, image_asset = library["assets"]
     assert video_asset["source"]["filename"] == "dha.mp4"
     assert [(s["start_seconds"], s["end_seconds"]) for s in video_asset["shots"]] == [(0.0, 4.0), (4.0, 8.0)]
-    assert library["assets"][1]["path"] == str(image)
+    assert video_asset["shots"][0]["visual"]["description"] == "Hasarlı araç"
+    assert video_asset["shots"][0]["analysis_windows"][0]["window_id"] == "video_001_shot_001_w01"
+    assert image_asset["source"]["original_path"] == str(image)
+    assert image_asset["visual"]["visual_type"] == "graphic"
     assert usage["estimated_cost_usd"] == 0.001
     assert any("sahneler" in m for m in messages)
 
@@ -70,4 +76,27 @@ def test_local_video_and_image_become_media_library(tmp_path, monkeypatch):
     assert video.exists()
 
     rows = media_pipeline.shot_rows(library)
-    assert [(r["Shot"], r["Başlangıç"], r["Görüntü"]) for r in rows] == [(1, "00:00.00", "olay yeri"), (2, "00:04.00", "olay yeri")]
+    assert [(r["Shot"], r["Başlangıç"], r["Görüntü"]) for r in rows] == [(1, "00:00.00", "vehicle"), (2, "00:04.00", "vehicle")]
+
+
+def test_uploaded_image_is_kept_in_project_folder(tmp_path, monkeypatch):
+    class Upload:
+        name = "foto.png"
+        size = 4
+
+        def getbuffer(self):
+            return b"\x89PNG"
+
+    monkeypatch.setattr(media_pipeline, "analyze_media_with_luna", fake_luna)
+    storage = tmp_path / "media"
+    library, _ = media_pipeline.prepare_media_library([Upload()], 1, "Ekonomik", "sk-test", storage_dir=storage)
+    library_again, _ = media_pipeline.prepare_media_library([Upload()], 1, "Ekonomik", "sk-test", storage_dir=storage)
+
+    assert [p.name for p in storage.iterdir()] == ["foto.png"]
+    assert library["assets"][0]["source"]["original_path"] == str(storage / "foto.png")
+    assert library_again["assets"][0]["source"]["sha256"] == library["assets"][0]["source"]["sha256"]
+
+
+def test_old_analysis_is_not_current():
+    assert not media_pipeline.is_current_media_library({"assets": [{"asset_type": "video", "shots": []}]})
+    assert not media_pipeline.is_current_media_library(None)

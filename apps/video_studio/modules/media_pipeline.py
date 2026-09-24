@@ -7,12 +7,16 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
+from shared.media_models import MediaLibrary
+
 from .local_media import LocalMediaFile
 from .media_library import build_image_asset, build_media_library, detect_media_type
 from .representative_sampling import extract_representative_frames
 from .shot_detection import detect_shots
-from .video_asset import build_image_asset_model, build_video_asset
-from .video_ingestion import create_proxy, probe_video, save_uploaded_video
+from .video_asset import LUNA_PROMPT_VERSION, build_image_asset_model, build_video_asset
+from .video_ingestion import create_proxy, probe_video, save_uploaded_video, store_upload
 from .visual_analysis import analyze_media_with_luna
 
 PROXY_WIDTH = 960
@@ -23,12 +27,7 @@ def _image_path(file, storage_dir: Path | None = None) -> Path:
     if isinstance(file, LocalMediaFile):
         return file.path
     if storage_dir is not None:
-        storage_dir.mkdir(parents=True, exist_ok=True)
-        target = storage_dir / Path(file.name).name
-        if target.exists():
-            target = storage_dir / f"{target.stem}_{abs(hash(file.name)) & 0xfffffff}{target.suffix}"
-        target.write_bytes(file.getbuffer())
-        return target
+        return store_upload(file, storage_dir)
     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.name).suffix.lower()) as temp:
         temp.write(file.getbuffer())
     return Path(temp.name)
@@ -62,6 +61,8 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
     for shot in shots:
         shot["asset_id"] = asset_id
         shot["shot_id"] = f"{asset_id}_shot_{int(shot['shot_number']):03d}"
+        for number, window in enumerate(shot["analysis_windows"], 1):
+            window["window_id"] = f"{shot['shot_id']}_w{number:02d}"
     return metadata, shots
 
 
@@ -76,7 +77,7 @@ def prepare_media_library(
     videos = []
     all_shots = []
     images = []
-    image_paths: list[Path] = []
+    temp_images: list[Path] = []
     scratch: list[Path] = []
 
     try:
@@ -93,37 +94,40 @@ def prepare_media_library(
                 image_path = _image_path(file, storage_dir=storage_dir)
                 image_asset["path"] = str(image_path)
                 images.append(image_asset)
-                image_paths.append(image_path)
+                if not isinstance(file, LocalMediaFile) and storage_dir is None:
+                    temp_images.append(image_path)
 
         progress("Luna görüntüleri analiz ediyor")
-        analyzed_shots, analyzed_images, usage = analyze_media_with_luna(all_shots, images, api_key)
-    finally:
-        for path in scratch:
-            path.unlink(missing_ok=True)
-        # Browser upload görselleri geçici olduğundan analizden sonra silinebilir.
-        for path, image in zip(image_paths, images):
-            if not isinstance(next((f for f in files if getattr(f, "name", None) == image["source"]["filename"]), None), LocalMediaFile):
-                path.unlink(missing_ok=True)
+        window_visuals, image_visuals, usage = analyze_media_with_luna(all_shots, images, api_key)
 
-    analyzed_by_id = {shot["shot_id"]: shot for shot in analyzed_shots}
-
-    assets: list[dict[str, Any]] = []
-    for asset_id, metadata, shots in videos:
-        final_shots = [analyzed_by_id.get(shot["shot_id"], shot) for shot in shots]
-        assets.append(
+        assets: list[dict[str, Any]] = [
             build_video_asset(
                 metadata=metadata,
-                shots=final_shots,
+                shots=shots,
+                window_visuals=window_visuals,
                 usage=usage,
                 analysis_mode=analysis_mode,
                 frame_count_per_shot=frame_count,
                 asset_id=asset_id,
             )
-        )
-    for image in analyzed_images:
-        assets.append(build_image_asset_model(image, usage))
+            for asset_id, metadata, shots in videos
+        ]
+        assets.extend(build_image_asset_model(image, image_visuals.get(image["asset_id"]), usage) for image in images)
+    finally:
+        # Proxy, analiz kareleri ve proje dışına yazılmış geçici görseller artık gereksiz.
+        for path in scratch + temp_images:
+            path.unlink(missing_ok=True)
 
     return build_media_library(assets=assets, usage=usage), usage
+
+
+def is_current_media_library(data: dict[str, Any] | None) -> bool:
+    """Kayıtlı analiz bu sürümün sözleşmesi ve Luna prompt'uyla mı yapılmış? Değilse yeniden analiz gerekir."""
+    try:
+        library = MediaLibrary.model_validate(data or {})
+    except ValidationError:
+        return False
+    return bool(library.assets) and all(a.analysis_prompt_version == LUNA_PROMPT_VERSION for a in library.assets)
 
 
 def shot_rows(media_library: dict[str, Any]) -> list[dict[str, Any]]:

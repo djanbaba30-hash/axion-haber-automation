@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from openai import OpenAI
 from pydantic import BaseModel
+
+from shared.media_models import EditorialRole, VisualMetadata, VisualType
 
 
 LUNA_MODEL = "gpt-5.6-luna"
@@ -14,47 +16,74 @@ LUNA_INPUT_PRICE_PER_MILLION = 0.20
 LUNA_OUTPUT_PRICE_PER_MILLION = 1.20
 
 
-class ShotVisualAnalysis(BaseModel):
-    asset_id: str
-    shot_id: str
-    shot_number: int
+# Luna sabit kategorilerden seçmek zorunda (structured output enum); "unknown" seçeneği yok.
+LunaVisualType = Literal[tuple(v.value for v in VisualType if v is not VisualType.UNKNOWN)]
+LunaEditorialRole = Literal[tuple(v.value for v in EditorialRole if v is not EditorialRole.UNKNOWN)]
 
+
+class LunaVisual(BaseModel):
     description: str
-    visual_type: str
-
+    visual_type: LunaVisualType
+    editorial_role: LunaEditorialRole
     visible_people: bool
-
     location: str
-
     text_visible: bool
     visible_text: str
-
-    editorial_role: str
-
     confidence: float
 
 
-class ImageVisualAnalysis(BaseModel):
+class _WindowId(BaseModel):
+    window_id: str
+
+
+class _AssetId(BaseModel):
     asset_id: str
 
-    description: str
-    visual_type: str
 
-    visible_people: bool
+# Kimlik alanı şemada ilk sırada olsun diye önce yazılan taban sonda (pydantic alan sırası).
+class WindowVisualAnalysis(LunaVisual, _WindowId):
+    pass
 
-    location: str
 
-    text_visible: bool
-    visible_text: str
-
-    editorial_role: str
-
-    confidence: float
+class ImageVisualAnalysis(LunaVisual, _AssetId):
+    pass
 
 
 class VisualAnalysisResponse(BaseModel):
-    shots: list[ShotVisualAnalysis]
+    windows: list[WindowVisualAnalysis]
     images: list[ImageVisualAnalysis]
+
+
+SYSTEM_PROMPT = """Haber videosu kurgu sistemi için görsel indeksleme yapıyorsun.
+Her WINDOW ve IMAGE için, verilen id ile tam bir sonuç döndür. Yalnızca karede görüneni yaz;
+kimlik, okunamayan yazı veya haber metni tahmini yapma.
+
+description: Türkçe, tek kısa cümle; kurgucunun sahneyi seçebileceği somut içerik
+  (ör. "Ön kısmı hasar görmüş beyaz otomobil ve etrafında toplanan kalabalık").
+visual_type — karedeki ana özne:
+  person=tek kişi, people=kalabalık/grup, place=mekân/bina/sokak, event=olay anı (kaza, yangın, kavga, müdahale),
+  vehicle=araç, document=belge/kâğıt, screen=ekran/monitör, product=nesne/ürün, landscape=doğa/manzara,
+  graphic=grafik/altyazı/logo, other=hiçbiri.
+editorial_role — kurgudaki işlevi:
+  establishing=genel plan/olay yerini tanıtan, action=olayın hareketli anı, reaction=tepki/ağlama/şaşkınlık,
+  detail=yakın plan ayrıntı (hasar, kan, eşya), context=çevre/bağlam, evidence=kanıt (kamera kaydı, belge),
+  portrait=konuşan kişi/röportaj, generic_broll=genel dolgu görüntü, other=hiçbiri.
+location: görünen mekân türü (ör. "cadde", "dükkân içi"); belirsizse "unknown".
+confidence: 0-1."""
+
+
+def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
+    """Luna sonucunu ortak VisualMetadata sözleşmesine dönüştürür."""
+    return VisualMetadata(
+        description=item.description.strip(),
+        visual_type=item.visual_type,
+        editorial_role=item.editorial_role,
+        visible_people=item.visible_people,
+        location=item.location.strip() or "unknown",
+        text_visible=item.text_visible,
+        visible_text=item.visible_text.strip(),
+        confidence=min(1.0, max(0.0, item.confidence)),
+    ).model_dump(mode="json")
 
 
 def image_mime_type(image_path: Path) -> str:
@@ -164,471 +193,70 @@ def analyze_media_with_luna(
     shots: list[dict[str, Any]],
     images: list[dict[str, Any]],
     api_key: str,
-) -> tuple[
-    list[dict[str, Any]],
-    list[dict[str, Any]],
-    dict[str, Any],
-]:
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
+    """Tüm shot pencerelerini ve görselleri tek Luna çağrısında analiz eder.
 
-    if not shots and not images:
-
-        return (
-            [],
-            [],
-            {
-                "model": LUNA_MODEL,
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "reasoning_tokens": 0,
-                "total_tokens": 0,
-                "api_calls": 0,
-                "frame_count": 0,
-                "estimated_cost_usd": 0.0,
-            },
-        )
-
-    if not api_key:
-
-        raise ValueError(
-            "OPENAI_API_KEY bulunamadı."
-        )
-
-    client = OpenAI(
-        api_key=api_key
-    )
-
-    content = [
-        {
-            "type": "input_text",
-            "text": (
-                "Bir haber videosu için görsel "
-                "asset indeksleme yapıyorsun.\n\n"
-
-                "Aşağıda bir veya daha fazla video "
-                "ve ayrıca tekil görseller bulunmaktadır.\n\n"
-
-                "Her görüntü için yalnızca gerçekten "
-                "görülebilen bilgileri çıkar.\n\n"
-
-                "Görüntüde olmayan ayrıntıları tahmin etme.\n"
-                "Kişilerin kimliğini tahmin etme.\n"
-                "Okunamayan yazıları tahmin etme.\n"
-                "Haber metninden görselde olmayan "
-                "bilgileri çıkarma.\n\n"
-
-                "Video shot'ları için görsel indeksleme yap.\n"
-                "Tekil görseller için de aynı görsel "
-                "indekslemeyi yap.\n\n"
-
-                "Kısa, somut ve edit kullanımına uygun "
-                "sonuçlar üret."
-            ),
-        }
-    ]
-
-    total_frame_count = 0
-
-
-    # =================================================
-    # VIDEO SHOT'LARI
-    # =================================================
-
-    for shot in shots:
-
-        asset_id = shot.get(
-            "asset_id",
-            "",
-        )
-
-        shot_number = int(
-            shot.get(
-                "shot_number",
-                0,
-            )
-        )
-
-        shot_id = (
-            f"{asset_id}_shot_"
-            f"{shot_number:03d}"
-        )
-
-        analysis_frames = shot.get(
-            "analysis_frames",
-            [],
-        )
-
-        content.append(
-            {
-                "type": "input_text",
-                "text": (
-                    f"VIDEO ASSET: {asset_id}\n"
-                    f"SHOT ID: {shot_id}\n"
-                    f"SHOT NUMBER: {shot_number}\n"
-                    f"Zaman: "
-                    f"{shot.get('start_formatted', '')} → "
-                    f"{shot.get('end_formatted', '')}\n"
-                    f"Frame sayısı: "
-                    f"{len(analysis_frames)}"
-                ),
-            }
-        )
-
-        for frame in analysis_frames:
-
-            frame_path = Path(
-                frame["path"]
-            )
-
-            content.append(
-                {
-                    "type": "input_text",
-                    "text": (
-                        f"{shot_id} "
-                        f"Frame "
-                        f"{frame['frame_index']}"
-                    ),
-                }
-            )
-
-            content.append(
-                {
-                    "type": "input_image",
-                    "image_url": image_data_url(frame_path),
-                    "detail": "auto",
-                }
-            )
-
-            total_frame_count += 1
-
-
-    # =================================================
-    # TEKİL GÖRSELLER
-    # =================================================
-
-    for image in images:
-
-        asset_id = image[
-            "asset_id"
-        ]
-
-        image_path = Path(
-            image["path"]
-        )
-
-        content.append(
-            {
-                "type": "input_text",
-                "text": (
-                    f"IMAGE ASSET: "
-                    f"{asset_id}\n"
-                    "Bu tekil görsel "
-                    "1 frame olarak değerlendirilmelidir."
-                ),
-            }
-        )
-
-        content.append(
-            {
-                "type": "input_image",
-                "image_url": image_data_url(image_path),
-                "detail": "auto",
-            }
-        )
-
-        total_frame_count += 1
-
-
-    # =================================================
-    # LUNA
-    # =================================================
-
-    response = client.responses.parse(
-        model=LUNA_MODEL,
-
-        input=[
-            {
-                "role": "system",
-                "content": (
-                    "Sen bir haber video edit sistemi "
-                    "için görsel asset indeksleme "
-                    "motorusun.\n\n"
-
-                    "Her sonucu kendisine verilen "
-                    "asset_id ve shot_id ile ilişkilendir.\n\n"
-
-                    "Bir görüntünün gerçekten gösterdiği "
-                    "şey ile haber metninde anlatılan şeyi "
-                    "birbirine karıştırma."
-                ),
-            },
-
-            {
-                "role": "user",
-                "content": content,
-            },
-        ],
-
-        text_format=VisualAnalysisResponse,
-    )
-
-
-    parsed = response.output_parsed
-
-    if parsed is None:
-
-        raise RuntimeError(
-            "Luna yapılandırılmış görsel "
-            "analiz sonucu döndürmedi."
-        )
-
-
-    # =================================================
-    # USAGE
-    # =================================================
-
-    usage = getattr(
-        response,
-        "usage",
-        None,
-    )
-
-
-    if usage is None:
-
-        input_tokens = 0
-        output_tokens = 0
-        total_tokens = 0
-        reasoning_tokens = 0
-
-    else:
-
-        input_tokens = get_usage_value(
-            usage,
-            "input_tokens",
-        )
-
-        output_tokens = get_usage_value(
-            usage,
-            "output_tokens",
-        )
-
-        total_tokens = get_usage_value(
-            usage,
-            "total_tokens",
-        )
-
-        reasoning_tokens = (
-            get_reasoning_tokens(
-                usage
-            )
-        )
-
-
-    estimated_cost = calculate_cost(
-        input_tokens,
-        output_tokens,
-    )
-
-
+    Döndürür: (window_id → VisualMetadata, image asset_id → VisualMetadata, kullanım).
+    """
+    windows = [window for shot in shots for window in shot.get("analysis_windows", [])]
     usage_data = {
         "model": LUNA_MODEL,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "reasoning_tokens": reasoning_tokens,
-        "total_tokens": total_tokens,
-        "api_calls": 1,
-        "frame_count": total_frame_count,
-        "estimated_cost_usd": estimated_cost,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_tokens": 0,
+        "total_tokens": 0,
+        "api_calls": 0,
+        "frame_count": 0,
+        "estimated_cost_usd": 0.0,
     }
+    if not windows and not images:
+        return {}, {}, usage_data
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY bulunamadı.")
 
-
-    # =================================================
-    # SHOT ANALİZLERİNİ ID İLE EŞLEŞTİR
-    # =================================================
-
-    analysis_by_shot = {
-        item.shot_id: item.model_dump()
-        for item in parsed.shots
-    }
-
-
-    analyzed_shots = []
-
-
-    for shot in shots:
-
-        asset_id = shot.get(
-            "asset_id",
-            "",
-        )
-
-        shot_number = int(
-            shot.get(
-                "shot_number",
-                0,
-            )
-        )
-
-        shot_id = (
-            f"{asset_id}_shot_"
-            f"{shot_number:03d}"
-        )
-
-        shot_data = dict(
-            shot
-        )
-
-        analysis = (
-            analysis_by_shot.get(
-                shot_id
-            )
-        )
-
-
-        if analysis:
-
-            shot_data[
-                "visual_asset"
-            ] = {
-                "visual_type": analysis.get(
-                    "visual_type",
-                    "unknown",
-                ),
-
-                "subjects": (
-                    [analysis.get(
-                        "description",
-                        ""
-                    )]
-                    if analysis.get(
-                        "description",
-                        ""
-                    )
-                    else []
-                ),
-
-                "location": analysis.get(
-                    "location",
-                    "unknown",
-                ),
-
-                "editorial_role": analysis.get(
-                    "editorial_role",
-                    "",
-                ),
-
-                "confidence": analysis.get(
-                    "confidence",
-                    0.0,
-                ),
+    content: list[dict[str, Any]] = []
+    frame_total = 0
+    for window in windows:
+        frames = window.get("frames", [])
+        content.append(
+            {
+                "type": "input_text",
+                "text": f"WINDOW {window['window_id']} ({window['start_seconds']:.1f}-{window['end_seconds']:.1f} sn, {len(frames)} kare)",
             }
-
-        else:
-
-            shot_data[
-                "visual_asset"
-            ] = {
-                "visual_type": "unknown",
-                "subjects": [],
-                "location": "unknown",
-                "editorial_role": "",
-                "confidence": 0.0,
-            }
-
-
-        analyzed_shots.append(
-            shot_data
         )
-
-
-    # =================================================
-    # IMAGE ANALİZLERİ
-    # =================================================
-
-    analysis_by_image = {
-        item.asset_id: item.model_dump()
-        for item in parsed.images
-    }
-
-
-    analyzed_images = []
-
-
+        for frame in frames:
+            content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"])), "detail": "auto"})
+            frame_total += 1
     for image in images:
+        content.append({"type": "input_text", "text": f"IMAGE {image['asset_id']}"})
+        content.append({"type": "input_image", "image_url": image_data_url(Path(image["path"])), "detail": "auto"})
+        frame_total += 1
 
-        asset_id = image[
-            "asset_id"
-        ]
-
-        image_data = dict(
-            image
-        )
-
-        analysis = (
-            analysis_by_image.get(
-                asset_id
-            )
-        )
-
-
-        if analysis:
-
-            image_data[
-                "visual_asset"
-            ] = {
-                "visual_type": analysis.get(
-                    "visual_type",
-                    "unknown",
-                ),
-
-                "subjects": (
-                    [analysis.get(
-                        "description",
-                        ""
-                    )]
-                    if analysis.get(
-                        "description",
-                        ""
-                    )
-                    else []
-                ),
-
-                "location": analysis.get(
-                    "location",
-                    "unknown",
-                ),
-
-                "editorial_role": analysis.get(
-                    "editorial_role",
-                    "",
-                ),
-
-                "confidence": analysis.get(
-                    "confidence",
-                    0.0,
-                ),
-            }
-
-        else:
-
-            image_data[
-                "visual_asset"
-            ] = {
-                "visual_type": "unknown",
-                "subjects": [],
-                "location": "unknown",
-                "editorial_role": "",
-                "confidence": 0.0,
-            }
-
-
-        analyzed_images.append(
-            image_data
-        )
-
-
-    return (
-        analyzed_shots,
-        analyzed_images,
-        usage_data,
+    response = OpenAI(api_key=api_key).responses.parse(
+        model=LUNA_MODEL,
+        input=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": content},
+        ],
+        text_format=VisualAnalysisResponse,
     )
+    parsed = response.output_parsed
+    if parsed is None:
+        raise RuntimeError("Luna yapılandırılmış görsel analiz sonucu döndürmedi.")
+
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        input_tokens = get_usage_value(usage, "input_tokens")
+        output_tokens = get_usage_value(usage, "output_tokens")
+        usage_data.update(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            reasoning_tokens=get_reasoning_tokens(usage),
+            total_tokens=get_usage_value(usage, "total_tokens"),
+            estimated_cost_usd=calculate_cost(input_tokens, output_tokens),
+        )
+    usage_data.update(api_calls=1, frame_count=frame_total)
+
+    window_visuals = {item.window_id: _visual_metadata(item) for item in parsed.windows}
+    image_visuals = {item.asset_id: _visual_metadata(item) for item in parsed.images}
+    return window_visuals, image_visuals, usage_data

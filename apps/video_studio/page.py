@@ -22,7 +22,7 @@ from apps.axion_local.store import (
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project, validate_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
-from apps.video_studio.modules.media_pipeline import prepare_media_library, shot_rows
+from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
 from apps.video_studio.modules.news_package import news_package_to_state
 
 ANALYSIS_OPTIONS = {
@@ -51,7 +51,8 @@ def load_project(project: NewsProject) -> None:
     ss.active_news_project = project.id
 
     media_library = load_project_json(project, MEDIA_LIBRARY_FILENAME)
-    if media_library:
+    ss.media_library_outdated = bool(media_library) and not is_current_media_library(media_library)
+    if media_library and not ss.media_library_outdated:
         ss.media_library = media_library
         ss.analysis_usage = media_library.get("analysis", {})
     else:
@@ -142,6 +143,7 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
             status.update(label="Analiz tamamlandı.", state="complete", expanded=False)
         ss.media_library = media_library
         ss.analysis_usage = usage
+        ss.media_library_outdated = False
         ss.pop("edit_project", None)
         if project:
             save_project_json(project, MEDIA_LIBRARY_FILENAME, media_library)
@@ -152,13 +154,11 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
             st.exception(error)
 
 media_library = ss.get("media_library")
+if not media_library and ss.get("media_library_outdated"):
+    st.info("Bu haberin görüntüleri eski bir sürümle analiz edilmiş. Daha iyi sahne tanıma için görüntüleri yeniden analiz et.")
 if media_library:
-    assets = media_library.get("assets", [])
-    video_count = sum(1 for asset in assets if asset.get("asset_type") == "video")
-    image_count = sum(1 for asset in assets if asset.get("asset_type") == "image")
-    names = [a.get("source", {}).get("filename", "") for a in assets if a.get("asset_type") == "video"]
-    summary = ", ".join(names) if names else f"{image_count} görsel"
-    st.caption(f"Analiz edildi: {summary} · {video_count} video · {image_count} görsel")
+    names = [a.get("source", {}).get("filename", "") for a in media_library.get("assets", [])]
+    st.caption("Analiz edildi: " + ", ".join(names))
 
 
 # =================================================

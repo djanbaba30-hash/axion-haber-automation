@@ -9,16 +9,15 @@ from shared.media_models import (
     AnalysisWindow,
     AudioTechnicalInfo,
     DisplayGeometry,
+    ImageAsset,
     MediaSource,
     Shot,
     VideoAsset,
     VideoGeometry,
-    VisualMetadata,
-    VisualType,
-    EditorialRole,
 )
 
-LUNA_PROMPT_VERSION = "media-index-v2.1"
+# Prompt/şema değişince artır: eski sürümle yapılmış analiz yeniden istenir.
+LUNA_PROMPT_VERSION = "media-index-v2.2"
 
 
 def sha256_file(path: Path) -> str:
@@ -29,71 +28,10 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _enum_value(value: str, enum_cls, default):
-    normalized = str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
-    aliases = {
-        "person": "person",
-        "people": "people",
-        "insan": "person",
-        "insanlar": "people",
-        "place": "place",
-        "mekan": "place",
-        "location": "place",
-        "event": "event",
-        "olay": "event",
-        "vehicle": "vehicle",
-        "araç": "vehicle",
-        "document": "document",
-        "belge": "document",
-        "screen": "screen",
-        "ekran": "screen",
-        "product": "product",
-        "ürün": "product",
-        "landscape": "landscape",
-        "manzara": "landscape",
-        "graphic": "graphic",
-        "grafik": "graphic",
-        "action": "action",
-        "hareket": "action",
-        "reaction": "reaction",
-        "tepki": "reaction",
-        "detail": "detail",
-        "detay": "detail",
-        "context": "context",
-        "bağlam": "context",
-        "evidence": "evidence",
-        "kanıt": "evidence",
-        "portrait": "portrait",
-        "portre": "portrait",
-        "establishing": "establishing",
-        "genel_plan": "establishing",
-        "genel": "establishing",
-        "generic_broll": "generic_broll",
-        "b_roll": "generic_broll",
-    }
-    candidate = aliases.get(normalized, normalized)
-    try:
-        return enum_cls(candidate)
-    except ValueError:
-        return default
-
-
-def _visual_metadata(raw: dict[str, Any]) -> VisualMetadata:
-    return VisualMetadata(
-        description=str(raw.get("description") or ""),
-        visual_type=_enum_value(raw.get("visual_type", ""), VisualType, VisualType.UNKNOWN),
-        visible_people=bool(raw.get("visible_people", False)),
-        location=str(raw.get("location") or "unknown"),
-        text_visible=bool(raw.get("text_visible", False)),
-        visible_text=str(raw.get("visible_text") or ""),
-        editorial_role=_enum_value(raw.get("editorial_role", ""), EditorialRole, EditorialRole.UNKNOWN),
-        confidence=float(raw.get("confidence") or 0.0),
-    )
-
-
 def build_video_asset(
     metadata: dict[str, Any],
     shots: list[dict[str, Any]],
+    window_visuals: dict[str, dict[str, Any]],
     usage: dict[str, Any],
     analysis_mode: str,
     frame_count_per_shot: int,
@@ -136,24 +74,19 @@ def build_video_asset(
     parsed_shots: list[Shot] = []
     for shot in shots:
         shot_id = str(shot["shot_id"])
-        frames = [
-            AnalysisFrame(
-                frame_index=int(frame["frame_index"]),
-                timestamp_seconds=float(frame["timestamp_seconds"]),
-                path=str(frame["path"]),
-            )
-            for frame in shot.get("analysis_frames", [])
-        ]
-        window = None
-        if frames:
-            window = AnalysisWindow(
-                window_id=f"{shot_id}_window_001",
+        windows = [
+            AnalysisWindow(
+                window_id=window["window_id"],
                 shot_id=shot_id,
-                start_seconds=float(shot["start_seconds"]),
-                end_seconds=float(shot["end_seconds"]),
-                frames=frames,
+                start_seconds=float(window["start_seconds"]),
+                end_seconds=float(window["end_seconds"]),
+                frames=[AnalysisFrame(**frame) for frame in window.get("frames", [])],
+                visual=window_visuals.get(window["window_id"]),
             )
-        visual_raw = shot.get("visual_asset") or {}
+            for window in shot.get("analysis_windows", [])
+        ]
+        # Shot özeti: ilk analiz edilmiş pencere (tek pencereli shot'ta aynısı).
+        visual = next((w.visual for w in windows if w.visual is not None), None)
         parsed_shots.append(
             Shot(
                 shot_id=shot_id,
@@ -162,8 +95,8 @@ def build_video_asset(
                 start_seconds=float(shot["start_seconds"]),
                 end_seconds=float(shot["end_seconds"]),
                 duration_seconds=float(shot["duration_seconds"]),
-                analysis_windows=[window] if window else [],
-                visual=_visual_metadata(visual_raw),
+                analysis_windows=windows,
+                visual=visual,
             )
         )
 
@@ -183,25 +116,18 @@ def build_video_asset(
     ).model_dump(mode="json")
 
 
-def build_image_asset_model(image: dict[str, Any], usage: dict[str, Any]) -> dict[str, Any]:
+def build_image_asset_model(image: dict[str, Any], visual: dict[str, Any] | None, usage: dict[str, Any]) -> dict[str, Any]:
     path = Path(image["path"])
-    size_bytes = path.stat().st_size
-    return {
-        "asset_id": image["asset_id"],
-        "asset_type": "image",
-        "schema_version": "1.1",
-        "source": {
-            "filename": path.name,
-            "extension": path.suffix.lower(),
-            "sha256": sha256_file(path),
-            "original_path": str(path),
-            "size_bytes": size_bytes,
-        },
-        "geometry": None,
-        "visual": VisualMetadata.model_validate(
-            image.get("visual_asset") or {}
-        ).model_dump(mode="json") if image.get("visual_asset") else None,
-        "analysis_model": usage.get("model", ""),
-        "analysis_prompt_version": LUNA_PROMPT_VERSION,
-        "metadata": {},
-    }
+    return ImageAsset(
+        asset_id=image["asset_id"],
+        source=MediaSource(
+            filename=image["source"]["filename"],
+            extension=path.suffix.lower(),
+            sha256=sha256_file(path),
+            original_path=str(path),
+            size_bytes=path.stat().st_size,
+        ),
+        visual=visual,
+        analysis_model=usage.get("model", ""),
+        analysis_prompt_version=LUNA_PROMPT_VERSION,
+    ).model_dump(mode="json")

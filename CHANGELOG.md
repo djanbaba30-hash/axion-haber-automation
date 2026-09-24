@@ -1,3 +1,19 @@
+# v1.7.1 — Luna sınıflandırma düzeltmesi ve uzun shot pencereleri — 2026-09-24
+
+## Fixed
+- Luna sonuçlarında `visual_type`/`editorial_role` `unknown`, `description` boş kalıyordu: açıklama yanlış alana
+  yazılıyordu ve serbest metin kategoriler enum'a eşlenemiyordu. Luna şeması artık enum'lu; tüm alanlar aktarılıyor.
+- Eski formatta kayıtlı `media_library.json` Video Studio'yu çökertiyordu; artık "yeniden analiz et" bilgisi gösteriliyor.
+- Tarayıcıdan yüklenen görsel analizden sonra silinip ardından okunmaya çalışılıyordu (çökme); proje `media/` klasöründe kalıyor.
+- Yüklenen dosya adları `hash()` ile (her açılışta farklı) üretiliyordu; aynı dosya yeniden yüklenince kopya birikmesi önlendi.
+- v1.7.0 ile kırılan 3 test düzeltildi.
+
+## Added
+- Uzun shot'lar en fazla 10 sn'lik analiz pencerelerine bölünüyor (tek Luna çağrısı korunuyor); her pencerenin kendi görsel analizi var.
+
+## Verification
+- `make test` geçti (Linux). Gerçek Luna çağrısı ve Windows doğrulaması editör tarafından yapılacak.
+
 # v1.7.0 — Faz 2 sözleşme geçişi — 2026-09-24
 
 ## Changed

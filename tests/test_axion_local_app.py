@@ -107,27 +107,54 @@ def test_stale_audio_blocks_saving(local_env):
     assert not any(b.label == "Sadece kaydet" for b in at.button)
 
 
-def test_saved_media_analysis_is_restored(local_env):
+def media_library(shots=()):
+    from apps.video_studio.modules.video_asset import LUNA_PROMPT_VERSION
+
+    return {
+        "analysis": {"estimated_cost_usd": 0.0046},
+        "assets": [{
+            "asset_id": "video_001", "asset_type": "video", "analysis_prompt_version": LUNA_PROMPT_VERSION,
+            "source": {"filename": "dha.mp4", "sha256": "a" * 64},
+            "geometry": {"encoded_width": 1920, "encoded_height": 1080, "display": {"width": 1920, "height": 1080}},
+            "shots": list(shots),
+        }],
+    }
+
+
+def saved_project(library):
     folder = store.save_news_project(
         NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3"
     )
     project = store.get_news_project(folder.name)
-    library = {
-        "video_count": 1, "image_count": 0, "analysis": {"estimated_cost_usd": 0.0046},
-        "assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": [
-            {"shot_number": 1, "start_formatted": "00:00.00", "end_formatted": "00:08.32", "duration_seconds": 8.32,
-             "visual": {"visual_type": "olay yeri", "editorial_role": "genel plan", "subjects": ["Kalabalık"]}},
-        ]}],
-    }
     store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, library)
+    return project
+
+
+def test_saved_media_analysis_is_restored(local_env):
+    library = media_library([{
+        "shot_id": "video_001_shot_001", "asset_id": "video_001", "shot_number": 1,
+        "start_seconds": 0.0, "end_seconds": 8.32, "duration_seconds": 8.32,
+        "visual": {"description": "Kalabalık", "visual_type": "people", "editorial_role": "establishing"},
+    }])
+    project = saved_project(library)
     at = start()
     at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
     assert at.session_state["media_library"] == library
-    assert at.dataframe[0].value["Görüntü"].tolist() == ["olay yeri"]
+    assert at.dataframe[0].value["Görüntü"].tolist() == ["people"]
     assert at.session_state["edit_project"]["audio"]["duration_seconds"] == 24.2
     assert store.load_project_json(project, store.EDIT_PROJECT_FILENAME) is not None
     assert any("Proje hazır" in s.value for s in at.success)
+
+
+def test_outdated_media_analysis_asks_for_reanalysis(local_env):
+    saved_project({"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    assert not at.exception
+    assert "media_library" not in at.session_state
+    assert any("yeniden analiz" in i.value for i in at.info)
+    assert not at.success
 
 
 def test_settings_are_remembered_between_sessions(local_env):
@@ -151,9 +178,7 @@ def test_settings_survive_page_switch(local_env):
 
 
 def test_video_studio_shows_no_shot_table_outside_developer_info(local_env):
-    folder = store.save_news_project(NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3")
-    project = store.get_news_project(folder.name)
-    store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, {"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
+    saved_project(media_library())
     at = start()
     at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
