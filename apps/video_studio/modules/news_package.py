@@ -8,20 +8,55 @@ SUPPORTED_SCHEMA_VERSIONS = {"1.0", "1.1"}
 
 
 def normalize_news_package(data: dict[str, Any]) -> dict[str, Any]:
-    """Axion Haber'den gelen JSON'u Video Studio'nun ortak sözleşmesine normalize eder."""
+    """Axion Haber'den gelen JSON'u Video Studio'nun ortak sözleşmesine normalize eder.
+
+    Hem mevcut Axion Haber formatını (haber alanları root seviyesinde)
+    hem de nested ``news`` yapısını destekler.
+    """
     if not isinstance(data, dict):
         raise ValueError("NewsPackage JSON nesnesi olmalı.")
 
-    news = data.get("news") if isinstance(data.get("news"), dict) else {}
+    nested_news = data.get("news") if isinstance(data.get("news"), dict) else {}
+
+    def first_value(*values: Any) -> str:
+        for value in values:
+            if value is not None and str(value).strip():
+                return str(value).strip()
+        return ""
 
     normalized = {
         "schema_version": str(data.get("schema_version") or "1.0"),
         "news": {
-            "headline_1": str(news.get("headline_1", news.get("baslik1", "")) or "").strip(),
-            "headline_2": str(news.get("headline_2", news.get("baslik2", "")) or "").strip(),
-            "caption": str(news.get("caption", news.get("icerik", "")) or "").strip(),
-            "tts_text": str(news.get("tts_text", news.get("tts", "")) or "").strip(),
-            "source_text": str(news.get("source_text", news.get("raw_text", "")) or "").strip(),
+            "headline_1": first_value(
+                nested_news.get("headline_1"),
+                nested_news.get("baslik1"),
+                data.get("headline_1"),
+                data.get("baslik1"),
+            ),
+            "headline_2": first_value(
+                nested_news.get("headline_2"),
+                nested_news.get("baslik2"),
+                data.get("headline_2"),
+                data.get("baslik2"),
+            ),
+            "caption": first_value(
+                nested_news.get("caption"),
+                nested_news.get("icerik"),
+                data.get("caption"),
+                data.get("icerik"),
+            ),
+            "tts_text": first_value(
+                nested_news.get("tts_text"),
+                nested_news.get("tts"),
+                data.get("tts_text"),
+                data.get("tts"),
+            ),
+            "source_text": first_value(
+                nested_news.get("source_text"),
+                nested_news.get("raw_text"),
+                data.get("source_text"),
+                data.get("raw_text"),
+            ),
         },
         "audio": data.get("audio") if isinstance(data.get("audio"), dict) else {},
         "metadata": data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
