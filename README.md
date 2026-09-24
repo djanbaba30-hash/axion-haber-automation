@@ -89,11 +89,12 @@ Bu ayrım bilinçli: iki uygulamanın deploy yaşam döngüsünü birbirine bağ
 ## Test
 
 ```bash
-python -m unittest discover -s tests -v
+pip install -r requirements-dev.txt
+make test
 ```
 
 ## Notlar
 
 - `data/` Streamlit Cloud üzerinde kalıcı disk değildir. TTS kalibrasyonu ve SQLite geçmişi yerel/ephemeral depolamadır. Kalıcı üretim geçmişi gerektiğinde harici bir storage katmanı eklenmelidir.
-- AI ve TTS çağrılarında transient hata için sınırlı exponential backoff vardır; editoryal validation hataları otomatik retry edilmez.
+- AI (OpenAI/Claude) çağrılarında transient hata için sınırlı exponential backoff vardır; SDK'ların kendi retry'ı kapalıdır. ElevenLabs TTS çağrısı retry edilmez (tekrar deneme karakter kotası harcayabilir). Editoryal validation hataları otomatik retry edilmez.
 - Caption'ın bilgi yoğunluğu korunur; optimizasyon haber bilgisini kısaltmak için yapılmamıştır.

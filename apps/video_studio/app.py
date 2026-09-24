@@ -1,9 +1,15 @@
 import hashlib
+import hmac
 import json
+import sys
 import tempfile
 from pathlib import Path
 
 import streamlit as st
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from modules.audio_ingestion import (
     probe_audio,
@@ -73,13 +79,14 @@ def check_password() -> bool:
         return True
 
     def entered() -> None:
-        st.session_state.video_password_correct = (
-            st.session_state.get("video_password", "") == expected
+        st.session_state.video_password_correct = hmac.compare_digest(
+            str(st.session_state.get("video_password", "")).encode("utf-8"),
+            expected.encode("utf-8"),
         )
         st.session_state.pop("video_password", None)
 
     st.text_input("Şifre", type="password", key="video_password", on_change=entered)
-    if st.session_state.get("video_password_correct") is False and "video_password" not in st.session_state:
+    if st.session_state.get("video_password_correct") is False:
         st.error("Şifre yanlış.")
     return False
 
@@ -278,7 +285,10 @@ if uploaded_files:
 
                         proxy_path = (
                             create_proxy(
-                                video_path
+                                video_path,
+                                duration_seconds=metadata.get(
+                                    "duration_seconds"
+                                ),
                             )
                         )
 

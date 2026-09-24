@@ -47,7 +47,7 @@ Sonuç: sonuç, son gelişme, resmi açıklama/soruşturma durumu.
   çıktısında anlamı bozmadan yıldızlama uygula: s*lah, b*çak, c*nayet vb.
 - TTS metninde yıldızlama kullanma; seslendirmeyi bozabilecek sansürlü yazım yerine
   gerekiyorsa nötr/genel bir ifade kullan.
-- Caption sonuna yalnızca ham haberde bulunan kaynak bilgisini ek.
+- Caption sonuna yalnızca ham haberde bulunan kaynak bilgisini ekle.
 
 TTS
 - Caption'dan daha kısa ve seslendirmeye uygun olmalı.
@@ -110,6 +110,7 @@ Caption detaylı, TTS daha kısa olsun.
 
 
 def build_correction_prompt(style, duration_label, tts_min, tts_target, tts_max, raw_text, current_result, errors):
+    error_lines = "".join(f"\n- {e}" for e in errors)
     return f"""
 <duzeltme>
 Mevcut çıktıyı yalnızca aşağıdaki kalite kontrol sorunlarını gidererek düzelt.
@@ -118,7 +119,7 @@ Yeni bilgi uydurma. Haber bilgisini koru. Seçilen üslubu koru. Sorun olmayan a
 <uslup>{style}</uslup>
 <tts_sure>{duration_label}</tts_sure>
 <tts_karakter_hedefi>{tts_min}-{tts_max}; merkez {tts_target}</tts_karakter_hedefi>
-<kontrol_sorunlari>{''.join(f"\n- {e}" for e in errors)}</kontrol_sorunlari>
+<kontrol_sorunlari>{error_lines}</kontrol_sorunlari>
 <ham_haber>{raw_text}</ham_haber>
 <mevcut_cikti>
 <baslik1>{current_result.baslik1}</baslik1>

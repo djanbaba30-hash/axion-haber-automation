@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -8,7 +9,26 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 NEWS_PACKAGE_VERSION = "1.1"
-SUPPORTED_NEWS_PACKAGE_VERSIONS = {"1.0", "1.1"}
+LEGACY_NEWS_PACKAGE_VERSION = "1.0"
+SUPPORTED_NEWS_PACKAGE_VERSIONS = {LEGACY_NEWS_PACKAGE_VERSION, NEWS_PACKAGE_VERSION}
+
+# 1.0 dosyalarında görülen alan adları; ilk dolu olan kazanır.
+LEGACY_TEXT_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "headline_1": ("headline_1", "baslik1"),
+    "headline_2": ("headline_2", "baslik2"),
+    "caption": ("caption", "icerik"),
+    "tts_text": ("tts_text", "tts"),
+    "source_text": ("source_text", "raw_text"),
+}
+LEGACY_PASSTHROUGH_FIELDS = (
+    "created_at",
+    "provider",
+    "model",
+    "tts_duration_target",
+    "tts_actual_duration_seconds",
+    "tts_voice_id",
+    "tts_speed",
+)
 
 
 class TTSAlignment(BaseModel):
@@ -45,6 +65,11 @@ class TTSAlignment(BaseModel):
         return self.end_seconds[-1] if self.end_seconds else 0.0
 
 
+def ensure_alignment_matches_text(alignment: TTSAlignment | None, tts_text: str) -> None:
+    if alignment is not None and "".join(alignment.characters) != tts_text:
+        raise ValueError("TTS alignment karakterleri tts_text ile birebir eşleşmiyor.")
+
+
 class NewsPackage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -69,37 +94,84 @@ class NewsPackage(BaseModel):
     def validate_schema_version(cls, value: str) -> str:
         if value != NEWS_PACKAGE_VERSION:
             raise ValueError(
-                f"NewsPackage schema_version {NEWS_PACKAGE_VERSION} olmalı; gelen: {value!r}"
+                f"NewsPackage schema_version {NEWS_PACKAGE_VERSION} olmalı; gelen: {value!r}. "
+                "Eski dosyalar için parse_news_package kullan."
             )
         return value
 
     @model_validator(mode="after")
     def validate_tts_alignment(self) -> "NewsPackage":
-        if self.tts_alignment is not None and "".join(self.tts_alignment.characters) != self.tts_text:
-            raise ValueError("TTS alignment karakterleri tts_text ile birebir eşleşmiyor.")
+        ensure_alignment_matches_text(self.tts_alignment, self.tts_text)
         return self
 
 
+def _payload_version(data: dict[str, Any]) -> str:
+    version = data.get("schema_version")
+    if version is None or not str(version).strip():
+        return LEGACY_NEWS_PACKAGE_VERSION
+    return str(version).strip()
+
+
+def _first_text(*values: Any) -> str:
+    for value in values:
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
 def migrate_news_package_v1_to_v1_1(data: dict[str, Any]) -> dict[str, Any]:
-    """Migrate the flat NewsPackage 1.0 payload to 1.1 without rejecting it."""
+    """1.0 paketini (düz, iç içe `news` veya Türkçe alan adlı) 1.1 yapısına taşır.
+
+    Tanınmayan alanlar kaybolmasın diye metadata["legacy_fields"] altına alınır.
+    """
     if not isinstance(data, dict):
         raise TypeError("NewsPackage payload bir dict olmalı.")
-    version = str(data.get("schema_version", "1.0"))
-    if version != "1.0":
+    version = _payload_version(data)
+    if version != LEGACY_NEWS_PACKAGE_VERSION:
         raise ValueError(f"1.0 migration için beklenen sürüm 1.0; gelen: {version!r}")
-    migrated = dict(data)
-    migrated["schema_version"] = NEWS_PACKAGE_VERSION
-    migrated.setdefault("tts_alignment", None)
+
+    nested = data.get("news") if isinstance(data.get("news"), dict) else {}
+    migrated: dict[str, Any] = {"schema_version": NEWS_PACKAGE_VERSION}
+    for field, aliases in LEGACY_TEXT_FIELD_ALIASES.items():
+        migrated[field] = _first_text(
+            *(nested.get(alias) for alias in aliases),
+            *(data.get(alias) for alias in aliases),
+        )
+    for field in LEGACY_PASSTHROUGH_FIELDS:
+        if data.get(field) is not None:
+            migrated[field] = data[field]
+
+    metadata = dict(data["metadata"]) if isinstance(data.get("metadata"), dict) else {}
+    known = (
+        {"schema_version", "news", "metadata", "tts_alignment"}
+        | set(LEGACY_PASSTHROUGH_FIELDS)
+        | {alias for aliases in LEGACY_TEXT_FIELD_ALIASES.values() for alias in aliases}
+    )
+    leftovers = {key: value for key, value in data.items() if key not in known}
+    if leftovers:
+        metadata["legacy_fields"] = leftovers
+    migrated["metadata"] = metadata
+    migrated["tts_alignment"] = None
     return migrated
 
 
 def normalize_news_package_payload(data: dict[str, Any]) -> dict[str, Any]:
-    version = str(data.get("schema_version", "1.0"))
-    if version == "1.0":
+    if not isinstance(data, dict):
+        raise TypeError("NewsPackage payload bir dict olmalı.")
+    version = _payload_version(data)
+    if version == LEGACY_NEWS_PACKAGE_VERSION:
         return migrate_news_package_v1_to_v1_1(data)
     if version == NEWS_PACKAGE_VERSION:
         return data
-    raise ValueError(f"Desteklenmeyen NewsPackage schema_version: {version!r}")
+    raise ValueError(
+        f"Desteklenmeyen NewsPackage schema_version: {version!r}. "
+        f"Desteklenen: {', '.join(sorted(SUPPORTED_NEWS_PACKAGE_VERSIONS))}."
+    )
+
+
+def parse_news_package(data: dict[str, Any]) -> NewsPackage:
+    """Her sürüm için tek giriş noktası: gerekirse migrate eder, sonra doğrular."""
+    return NewsPackage.model_validate(normalize_news_package_payload(data))
 
 
 def build_news_package(**kwargs: Any) -> NewsPackage:
@@ -114,7 +186,4 @@ def save_news_package(package: NewsPackage, path: str | Path) -> Path:
 
 
 def load_news_package(path: str | Path) -> NewsPackage:
-    raw = Path(path).read_text(encoding="utf-8")
-    import json
-    payload = normalize_news_package_payload(json.loads(raw))
-    return NewsPackage.model_validate(payload)
+    return parse_news_package(json.loads(Path(path).read_text(encoding="utf-8-sig")))

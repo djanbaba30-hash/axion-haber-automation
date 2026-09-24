@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import re
-import subprocess
-
-FFMPEG_TIMEOUT_SECONDS = 120
 from pathlib import Path
 from typing import Any
+
+from .ffmpeg_runner import long_job_timeout, run_ffmpeg
 
 
 # -------------------------------------------------
@@ -61,6 +60,7 @@ def detect_shots(
     timestamps = detect_scene_changes(
         video_path,
         threshold=threshold,
+        duration_seconds=duration_seconds,
     )
 
     # -------------------------------------------------
@@ -79,6 +79,7 @@ def detect_shots(
         fallback_timestamps = detect_scene_changes(
             video_path,
             threshold=FALLBACK_THRESHOLD,
+            duration_seconds=duration_seconds,
         )
 
         timestamps = fallback_timestamps
@@ -192,6 +193,7 @@ def detect_shots(
 def detect_scene_changes(
     video_path: Path,
     threshold: float,
+    duration_seconds: float | None = None,
 ) -> list[float]:
     """
     FFmpeg scdet filtresi ile scene-change
@@ -219,12 +221,10 @@ def detect_scene_changes(
         "-",
     ]
 
-    result = subprocess.run(
+    result = run_ffmpeg(
         command,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=FFMPEG_TIMEOUT_SECONDS,
+        long_job_timeout(duration_seconds),
+        "FFmpeg sahne tespiti",
     )
 
     # FFmpeg scdet çıktısı stderr üzerinden gelir.

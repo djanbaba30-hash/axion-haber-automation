@@ -4,4 +4,3 @@ anthropic==1.8.0
 elevenlabs==2.68.0
 pydantic==2.13.5
 mutagen==1.48.1
-pytest==9.0.2

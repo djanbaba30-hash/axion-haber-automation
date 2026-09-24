@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import subprocess
-
-FFMPEG_TIMEOUT_SECONDS = 120
 import tempfile
 from pathlib import Path
 from typing import Any
+
+from .ffmpeg_runner import FRAME_TIMEOUT_SECONDS, run_ffmpeg
 
 
 # -------------------------------------------------
@@ -270,13 +269,11 @@ def extract_single_frame(
         str(frame_path),
     ]
 
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=FFMPEG_TIMEOUT_SECONDS,
-    )
+    try:
+        result = run_ffmpeg(command, FRAME_TIMEOUT_SECONDS, "FFmpeg frame çıkarma")
+    except RuntimeError:
+        frame_path.unlink(missing_ok=True)
+        raise
 
     if result.returncode != 0:
 

@@ -1,5 +1,5 @@
 test:
-	python -m unittest discover -s tests -v
+	python -m pytest
 
 news:
 	streamlit run apps/news_studio/app.py

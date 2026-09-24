@@ -85,6 +85,12 @@ def encode_image(
     ).decode("utf-8")
 
 
+def image_data_url(
+    image_path: Path,
+) -> str:
+    return f"data:{image_mime_type(image_path)};base64,{encode_image(image_path)}"
+
+
 def get_usage_value(
     usage: Any,
     attribute: str,
@@ -273,10 +279,6 @@ def analyze_media_with_luna(
                 frame["path"]
             )
 
-            image_base64 = encode_image(
-                frame_path
-            )
-
             content.append(
                 {
                     "type": "input_text",
@@ -291,10 +293,7 @@ def analyze_media_with_luna(
             content.append(
                 {
                     "type": "input_image",
-                    "image_url": (
-                        "data:{image_mime_type(frame_path)};base64,"
-                        f"{image_base64}"
-                    ),
+                    "image_url": image_data_url(frame_path),
                     "detail": "auto",
                 }
             )
@@ -316,10 +315,6 @@ def analyze_media_with_luna(
             image["path"]
         )
 
-        image_base64 = encode_image(
-            image_path
-        )
-
         content.append(
             {
                 "type": "input_text",
@@ -335,10 +330,7 @@ def analyze_media_with_luna(
         content.append(
             {
                 "type": "input_image",
-                "image_url": (
-                    "data:image/jpeg;base64,"
-                    f"{image_base64}"
-                ),
+                "image_url": image_data_url(image_path),
                 "detail": "auto",
             }
         )

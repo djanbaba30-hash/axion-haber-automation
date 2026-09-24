@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator, field_valida
 
 
 MEDIA_SCHEMA_VERSION = "1.1"
+TIME_TOLERANCE_SECONDS = 0.001
 
 
 class MediaType(str, Enum):
@@ -111,6 +112,10 @@ class DisplayGeometry(BaseModel):
     @field_validator("rotation_degrees", mode="before")
     @classmethod
     def normalize_rotation(cls, value: int | float) -> int:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("Rotasyon sayısal olmalı.")
+        if isinstance(value, float) and not value.is_integer():
+            raise ValueError("Rotasyon tam sayı derece olmalı (0/90/180/270).")
         normalized = int(value) % 360
         if normalized not in {0, 90, 180, 270}:
             raise ValueError("Rotasyon 0/90/180/270 dereceye normalize edilebilmeli.")
@@ -118,7 +123,16 @@ class DisplayGeometry(BaseModel):
 
 
 class ImageGeometry(DisplayGeometry):
+    """width/height EXIF uygulanmış (ekranda görünen) boyutlardır; exif_orientation ham EXIF etiketidir (1–8)."""
+
     exif_orientation: int | None = None
+
+    @field_validator("exif_orientation")
+    @classmethod
+    def valid_exif_orientation(cls, value: int | None) -> int | None:
+        if value is not None and not 1 <= value <= 8:
+            raise ValueError("EXIF orientation 1–8 aralığında olmalı.")
+        return value
 
 
 class VideoGeometry(BaseModel):
@@ -189,8 +203,17 @@ class AnalysisWindow(BaseModel):
 
     @model_validator(mode="after")
     def validate_range(self) -> "AnalysisWindow":
+        if self.start_seconds < 0:
+            raise ValueError("AnalysisWindow start_seconds negatif olamaz.")
         if self.start_seconds >= self.end_seconds:
             raise ValueError("AnalysisWindow start_seconds < end_seconds olmalı.")
+        for frame in self.frames:
+            if not (
+                self.start_seconds - TIME_TOLERANCE_SECONDS
+                <= frame.timestamp_seconds
+                <= self.end_seconds + TIME_TOLERANCE_SECONDS
+            ):
+                raise ValueError("AnalysisFrame zamanı pencere aralığının dışında.")
         return self
 
 
@@ -207,6 +230,8 @@ class Shot(BaseModel):
 
     @model_validator(mode="after")
     def validate_range(self) -> "Shot":
+        if self.start_seconds < 0:
+            raise ValueError("Shot start_seconds negatif olamaz.")
         if self.start_seconds >= self.end_seconds:
             raise ValueError("Shot start_seconds < end_seconds olmalı.")
         expected = self.end_seconds - self.start_seconds
@@ -215,6 +240,11 @@ class Shot(BaseModel):
         for window in self.analysis_windows:
             if window.shot_id != self.shot_id:
                 raise ValueError("AnalysisWindow shot_id, parent Shot ile eşleşmeli.")
+            if (
+                window.start_seconds < self.start_seconds - TIME_TOLERANCE_SECONDS
+                or window.end_seconds > self.end_seconds + TIME_TOLERANCE_SECONDS
+            ):
+                raise ValueError("AnalysisWindow, parent Shot aralığının dışında.")
         return self
 
 
