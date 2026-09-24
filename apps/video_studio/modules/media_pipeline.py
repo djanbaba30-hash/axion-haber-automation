@@ -19,9 +19,16 @@ PROXY_WIDTH = 960
 Progress = Callable[[str], None]
 
 
-def _image_path(file) -> Path:
+def _image_path(file, storage_dir: Path | None = None) -> Path:
     if isinstance(file, LocalMediaFile):
         return file.path
+    if storage_dir is not None:
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        target = storage_dir / Path(file.name).name
+        if target.exists():
+            target = storage_dir / f"{target.stem}_{abs(hash(file.name)) & 0xfffffff}{target.suffix}"
+        target.write_bytes(file.getbuffer())
+        return target
     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.name).suffix.lower()) as temp:
         temp.write(file.getbuffer())
     return Path(temp.name)
@@ -34,9 +41,9 @@ def _scratch_files(metadata: dict[str, Any], shots: list[dict[str, Any]]) -> lis
     return paths
 
 
-def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress):
+def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, storage_dir: Path | None = None):
     progress(f"{file.name}: video okunuyor")
-    video_path = save_uploaded_video(file)
+    video_path = save_uploaded_video(file, storage_dir=storage_dir)
     metadata = probe_video(video_path)
     metadata["original_filename"] = file.name
     metadata["original_path"] = str(video_path)
@@ -64,6 +71,7 @@ def prepare_media_library(
     analysis_mode: str,
     api_key: str,
     progress: Progress = lambda message: None,
+    storage_dir: Path | None = None,
 ):
     videos = []
     all_shots = []
@@ -76,13 +84,13 @@ def prepare_media_library(
             media_type = detect_media_type(file.name)
             if media_type == "video":
                 asset_id = f"video_{len(videos) + 1:03d}"
-                metadata, shots = _ingest_video(file, asset_id, frame_count, progress)
+                metadata, shots = _ingest_video(file, asset_id, frame_count, progress, storage_dir=storage_dir)
                 scratch.extend(_scratch_files(metadata, shots))
                 videos.append((asset_id, metadata, shots))
                 all_shots.extend(shots)
             else:
                 image_asset = build_image_asset(file, len(images) + 1)
-                image_path = _image_path(file)
+                image_path = _image_path(file, storage_dir=storage_dir)
                 image_asset["path"] = str(image_path)
                 images.append(image_asset)
                 image_paths.append(image_path)
