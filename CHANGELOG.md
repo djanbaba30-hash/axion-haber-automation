@@ -1,3 +1,24 @@
+# v1.2.0 — Viral TTS quality — 2026-09-24
+
+## Changed
+- News prompt tuned for Turkish social media:
+  - first TTS sentence carries the most striking event;
+  - every sentence must add new information (restating an event or a number counts as repetition);
+  - the duration target is an upper bound — add unused facts, otherwise finish short;
+  - conversational tone without agency phrases, semicolons or street-level addresses;
+  - no license plates or ID-type details;
+  - witness guesses are attributed, not stated as fact;
+  - the two headlines must not repeat each other or use verbs that are not in the source.
+- Structured output gains `tts_plani` (one short line per TTS sentence, before `tts`), so the model plans distinct facts inside the same call. No extra API call.
+- Validation:
+  - TTS below the target is now a warning instead of an error, so it no longer triggers a correction call. Below 60% of the minimum is still an error; above the maximum still is too.
+  - Heuristic repetition warning for TTS sentences (a shared number plus a shared word stem, or 3+ shared stems).
+  - `NN ABC NNN plakalı` is removed automatically, with a warning.
+  - TTS semicolons are split into sentences.
+
+## Cost
+- About +345 input tokens per request, mostly in the cached system prompt, and about +60 output tokens for the plan. Under-length TTS no longer costs a second request.
+
 # v1.1.2 — Contract revision and fixes — 2026-09-24
 
 ## Fixed

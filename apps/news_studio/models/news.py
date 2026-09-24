@@ -5,6 +5,7 @@ class NewsOutput(BaseModel):
     baslik1: str
     baslik2: str
     icerik: str
+    tts_plani: list[str]
     tts: str
 
 
