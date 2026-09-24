@@ -3,14 +3,15 @@
 Ham haber ve DHA videolarından sosyal medyaya hazır haber videosu üretimini otomatikleştiren,
 editörün **kendi Windows bilgisayarında** çalışan yerel uygulama.
 
-Tek uygulama, iki sayfa:
+Tek uygulama, üç sayfa:
 
-- **📰 Haber Stüdyosu:** Ham haber → iki başlık, sosyal medya metni (caption), TTS metni → ElevenLabs sesi.
-  "Kaydet ve Video Studio'ya geç" ile haber, projesiyle birlikte Video Studio'ya aktarılır.
-- **🎬 Video Studio:** Haber projesi + bilgisayardaki videolar → sahne (shot) tespiti → GPT-5.6 Luna görsel analizi →
-  zaman kodlu shot tablosu → EditProject.
+- **📰 Haber Stüdyosu:** Ham haber → iki başlık, paylaşım metni, seslendirme metni → ElevenLabs sesi.
+  "Kaydet ve Video Stüdyosu'na geç" ile haber, projesiyle birlikte Video Stüdyosu'na aktarılır.
+- **🎬 Video Stüdyosu:** Haber projesi + bilgisayardaki videolar → sahne tespiti → GPT-5.6 Luna görsel analizi →
+  isteğe bağlı kaynak sesli kesitler → kural tabanlı kaba kurgu → Canva şablonunun video alanı ölçüsünde MP4.
+- **🎨 Tasarım Stüdyosu:** Video ve kopyalamaya hazır metinler; ileride Axion şablonunu (1080×1920) kendisi uygulayacak.
 
-Her haber `data/projects/` altında bir proje klasörüdür; haber, ses, medya analizi ve edit projesi orada durur.
+Her haber `data/projects/` altında bir proje klasörüdür; haber, ses, görüntü analizi, kesitler, kurgu ve video orada durur.
 
 ## Belgeler
 

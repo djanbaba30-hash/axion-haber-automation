@@ -124,6 +124,8 @@ class Clip(BaseModel):
     transition_in: Transition = Field(default_factory=Transition)
     transition_out: Transition = Field(default_factory=Transition)
     locked: bool = False
+    # Klibin kendi sesi kullanılır (seslendirme öncesi/sonrası tanık, röportaj veya dikkat çekici kesit).
+    use_source_audio: bool = False
     origin: ClipOrigin = ClipOrigin.LLM
     reason: str = ""
     confidence: float | None = None
@@ -355,12 +357,16 @@ class EditProject(BaseModel):
                 raise ValueError(f"Clip {clip.id} segment_id {clip.segment_id!r} segmentlerde yok.")
 
         # Şablon videosu en az MIN_VIDEO_SECONDS; TTS daha kısaysa görüntü sessiz devam eder.
-        allowed = video_seconds(self.audio.duration_seconds)
+        # Kaynak sesli kesitler seslendirmeye ek süredir.
+        soundbite_seconds = sum(
+            clip.duration_f for clip in timeline.clips if clip.use_source_audio
+        ) / timeline.fps
+        allowed = video_seconds(self.audio.duration_seconds, soundbite_seconds)
         max_frames = math.ceil(allowed * timeline.fps) + 1
         if timeline.end_f > max_frames:
             raise ValueError(
                 f"Timeline süresi ({timeline.end_f} frame) izin verilen süreyi "
-                f"({allowed:.2f} sn: TTS, en az {MIN_VIDEO_SECONDS:.0f} sn) aşıyor."
+                f"({allowed:.2f} sn: TTS + kaynak sesli kesitler, en az {MIN_VIDEO_SECONDS:.0f} sn) aşıyor."
             )
         return self
 

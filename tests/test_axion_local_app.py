@@ -9,6 +9,7 @@ from shared.news_package import NewsPackage
 ROOT = Path(__file__).resolve().parents[1]
 NEWS_PAGE = "apps/news_studio/page.py"
 VIDEO_PAGE = "apps/video_studio/page.py"
+DESIGN_PAGE = "apps/design_studio/page.py"
 KEYS = {
     "OPENAI_API_KEY": "sk-test",
     "ANTHROPIC_API_KEY": "sk-ant-test",
@@ -64,7 +65,7 @@ def test_no_password_opens_directly(local_env):
     assert title(at) == ["Haber Stüdyosu"]
     at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
-    assert title(at) == ["Video Studio"]
+    assert title(at) == ["Video Stüdyosu"]
 
 
 def test_optional_password_still_protects(local_env):
@@ -84,9 +85,9 @@ def test_shutdown_button_hidden_for_remote_access(local_env):
 
 def test_save_and_continue_opens_project_in_video_studio(local_env):
     at = with_generated_news(start())
-    button(at, "Kaydet ve Video Studio'ya geç").click().run()
+    button(at, "Kaydet ve Video Stüdyosu'na geç").click().run()
     assert not at.exception
-    assert title(at) == ["Video Studio"]
+    assert title(at) == ["Video Stüdyosu"]
     projects = store.list_news_projects()
     assert len(projects) == 1
     assert at.session_state["loaded_news_project"] == projects[0].id
@@ -144,8 +145,11 @@ def test_saved_media_analysis_is_restored(local_env):
     assert at.dataframe[0].value["Görüntü"].tolist() == ["people"]
     assert at.session_state["edit_project"]["audio"]["duration_seconds"] == 24.2
     assert store.load_project_json(project, store.EDIT_PROJECT_FILENAME) is not None
-    assert "3. Video" in [h.value for h in at.subheader]
     assert any(b.label == "🎬 Videoyu oluştur" for b in at.button)
+    # Tamamlanan adımlar daralır: haber ve görüntüler özet satırı olur.
+    labels = [e.label for e in at.expander]
+    assert any(label.startswith("✅ 1. Haber — KAZA") for label in labels)
+    assert any(label.startswith("✅ 2. Görüntüler — dha.mp4") for label in labels)
 
 
 def test_render_button_creates_video_with_chosen_framing(local_env, monkeypatch):
@@ -181,7 +185,7 @@ def test_outdated_media_analysis_asks_for_reanalysis(local_env):
     assert not at.exception
     assert "media_library" not in at.session_state
     assert any("yeniden analiz" in i.value for i in at.info)
-    assert "3. Video" not in [h.value for h in at.subheader]
+    assert not any(b.label == "🎬 Videoyu oluştur" for b in at.button)
 
 
 def test_settings_are_remembered_between_sessions(local_env):
@@ -210,4 +214,69 @@ def test_video_studio_shows_no_shot_table_outside_developer_info(local_env):
     at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
     assert not at.text_area
-    assert any("Analiz edildi: dha.mp4" in c.value for c in at.caption)
+    assert any(e.label == "✅ 2. Görüntüler — dha.mp4" for e in at.expander)
+
+
+def test_design_studio_shows_video_and_headlines(local_env):
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    at = start()
+    at.switch_page(DESIGN_PAGE).run()
+    assert not at.exception
+    assert title(at) == ["Tasarım Stüdyosu"]
+    assert [c.value for c in at.code][:2] == ["KAZA", "B"]
+    assert any(b.label == "MP4'ü indir" for b in at.get("download_button"))
+
+
+def test_soundbites_are_listed_used_in_cut_and_removable(local_env):
+    from apps.video_studio.modules.soundbites import SOUNDBITES_FILENAME
+
+    project = saved_project(media_library([{
+        "shot_id": "video_001_shot_001", "asset_id": "video_001", "shot_number": 1,
+        "start_seconds": 0.0, "end_seconds": 30.0, "duration_seconds": 30.0,
+        "visual": {"description": "Kaza", "visual_type": "event", "editorial_role": "establishing"},
+    }]))
+    store.save_project_json(project, SOUNDBITES_FILENAME, [
+        {"path": "C:/dha.mp4", "filename": "dha.mp4", "start_s": 2.0, "end_s": 6.0, "placement": "after"},
+    ])
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    assert not at.exception
+    assert any("3. Kaynak sesli kesitler (isteğe bağlı) — 1 kesit, 4 sn" in e.label for e in at.expander)
+    assert any("Seslendirmeden sonra" in m.value for m in at.markdown)
+    clips = next(t for t in at.session_state["edit_project"]["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video")["clips"]
+    assert clips[-1]["use_source_audio"] and clips[-1]["duration_f"] == 120
+
+    button(at, "Kaldır").click().run()
+    assert not at.exception
+    assert store.load_project_json(project, SOUNDBITES_FILENAME) == []
+    clips = next(t for t in at.session_state["edit_project"]["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video")["clips"]
+    assert not any(c["use_source_audio"] for c in clips)
+
+
+@pytest.mark.skipif(__import__("shutil").which("ffmpeg") is None, reason="FFmpeg kurulu değil")
+def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypatch):
+    import subprocess
+
+    video = local_env / "Downloads" / "roportaj.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25:duration=12",
+         "-f", "lavfi", "-i", "sine=duration=12", "-shortest", str(video)],
+        check=True,
+    )
+    project = saved_project({"assets": []})
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    at.multiselect(key="selected_media").select(video).run()
+    button(at, "▶️ Videoyu izle ve kesit seç").click().run()
+    assert not at.exception
+    assert list((project.folder / "onizleme").glob("*.mp4"))
+    at.slider(key="kesit_range").set_value((3.0, 8.5)).run()
+    at.segmented_control(key="kesit_placement").set_value("after").run()
+    button(at, "➕ Kesiti ekle").click().run()
+    assert not at.exception
+    from apps.video_studio.modules.soundbites import SOUNDBITES_FILENAME
+
+    assert store.load_project_json(project, SOUNDBITES_FILENAME) == [
+        {"path": str(video), "filename": "roportaj.mp4", "start_s": 3.0, "end_s": 8.5, "placement": "after"}
+    ]

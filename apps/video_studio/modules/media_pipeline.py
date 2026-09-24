@@ -145,7 +145,7 @@ def shot_rows(media_library: dict[str, Any]) -> list[dict[str, Any]]:
             rows.append(
                 {
                     "Video": filename,
-                    "Shot": shot.get("shot_number"),
+                    "Sahne": shot.get("shot_number"),
                     "Başlangıç": _format_timestamp(shot.get("start_seconds", 0)),
                     "Bitiş": _format_timestamp(shot.get("end_seconds", 0)),
                     "Süre (sn)": round(float(shot.get("duration_seconds") or 0), 1),

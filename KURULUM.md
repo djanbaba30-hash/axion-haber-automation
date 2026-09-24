@@ -1,6 +1,6 @@
 # Axion Local — Windows Kurulum ve Kullanım
 
-Axion Local, Haber Stüdyosu ile Video Studio'yu evdeki bilgisayarda **tek uygulama** olarak çalıştırır.
+Axion Local; Haber, Video ve Tasarım stüdyolarını evdeki bilgisayarda **tek uygulama** olarak çalıştırır.
 Videolar internete yüklenmez, doğrudan diskten okunur; projeler ve ayarlar kalıcıdır.
 
 ## 1. Bir kerelik kurulum (yaklaşık 15 dakika)
@@ -50,31 +50,38 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    - Axion yalnızca sen ikona tıkladığında çalışır; Windows açılışında kendiliğinden başlamaz.
    - Axion zaten açıksa ikon sadece tarayıcıyı açar.
    - İlk açılışta Windows Güvenlik Duvarı izin sorarsa **İzin ver** de (telefon/tabletten erişim için gerekli).
-2. Sol menüden iki sayfa arasında geçersin: **Haber Stüdyosu** ve **Video Studio**. Bir sayfadaki işin öbürüne geçince kaybolmaz.
+2. Sol menüden sayfalar arasında geçersin: **Haber Stüdyosu**, **Video Stüdyosu** ve **Tasarım Stüdyosu**. Bir sayfadaki işin öbürüne geçince kaybolmaz.
 3. Tarayıcı sekmesini kapatmak Axion'u kapatmaz. İşin bitince sol menünün altındaki **Axion'u kapat** düğmesine bas.
    Bu düğme sadece evdeki bilgisayardan açıldığında görünür; telefondan/tabletten yanlışlıkla kapatamazsın.
 
 ### Haberden videoya akış
 
-1. **Haber Stüdyosu:** Ham haberi yapıştır → **Haberi İşle** → başlık/caption/TTS'i kontrol et → **Seslendir**.
-2. Sayfanın altında **Kaydet ve Video Studio'ya geç**. Haber, ses ve metin projeye kaydedilir; Video Studio bu projeyle açılır.
-   - TTS metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
+1. **Haber Stüdyosu:** Ham haberi yapıştır → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
+2. Sayfanın altında **Kaydet ve Video Stüdyosu'na geç**. Haber, ses ve metin projeye kaydedilir; Video Stüdyosu bu projeyle açılır.
+   - Seslendirme metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
    - Aynı haberi düzeltip yeniden kaydedersen aynı proje güncellenir; yapılmış video analizi kaybolmaz.
 3. **DHA videosunu** her zamanki gibi panelden bilgisayarına indir (İndirilenler klasörüne).
-4. **Video Studio → 2. Görüntüler:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Görüntüleri analiz et**.
-   - Video kopyalanmaz, yerinden okunur; büyük dosyalar sorun değil.
-   - Analiz projeye kaydedilir; projeyi sonra tekrar açtığında yeniden analiz (ve ücret) gerekmez.
-5. **3. Video:** Axion her seslendirme cümlesine uygun sahneleri kendisi seçer (ek ücret yok).
-   **Kadraj**'ı seç → **Videoyu oluştur**. Canva şablonundaki video alanının ölçüsünde (960×1226) MP4 hazırlanır; sayfada izleyip **MP4'ü indir**ebilirsin.
-   - **Akıllı** (önerilen): haberin ana öznesi (araç, konuşan kişi) hiç kesilmez, video alanı olabildiğince dolar.
-     Özne genişse (ör. yandan minibüs) üst ve alt, aynı görüntünün bulanık kopyasıyla dolar.
-     **Tüm kare:** görüntünün tamamı görünür.
-   - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
-   - Canva'da şablonun video alanına doğrudan yerleştir; yeniden kırpman gerekmez.
-   - Video proje klasörüne de `kaba_kurgu.mp4` adıyla kaydedilir. Haberi veya görüntüleri değiştirirsen yeniden oluştur.
-   - Bu ilk sürüm kaba kurgudur: sahne seçimini kurallar yapar. Beğenmediğin yerleri şimdilik CapCut'ta düzeltebilirsin.
+4. **Video Stüdyosu** adım adım ilerler; biten adım tek satıra daralır (tıklayınca yeniden açılır):
+   - **1. Haber:** kaydettiğin haber ve sesi. Başka bir haberi buradan seçebilirsin.
+   - **2. Görüntüler:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Görüntüleri analiz et**.
+     Video kopyalanmaz, yerinden okunur. Analiz projeye kaydedilir; tekrar açınca yeniden ücret ödemezsin.
+     Klasör, tarayıcıdan yükleme ve analiz yoğunluğu **⚙️ Ayarlar**'da.
+   - **3. Kaynak sesli kesitler (isteğe bağlı):** Videodan bir bölümü **kendi sesiyle** seslendirmenin önüne
+     (dikkat çekici an) veya arkasına (röportaj) ekler. Analizden önce de yapılabilir.
+     **Videoyu izle ve kesit seç** → kaydırıcıyla başlangıç ve bitişi ayarla (oynatıcı o aralığı oynatır) →
+     **Seslendirmeden önce / sonra** → **Kesiti ekle**. Birden fazla kesit ekleyebilirsin (ör. röportajın iki kısmı);
+     eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
+     İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
+   - **4. Video:** Axion sahneleri seslendirmeye göre kendisi seçer (ek ücret yok). **Kadraj**'ı seç → **Videoyu oluştur**.
+     Canva şablonundaki video alanının ölçüsünde (960×1226) MP4 hazırlanır.
+     - **Akıllı** (önerilen): haberin ana öznesi (araç, konuşan kişi) hiç kesilmez, video alanı olabildiğince dolar.
+       Özne genişse (ör. yandan minibüs) üst ve alt, aynı görüntünün bulanık kopyasıyla dolar. **Tüm kare:** görüntünün tamamı görünür.
+     - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
+     - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
+5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'na geç** veya sol menü): videoyu ve kopyalamaya hazır başlıklarla
+   paylaşım metnini burada bulursun; Canva şablonuna aktar. Bu sayfa ileride Canva'nın yerini alacak.
 
-Videolar başka bir klasördeyse Video Studio'daki klasör kutusuna o klasörün yolunu yazman yeterli.
+Videolar başka bir klasördeyse Video Stüdyosu'nda **⚙️ Ayarlar**'daki klasör kutusuna o klasörün yolunu yazman yeterli.
 Telefondan/tabletten çalışırken dosyayı **Tarayıcıdan yükle** seçeneğiyle de gönderebilirsin.
 
 ## 3. Telefon veya tabletten Axion'a erişim (Tailscale)
@@ -108,7 +115,7 @@ Ayarlar → Sistem → Hakkında → "Sürüm".
 - **Windows Home ise:** **Chrome Uzaktan Masaüstü** (ücretsiz, Google hesabıyla) ya da **RustDesk** (ücretsiz, açık kaynak)
   kullan. İkisinin de telefon/tablet uygulaması var.
 
-Tipik uzaktan akış: uzak masaüstüyle evdeki Firefox'tan DHA videosunu İndirilenler'e indir → Axion'da Video Studio'dan seç.
+Tipik uzaktan akış: uzak masaüstüyle evdeki Firefox'tan DHA videosunu İndirilenler'e indir → Axion'da Video Stüdyosu'ndan seç.
 
 ## 5. Güncelleme
 
@@ -123,7 +130,7 @@ Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çif
 
 ## 7. Verilerin yeri
 
-- Projeler (haber, TTS sesi, medya analizi, edit projesi): `C:\Axion\data\projects\`
-- TTS kalibrasyonu ve üretim geçmişi: `C:\Axion\data\`
+- Projeler (haber, seslendirme, görüntü analizi, kesitler, kurgu ve video): `C:\Axion\data\projects\`
+- Seslendirme hız ayarı (kalibrasyon) ve üretim geçmişi: `C:\Axion\data\`
 
 Bu klasörü ara sıra yedeklemen yeterli.

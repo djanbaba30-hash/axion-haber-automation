@@ -1,4 +1,4 @@
-"""Haber Stüdyosu: ham haber → başlıklar, caption, TTS metni ve sesi → Axion projesi."""
+"""Haber Stüdyosu: ham haber → başlıklar, paylaşım metni, seslendirme metni ve sesi → Axion projesi."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ with st.sidebar:
         stability=st.slider("Stabilite",0.0,1.0,step=0.01,key="stability")
         similarity=st.slider("Benzerlik",0.0,1.0,step=0.01,key="similarity")
         style_strength=st.slider("Stil",0.0,1.0,step=0.01,key="style_strength")
-        boost=st.toggle("Speaker Boost",key="boost")
+        boost=st.toggle("Ses netliği artırma",key="boost",help="ElevenLabs Speaker Boost: spikere benzerliği artırır, biraz yavaşlatır.")
     with st.expander("Üslup örnekleri"):
         st.caption("İsteğe bağlı: seçilen üslup için örnek bir haber metni. Model yalnızca tonu örnek alır.")
         for name in list(st.session_state.examples):
@@ -169,7 +169,7 @@ if st.session_state.icerik:
         except Exception as e: st.error(f"Başlıklar üretilemedi: {e}")
 
     st.subheader("Paylaşım metni")
-    st.session_state.icerik=st.text_area("Caption",value=st.session_state.icerik,height=260,label_visibility="collapsed")
+    st.session_state.icerik=st.text_area("Paylaşım metni",value=st.session_state.icerik,height=260,label_visibility="collapsed")
     st.caption(f"{len(st.session_state.icerik)}/2200 karakter")
     with st.expander("Kopyalamaya hazır tam metin"):
         st.code(f"{st.session_state.baslik1}\n\n{st.session_state.baslik2}\n\n{st.session_state.icerik}",language="text")
@@ -178,12 +178,12 @@ if st.session_state.icerik:
     # SESLENDİRME
     # =================================================
     st.subheader("Seslendirme")
-    st.session_state.tts_metni=st.text_area("TTS metni",value=st.session_state.tts_metni,height=150,label_visibility="collapsed")
+    st.session_state.tts_metni=st.text_area("Seslendirme metni",value=st.session_state.tts_metni,height=150,label_visibility="collapsed")
     st.caption(f"{len(st.session_state.tts_metni)} karakter · hedef {tts_min}–{tts_max} ({duration_label})")
     if st.button("🎙️ Seslendir",type="primary",use_container_width=True):
         tts_text=st.session_state.tts_metni.strip()
         if not voice_id: st.error("Spiker seçilemedi; ElevenLabs anahtarını kontrol et.")
-        elif not tts_text: st.error("TTS metni boş.")
+        elif not tts_text: st.error("Seslendirme metni boş.")
         else:
             try:
                 with st.spinner("Ses üretiliyor..."):
@@ -209,12 +209,12 @@ if st.session_state.icerik:
     st.divider()
     active=get_news_project(st.session_state.active_news_project) if st.session_state.get("active_news_project") else None
     if audio_stale:
-        st.warning("TTS metni ses üretildikten sonra değişti. Kaydetmeden önce yeniden **Seslendir**.")
+        st.warning("Seslendirme metni ses üretildikten sonra değişti. Kaydetmeden önce yeniden **Seslendir**.")
     else:
         if not st.session_state.last_audio_bytes: st.caption("Henüz ses yok. Video kurgusu için önce seslendir.")
         package=NewsPackage(headline_1=st.session_state.baslik1,headline_2=st.session_state.baslik2,caption=st.session_state.icerik,tts_text=st.session_state.tts_metni,source_text=raw,provider=usage.get("provider",""),model=usage.get("model",""),tts_duration_target=duration_label,tts_actual_duration_seconds=st.session_state.last_audio_duration,tts_voice_id=voice_id or "",tts_speed=speed,tts_alignment=st.session_state.last_audio_alignment if st.session_state.last_audio_bytes else None,metadata={"style":style,"usage":usage})
         go_col,save_col=st.columns([3,1])
-        go=go_col.button("Kaydet ve Video Studio'ya geç",type="primary",use_container_width=True)
+        go=go_col.button("Kaydet ve Video Stüdyosu'na geç",type="primary",use_container_width=True)
         save_only=save_col.button("Sadece kaydet",use_container_width=True)
         if go or save_only:
             try:
@@ -229,10 +229,10 @@ if st.session_state.icerik:
     # GELİŞTİRİCİ BİLGİLERİ
     # =================================================
     with st.expander("Geliştirici bilgileri"):
-        c=st.columns(4); c[0].metric("Motor",usage.get("provider","-")); c[1].metric("Input",f"{usage.get('input_tokens',0):,}"); c[2].metric("Output",f"{usage.get('output_tokens',0):,}"); c[3].metric("API çağrısı",usage.get("requests",0))
+        c=st.columns(4); c[0].metric("Motor",usage.get("provider","-")); c[1].metric("Girdi token",f"{usage.get('input_tokens',0):,}"); c[2].metric("Çıktı token",f"{usage.get('output_tokens',0):,}"); c[3].metric("API çağrısı",usage.get("requests",0))
         st.caption(f"Model: {usage.get('model','-')} · Önbellek: {usage.get('cached_input_tokens',0):,} · Reasoning: {usage.get('reasoning_tokens',0):,}")
         if st.session_state.last_correction_reason: st.caption(f"Düzeltme çağrısı nedeni: {st.session_state.last_correction_reason}")
         if st.session_state.last_audio_bytes:
             alignment=st.session_state.last_audio_alignment
-            st.caption("TTS zaman bilgisi: " + (f"var ({len(alignment.characters)} karakter, {alignment.duration_seconds():.1f} sn)" if alignment else "yok"))
+            st.caption("Seslendirme zaman bilgisi: " + (f"var ({len(alignment.characters)} karakter, {alignment.duration_seconds():.1f} sn)" if alignment else "yok"))
         if active: st.caption(f"Proje klasörü: {active.folder}")

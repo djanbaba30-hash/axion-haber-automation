@@ -1,4 +1,4 @@
-"""Axion Local: Haber Stüdyosu ve Video Studio'yu tek uygulamada açan ana giriş.
+"""Axion Local: Haber, Video ve Tasarım stüdyolarını tek uygulamada açan ana giriş.
 
 Windows: masaüstündeki "Axion Local" ikonu (windows/axion_baslat.vbs).
 Geliştirme: `make run` (streamlit run axion_local.py). Ayarlar ve tema: .streamlit/config.toml
@@ -94,7 +94,8 @@ if not authenticated():
 
 pages = [
     st.Page(ROOT / "apps" / "news_studio" / "page.py", title="Haber Stüdyosu", icon="📰", url_path="haber", default=True),
-    st.Page(ROOT / "apps" / "video_studio" / "page.py", title="Video Studio", icon="🎬", url_path="video"),
+    st.Page(ROOT / "apps" / "video_studio" / "page.py", title="Video Stüdyosu", icon="🎬", url_path="video"),
+    st.Page(ROOT / "apps" / "design_studio" / "page.py", title="Tasarım Stüdyosu", icon="🎨", url_path="tasarim"),
 ]
 page = st.navigation(pages, position="hidden")
 with st.sidebar:

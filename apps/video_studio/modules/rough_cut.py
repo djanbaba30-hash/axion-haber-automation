@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from .soundbites import PLACEMENT_LABELS, Soundbite, ordered
 from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH, video_seconds
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
@@ -78,6 +79,8 @@ class Candidate:
 class _Usage:
     cursor: dict[str, float] = field(default_factory=dict)
     count: dict[str, int] = field(default_factory=dict)
+    # Kaynak sesli kesit olarak kullanılan aralıklar (asset_id, başlangıç, bitiş): dolgu görüntüsünde tekrar etmesin.
+    blocked: list[tuple[str, float, float]] = field(default_factory=list)
 
 
 def _candidates(library: MediaLibrary) -> list[Candidate]:
@@ -134,6 +137,8 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
         if _has(segment_tokens, news_stems) and _has(candidate.tokens, visual_stems):
             score += 3.0
     score += ROLE_BONUS.get(candidate.role, 0.0)
+    if any(asset == candidate.asset_id and start < candidate.end and candidate.start < end for asset, start, end in usage.blocked):
+        score -= 10.0
     if opening and (candidate.role in OPENING_ROLES or candidate.visual_type in OPENING_TYPES):
         score += 2.0
     if candidate.plate:
@@ -279,33 +284,93 @@ def _segment_at(project: EditProject, time: float) -> str:
     return timed[-1][0]
 
 
-def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], framing_mode: str = FramingMode.FILL_CROP.value) -> dict[str, Any]:
-    """EditProject'in video_main izini kural tabanlı kliplerle doldurur."""
+def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, library: MediaLibrary,
+                    candidates: list[Candidate], mode: FramingMode) -> Clip:
+    asset = next(
+        (a for a in library.assets if isinstance(a, VideoAsset) and a.source.original_path == bite.path), None
+    ) or next((a for a in library.assets if isinstance(a, VideoAsset) and a.source.filename == bite.filename), None)
+    if asset is None:
+        raise ValueError(f"Kesitin videosu analiz edilmedi: {bite.filename}. Görüntüleri analiz ederken bu videoyu da seç.")
+    # Kadraj: kesitin başladığı sahne penceresinin öznesi ve kenar bilgisi.
+    frame = next(
+        (c for c in candidates if c.asset_id == asset.asset_id and c.start <= bite.start_s < c.end),
+        None,
+    )
+    if frame is None:
+        frame = Candidate(
+            asset_id=asset.asset_id, shot_id="", shot_start=0, shot_end=0, start=0, end=0, order=0, tokens=[],
+            role=EditorialRole.UNKNOWN, visual_type=VisualType.UNKNOWN, confidence=0, plate=False, description="",
+            frame_aspect=asset.geometry.display.width / asset.geometry.display.height,
+        )
+    duration_f = max(1, round(bite.duration_s * fps))
+    return Clip(
+        id=clip_id,
+        asset_id=asset.asset_id,
+        shot_id=frame.shot_id or None,
+        source_in_s=round(bite.start_s, 3),
+        source_out_s=round(bite.start_s + duration_f / fps, 3),
+        start_f=start_f,
+        duration_f=duration_f,
+        framing=clip_framing(mode, frame),
+        use_source_audio=True,
+        origin=ClipOrigin.USER,
+        reason=f"Kaynak sesli kesit ({PLACEMENT_LABELS[bite.placement].lower()})",
+    )
+
+
+def plan_rough_cut(
+    edit_project: dict[str, Any],
+    media_library: dict[str, Any],
+    framing_mode: str = FramingMode.FILL_CROP.value,
+    soundbites: list[Soundbite] | None = None,
+) -> dict[str, Any]:
+    """EditProject'in video_main izini kural tabanlı kliplerle doldurur.
+
+    Sıra: seslendirme öncesi kesitler → seslendirme (dolgu görüntüleriyle) → seslendirme sonrası kesitler.
+    """
     project = EditProject.model_validate(edit_project)
-    candidates = _candidates(MediaLibrary.model_validate(media_library))
+    library = MediaLibrary.model_validate(media_library)
+    candidates = _candidates(library)
     if not candidates:
         raise ValueError("Kurgu için analiz edilmiş video sahnesi yok.")
 
     fps = project.edit_plan.timeline.fps
-    # Son sahne, TTS 20 sn'den kısaysa şablonun en kısa süresine kadar sessiz devam eder.
-    total = video_seconds(project.audio.duration_seconds)
-    total_f = round(total * fps)
     mode = FramingMode(framing_mode)
-    usage = _Usage()
+    soundbites = soundbites or []
+    usage = _Usage(blocked=[])
     clips: list[Clip] = []
+
+    def add_soundbites(placement: str, start_f: int) -> int:
+        for bite in ordered(soundbites, placement):
+            clip = _soundbite_clip(bite, f"video_{len(clips) + 1:03d}", start_f, fps, library, candidates, mode)
+            clips.append(clip)
+            usage.blocked.append((clip.asset_id, bite.start_s, bite.end_s))
+            start_f += clip.duration_f
+        return start_f
+
+    # Önce kesitler yerleşir (b-roll'un onları tekrar etmemesi için aralıkları da bilinsin).
+    intro_end_f = add_soundbites("before", 0)
+    intro_s = intro_end_f / fps
+    outro_s = sum(round(b.duration_s * fps) for b in ordered(soundbites, "after")) / fps
+    # Seslendirme kısmı; video toplamda şablonun en kısa süresinden kısa kalmasın (sessiz uzatma).
+    tts_s = project.audio.duration_seconds
+    broll_s = max(tts_s, video_seconds(tts_s, intro_s + outro_s) - intro_s - outro_s)
+    broll_end_f = intro_end_f + round(broll_s * fps)
+
     previous_shot: str | None = None
     previous_tokens: list[str] = []
-    cuts = _cut_times(project, total)
-
+    cuts = _cut_times(project, broll_s)
     for start, end in zip(cuts, cuts[1:]):
         # Sahne, o sırada söylenen kelimelere göre seçilir (sessiz uzatmada son söylenenlere göre).
         tokens = _tokens(_spoken_text(project, start, end)) or previous_tokens
         previous_tokens = tokens
         segment_id = _segment_at(project, start)
-        cursor_f, end_f = round(start * fps), (total_f if end >= total else round(end * fps))
+        cursor_f = intro_end_f + round(start * fps)
+        end_f = broll_end_f if end >= broll_s else intro_end_f + round(end * fps)
         while cursor_f < end_f:
             need = (end_f - cursor_f) / fps
-            best = max(candidates, key=lambda c: (_score(c, tokens, cursor_f == 0, previous_shot, usage, need), -c.order))
+            opening = cursor_f == 0
+            best = max(candidates, key=lambda c: (_score(c, tokens, opening, previous_shot, usage, need), -c.order))
             source_in, available, _ = _source_range(best, usage, need)
             # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur.
             duration_f = max(1, min(end_f - cursor_f, math.floor(available * fps)))
@@ -330,10 +395,15 @@ def plan_rough_cut(edit_project: dict[str, Any], media_library: dict[str, Any], 
             previous_shot = best.shot_id
             cursor_f += duration_f
 
+    add_soundbites("after", broll_end_f)
+
     for track in project.edit_plan.timeline.tracks:
         if track.kind == TrackKind.VIDEO:
-            track.clips = clips
-            break
+            track.clips = sorted(clips, key=lambda c: c.start_f)
+        elif track.kind == TrackKind.AUDIO:
+            for clip in track.clips:
+                if clip.asset_id == project.audio.asset_id:
+                    clip.start_f = intro_end_f  # Seslendirme, öncesindeki kesitler bitince başlar.
     return EditProject.model_validate(project.model_dump(mode="json")).model_dump(mode="json")
 
 
@@ -361,7 +431,8 @@ def clip_rows(edit_project: dict[str, Any]) -> list[dict[str, Any]]:
                     "Zaman (sn)": round(clip["start_f"] / fps, 2),
                     "Süre (sn)": round(clip["duration_f"] / fps, 2),
                     "Cümle": clip["segment_id"],
-                    "Shot": clip["shot_id"],
+                    "Sahne": clip["shot_id"] or "",
+                    "Ses": "kaynak" if clip.get("use_source_audio") else "",
                     "Kaynak (sn)": f"{clip['source_in_s']:.1f}-{clip['source_out_s']:.1f}",
                     "Odak": f"{clip['framing']['focus_x']:.2f}, {clip['framing']['focus_y']:.2f}",
                     "Kenar kırpma": "var" if clip["framing"].get("content_region") else "",

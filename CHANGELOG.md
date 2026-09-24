@@ -1,3 +1,23 @@
+# v2.0.0 — Kaynak sesli kesitler, adım adım Video Stüdyosu, Tasarım Stüdyosu — 2026-09-24
+
+## Added
+- **Kaynak sesli kesitler:** videodan bir bölüm kendi sesiyle seslendirmenin önüne (dikkat çekici an) veya arkasına
+  (röportaj) eklenir. Önizleme oynatıcısı + aralık kaydırıcısı; birden fazla kesit; analizden önce de seçilebilir.
+  Kesit sesi ile seslendirme aynı ses yüksekliğine getirilir; kesit görüntüsü dolgu olarak tekrar kullanılmaz.
+- **Tasarım Stüdyosu** sayfası: video ve kopyalamaya hazır başlıklar/paylaşım metni. Faz 5'te Canva'nın yerini alacak.
+- Video Stüdyosu'ndan "Tasarım Stüdyosu'na geç".
+
+## Changed
+- Video Stüdyosu adım adım: 1. Haber → 2. Görüntüler → 3. Kaynak sesli kesitler → 4. Video. Biten adım tek satırlık
+  özete daralır; ayarlar "⚙️ Ayarlar" düğmesinde.
+- Arayüz terimleri Türkçe: "Video Studio" → "Video Stüdyosu", TTS → seslendirme metni, caption → paylaşım metni,
+  shot → sahne, Speaker Boost → ses netliği artırma, Input/Output → girdi/çıktı token. Doğrulama uyarıları da Türkçe.
+- Video en az 20 sn kuralı artık seslendirme + kesitlerin toplamına uygulanır.
+
+## Verification
+- `make test` geçti (163 test): kesit planı, kesit sesinin gerçekten duyulduğu render testi, kesit seçicinin uçtan uca
+  arayüz testi, Tasarım Stüdyosu. Arayüz gerçek tarayıcıda ekran görüntüsüyle kontrol edildi. Windows testi bekleniyor.
+
 # v1.9.4 — Özneyi kesmeyen kadraj, daha az token — 2026-09-24
 
 ## Changed

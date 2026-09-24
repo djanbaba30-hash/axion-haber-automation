@@ -52,6 +52,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
   - dikkat çekici söz → videonun başına, TTS'ten önce;
   - tamamlayıcı röportaj → TTS'ten sonra;
   - gerekmiyorsa → kullanılmaz.
+  Video Stüdyosu'nda "Kaynak sesli kesitler" adımıyla yapılır (v2.0.0); birden fazla kesit seçilebilir.
 - Plaka ve reşit olmayanların yüzü bulanıklaştırılır. Otomasyon yalnızca öneri üretir; son kontrol editördedir.
 
 ## Fazlar
@@ -63,7 +64,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 | 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, enum'lu Luna şeması, uzun shot pencereleri (Windows'ta doğrulandı) | Planner'a güvenilir veri |
 | 3 🔶 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → `EditProject` | Otomatik kurgu kararı |
-| 5 | **Axion şablon katmanı:** arka plan + başlıklar + slogan yazıları + logo kutusu animasyonu → 1080×1920 (ayrıntı: aşağıda, `shared/axion_template.py`) | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
+| 5 | **Axion şablon katmanı (Tasarım Stüdyosu sayfası):** arka plan + başlıklar + slogan yazıları + logo kutusu animasyonu → 1080×1920 (ayrıntı: aşağıda, `shared/axion_template.py`) | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
 | 6 | **Blur:** plaka ve yüz önerisi, yalnızca son videoya giren parçalarda, editör onayıyla | Gizlilik |
 
 ## Ortam

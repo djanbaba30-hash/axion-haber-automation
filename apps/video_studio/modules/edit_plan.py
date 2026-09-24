@@ -110,7 +110,7 @@ def build_edit_project(
 
     alignment = _tts_alignment(package, tts_text)
     if not alignment and not tts_text:
-        raise ValueError("TTS metni boş; EditProject 2.1 oluşturulamaz.")
+        raise ValueError("Seslendirme metni boş; kurgu projesi oluşturulamaz.")
     duration = float(audio_duration_seconds or 0.0)
     if alignment:
         alignment_duration = alignment.duration_seconds()
@@ -118,7 +118,7 @@ def build_edit_project(
             duration = max(duration, alignment_duration)
 
     if not audio_path or duration <= 0:
-        raise ValueError("EditProject 2.1 için kullanılabilir TTS sesi ve pozitif süre gerekli.")
+        raise ValueError("Kurgu için haberin seslendirmesi gerekli.")
 
     audio_meta = audio_metadata if isinstance(audio_metadata, dict) else {}
     audio_sha = (

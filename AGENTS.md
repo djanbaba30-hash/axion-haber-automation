@@ -24,10 +24,12 @@ Tek uygulama (Streamlit), iki sayfa: **Haber Stüdyosu** ve **Video Studio**. Bu
 6. **Video tarafının yapay zekâ motoru GPT-5.6 Luna'dır.** Claude, Video Studio çalışma zamanında kullanılmaz.
 7. **Modüller ayrı kalır.** Tek arayüz (`axion_local.py`) sayfaları birleştirir; iş mantığı `apps/*/` ve `shared/` içinde yaşar.
 8. **Windows betikleri** (`windows/*.bat|.vbs|.ps1`) ASCII ve CRLF olmalı (Türkçe karakter yok; `.gitattributes` CRLF'yi korur).
-9. Kullanıcı Türkçe konuşur; arayüz metinleri ve kullanıcıya yönelik dokümanlar Türkçedir.
+9. Kullanıcı Türkçe konuşur; arayüz metinleri ve kullanıcıya yönelik dokümanlar Türkçedir. Arayüzde İngilizce terim
+   kullanma: "seslendirme metni" (TTS değil), "paylaşım metni" (caption değil), "sahne" (shot değil), "Video Stüdyosu".
 10. **Arayüz sade kalır:** editörün görmesi gerekmeyen bilgi (token, maliyet, sahne tablosu, JSON, dosya yolları)
     sadece "Geliştirici bilgileri" altında; nadir değişen ayarlar kapalı bölümlerde. Sık kullanılan ayarlar
     (üslup, süre, yapay zekâ, model, düşünme seviyesi, spiker) kenar çubuğunda hep görünür ve hatırlanır.
+    Video Stüdyosu adım adım ilerler: her adım bir expander; biten adım "✅ …" özet satırına daralır.
 
 ## Kod haritası
 
@@ -52,14 +54,17 @@ apps/news_studio/              HABER STÜDYOSU
   integration/history.py       SQLite üretim geçmişi (data/history.sqlite3)
 
 apps/video_studio/             VIDEO STUDIO
-  page.py                      Sayfa: 1. haber projesi → 2. medya analizi → 3. EditProject
+  page.py                      Sayfa: 1. Haber → 2. Görüntüler (analiz) → 3. Kaynak sesli kesitler → 4. Video (kurgu + render)
   modules/media_pipeline.py    ingestion → proxy → shot tespiti → temsilci kare → Luna → Media Library
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
   modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi (API yok)
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (analiz karelerinden, numpy/Pillow, API yok)
+  modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
+
+apps/design_studio/page.py    TASARIM STÜDYOSU: video + kopyalanacak başlık/paylaşım metni; Faz 5'te Axion şablonu (Canva yerine)
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
@@ -81,7 +86,9 @@ Haber Stüdyosu ──"Kaydet"──► data/projects/<zaman>_<başlık>/
 Video Studio   ──analiz────►   media_library.json (shared MediaLibrary; tekrar açınca yeniden analiz yok)
                                browser upload ise proje içindeki media/ kaynakları kullanır
                ──hazırla───►   edit_project.json (shared EditProject 2.1; video izi rough_cut ile dolu)
-               ──oluştur───►   kaba_kurgu.mp4 (960x1226 = Canva şablonunun video alanı, TTS sesiyle)
+               ──kesit─────►   kesitler.json (kaynak sesli kesitler) + onizleme/*.mp4 (360p, kesit seçmek için)
+               ──oluştur───►   kaba_kurgu.mp4 (960x1226 = Canva şablonunun video alanı, TTS + kesit sesleriyle)
+Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlıklar (Faz 5: 1080x1920 şablon)
 ```
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
@@ -152,11 +159,19 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
     bu alanı kırpıp FIT_BLUR ile yerleştirir.
   - Bulanık kenar oturtması merkezde (DHA hep ortalar; tek yanda şerit kalıyordu), güvenlik payı %2.
   - Token: Luna kareleri 640 px genişlikte (önce 960) → girdi token'ı yaklaşık yarıya inmeli; editör doğrulayacak.
-- Açık tasarım sorusu (editöre soruldu): TTS öncesi dikkat çekici kesit / TTS sonrası röportaj ekleme arayüzü.
+- v2.0.0 (editör isteği, kapsamlı arayüz güncellemesi):
+  - Kaynak sesli kesitler: `soundbites.Soundbite` (path, start_s, end_s, placement before/after), proje klasöründe
+    `kesitler.json`. Analizden önce de seçilir (2. adımda seçilen videolardan). `plan_rough_cut(..., soundbites)`:
+    [öncesi kesitler] → [seslendirme + dolgu] → [sonrası kesitler]; kesit klipleri `use_source_audio=True`,
+    TTS ses klibi `start_f` öncesi kesitler kadar kayar; kesit aralıkları dolgu görüntüsünde kullanılmaz (−10 puan).
+    Render sesi parça parça kurar (kesit sesi / TTS+apad / kesit sesi), her parça `loudnorm` ile eşitlenir.
+    EditProject kuralı: timeline ≤ max(TTS + kesitler, 20 sn).
+  - Video Stüdyosu adım adım: biten adım daralır; ayarlar `st.popover`'da (expander iç içe olamaz).
+  - Yeni sayfa `apps/design_studio/page.py` (Tasarım Stüdyosu): Canva'nın yerini alacak araçlar burada olacak.
+  - Arayüz terimleri Türkçeleştirildi (Video Stüdyosu, seslendirme/paylaşım metni, sahne, girdi/çıktı token).
 - Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar
-- Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı (kaba kurguda kaynak ses kullanılmıyor).
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
 - ElevenLabs çağrısı retry edilmez; karakter kotası iki kez tüketilmesin diye bilinçli.
 - `make test` çalıştırmadan push etme: v1.7.0 3 kırık testle push edilmişti (eski formatta kayıtlı analiz sayfayı

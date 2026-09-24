@@ -20,9 +20,9 @@ VIDEO_HEIGHT = 1226
 MIN_VIDEO_SECONDS = 20.0
 
 
-def video_seconds(tts_seconds: float) -> float:
-    """Kurgu/video süresi: seslendirme süresi, en az MIN_VIDEO_SECONDS."""
-    return max(float(tts_seconds), MIN_VIDEO_SECONDS)
+def video_seconds(tts_seconds: float, soundbite_seconds: float = 0.0) -> float:
+    """Kurgu/video süresi: seslendirme + kaynak sesli kesitler, en az MIN_VIDEO_SECONDS."""
+    return max(float(tts_seconds) + float(soundbite_seconds), MIN_VIDEO_SECONDS)
 
 
 # Başlıklar: Binate Bold, 45 pt, "glow" efekti (yoğunluk 100). İkisi de aynı kutuda: 960x155, x=60, y=260.
