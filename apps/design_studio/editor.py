@@ -24,7 +24,15 @@ HTML = """
 <div class="ax">
   <div class="topbar">
     <div class="modes"><button data-mode="edit" class="on">🎨 Düzenle</button><button data-mode="final">🎬 Son video</button></div>
+    <div class="hist"><button class="undo" type="button" title="Geri al (Ctrl+Z)" disabled>↶</button><button class="redo" type="button" title="Yinele (Ctrl+Y)" disabled>↷</button></div>
     <div class="ctx"></div>
+    <span class="saved" data-state=""></span>
+    <button class="help" type="button" title="Klavye kısayolları (?)">⌨</button>
+    <div class="keys"><b>Kısayollar</b>
+      <span><kbd>Boşluk</kbd> oynat / durdur</span><span><kbd>←</kbd> <kbd>→</kbd> 1 kare · <kbd>Shift</kbd> ile 1 sn</span>
+      <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> geri al · <kbd>Ctrl</kbd>+<kbd>Y</kbd> yinele</span><span><kbd>Ctrl</kbd>+<kbd>D</kbd> seçiliyi çoğalt</span>
+      <span><kbd>Delete</kbd> seçiliyi sil · <kbd>Esc</kbd> seçimi bırak</span><span><kbd>S</kbd> sansür modu · <kbd>K</kbd> blura anahtar kare</span>
+      <span><kbd>L</kbd> döngü · <kbd>Home</kbd>/<kbd>End</kbd> başa/sona</span><span>Zaman çizelgesinde klibe çift tıkla: başına git</span></div>
   </div>
   <div class="main">
     <aside class="left panel"></aside>
@@ -44,6 +52,7 @@ HTML = """
     <button class="fwd" type="button" title="1 kare ileri">⏭</button>
     <span class="time">0,0 / 0,0 sn</span>
     <select class="speed" title="Oynatma hızı"><option value="1">1x</option><option value="0.5">0,5x</option><option value="0.25">0,25x</option></select>
+    <button class="loop" type="button" title="Döngüde oynat (L)">🔁</button>
     <span class="grow"></span>
     <button class="t-add-text" type="button">➕ Yazı</button>
     <button class="t-add-blur" type="button">◍ Blur</button>
@@ -80,6 +89,15 @@ button.on { background: var(--sky); border-color: var(--navy); }
 .glow { display: inline-flex; gap: 4px; align-items: center; } .glow input { width: 80px; accent-color: var(--navy); }
 .seg { display: inline-flex; border: 1px solid #cfd8e2; border-radius: 8px; overflow: hidden; }
 .seg button { border: 0; border-radius: 0; } .seg.wide { display: flex; margin: 6px 0; } .seg.wide button { flex: 1; }
+.topbar { position: relative; }
+.hist { display: inline-flex; gap: 2px; } .hist button { min-width: 32px; } .hist button:disabled { opacity: .35; cursor: default; }
+.saved { font-size: 12px; color: #6b7c8c; min-width: 90px; text-align: right; }
+.saved[data-state=saved] { color: #2f8f5b; }
+.help { min-width: 32px; }
+.keys { display: none; position: absolute; right: 8px; top: 46px; z-index: 20; background: #fff; border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(18,50,73,.18); flex-direction: column; gap: 5px; font-size: 12px; }
+.keys.show { display: flex; }
+kbd { background: var(--soft); border: 1px solid #cfd8e2; border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 11px; font-family: inherit; }
 /* üç sütun */
 .main { display: grid; grid-template-columns: minmax(210px, 1fr) auto minmax(210px, 1fr); gap: 14px; margin: 12px 0; align-items: start; }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; max-height: 660px; overflow: auto; }

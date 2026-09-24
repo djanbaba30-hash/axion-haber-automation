@@ -102,7 +102,12 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      (**1:1** kare yapar). Plaka hareket ediyorsa başka bir ana geç ve kutuyu yeniden taşı/döndür: her değişiklik o anda
      bir anahtar kare olur (◆), kutu aralarda kendiliğinden kayar. **Canlı takip** açıkken kutuya basılı tut: video
      yavaş oynar, sen plakayı takip ettikçe yol kaydedilir.
-   - **🎬 Son video** (üst çubukta) oluşturulmuş MP4'ü oynatır. Her değişiklik projeye kendiliğinden kaydedilir.
+   - **🎬 Son video** (üst çubukta) oluşturulmuş MP4'ü oynatır. Her değişiklik projeye kendiliğinden kaydedilir
+     (üst çubukta "Kaydedildi ✓"). **↶ ↷** ile geri al / yinele.
+   - **Yeniden oluştur** arka planda çalışır: kenar çubuğunda geçen süre görünür, bu sırada düzenlemeye devam edebilirsin.
+   - **Kısayollar** (üst çubukta ⌨): Boşluk oynat/durdur · ← → bir kare (Shift ile 1 sn) · Ctrl+Z / Ctrl+Y geri al /
+     yinele · Ctrl+D seçiliyi çoğalt · Delete sil · Esc seçimi bırak · S sansür · K blura anahtar kare · L döngü.
+     Zaman çizelgesinde kliplerin kenarları oynatma çizgisine ve diğer kliplere yapışır; klibe çift tıklayınca başına gider.
 
 Videolar başka bir klasördeyse Video Stüdyosu'nda **⚙️ Ayarlar**'daki klasör kutusuna o klasörün yolunu yazman yeterli.
 Telefondan/tabletten çalışırken dosyayı **Tarayıcıdan yükle** seçeneğiyle de gönderebilirsin.

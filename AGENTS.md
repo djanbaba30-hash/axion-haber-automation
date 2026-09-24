@@ -78,6 +78,7 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
   blur.py                      Elle blur/mozaik: doğrulama, anahtar kareler (konum, boyut, açı), yumuşak kenarlı maske
   render.py                    Tek FFmpeg komutu: kurgu → blur/mozaik → arka plan/çerçeve/grafik → son_video.mp4
   pipeline.py                  Projenin son videosu: tasarımı oku, üret, imzayı kaydet (Video Stüdyosu da çağırır)
+  jobs.py                      Son videoyu arka planda üretme (proje başına tek iş; bitince yalnız `rendered` imzası yazılır)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
   editor.py, editor.js         Canva benzeri tarayıcı editörü (components v2): üst araç çubuğu (yazı stili, sansür),
                                sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
@@ -131,11 +132,13 @@ Varlıklar ──────────────────►   data/varl
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 
 
-## Nerede kaldık (2026-09-24) — Faz 5 (Tasarım Stüdyosu, v2.7.0: Canva düzeni) yapıldı, editörün Windows testi bekleniyor
+## Nerede kaldık (2026-09-24) — Faz 5 (Tasarım Stüdyosu) çalışıyor; v2.8.0 akıcılık iyileştirmeleri
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. Editör v2.6.0'ı Windows'ta açtı ("her şey çalışıyor
-gibi") ve düzen istedi; v2.7.0 Canva düzeni (kenar çubuğu + araç çubuğu + paneller + zaman çizelgesi) henüz denenmedi.
+gibi") ve düzen istedi; v2.7.0 Canva düzenini denedi ("sorunsuz çalıştı"). v2.8.0 (geri al/yinele, kısayollar,
+arka planda render, zaman çizelgesi mıknatısı) henüz denenmedi. Editörün isteği: şimdilik yalnızca arayüz ve kullanım
+kolaylığı iyileştirmeleri.
 
 ### Şu an çalışan akış
 1. **Haber Stüdyosu:** ham haber → GPT/Claude (tek çağrı + gerekirse tek düzeltme çağrısı) → başlıklar, paylaşım

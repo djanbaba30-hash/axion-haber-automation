@@ -1,3 +1,31 @@
+# v2.8.0 — Tasarım Stüdyosu: akıcılık — 2026-09-24
+
+Editör v2.7.0'ı denedi ("sorunsuz çalıştı") ve yalnızca arayüz / kullanım kolaylığı iyileştirmesi istedi.
+
+## Added
+- **Geri al / yinele:** üst çubukta ↶ ↷, Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z). Son 60 adım.
+- **Klavye kısayolları** (⌨ düğmesinde listesi): Boşluk oynat/durdur, ← → bir kare (Shift: 1 sn), Home/End,
+  Ctrl+D seçili blur/yazıyı çoğalt, Delete sil, Esc seçimi bırak / sansür modundan çık, S sansür modu, K blura bu anda
+  anahtar kare, L döngü. Metin yazarken kısayollar devre dışı.
+- **"Kaydediliyor… / Kaydedildi ✓"** göstergesi (Python değişikliği kaydedince onaylanır).
+- **Arka planda render:** "Yeniden oluştur" (ve eski projede ilk açılıştaki otomatik üretim) editörü kilitlemez; kenar
+  çubuğunda geçen süre saniyede bir yenilenir, bitince editör yeni videoyu gösterir. Bu sırada yapılan düzenlemeler
+  ezilmez (iş yalnızca kendi imzasını yazar; "işlenmedi" uyarısı doğru kalır).
+- **Zaman çizelgesi:** klip kenarları oynatma çizgisine, diğer kliplerin kenarlarına ve başa/sona yapışır (mıknatıs);
+  klibe çift tıklayınca başına gider.
+- Tuvalde üzerine gelince imleç öğeye göre değişir (taşı, boyutlandır, döndür, seç; sansür modunda kelime).
+- Döngüde oynatma düğmesi (🔁).
+
+## Fixed
+- Eklenen bir yazıda sansür (kelimeye dokunma) Python'da uygulanıyor, tarayıcıdaki kopya eski kalıyordu; sonraki
+  değişiklik sansürü geri alabiliyordu. Artık yazılarda sansür tarayıcıda uygulanır (geri alınabilir); başlıklarda
+  kenar çubuğundaki metne yazılır.
+- İndir düğmesi son videoyu her etkileşimde belleğe okumuyor; yalnızca tıklanınca okunur.
+
+## Verification
+- `make test` geçti. Headless Chromium'da: blur ekleme, Ctrl+D, iki kez geri al, yinele, Shift+→, arka planda render
+  sırasında mozaik ekleme ve bitince durumun güncellenmesi denendi. Windows'ta denenmedi.
+
 # v2.7.0 — Tasarım Stüdyosu Canva düzeninde — 2026-09-24
 
 Editör v2.6.0'ı denedi: işlevler çalışıyor, düzen kullanışsızdı (boş alanlar, dağınık araçlar, zor zaman çizelgesi).

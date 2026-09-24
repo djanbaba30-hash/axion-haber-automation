@@ -7,6 +7,7 @@ durum, Yeniden oluştur/İndir ve başlık metinleri; ana alanda Canva benzeri e
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -14,7 +15,7 @@ import streamlit as st
 from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import secret
 from apps.axion_local.store import FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME
-from apps.design_studio import assets, template
+from apps.design_studio import assets, jobs, template
 from apps.design_studio.design import apply_editor_patch, dump_design
 from apps.design_studio.editor import block_data, design_editor, frame_data, image_bytes, media_url
 from apps.design_studio.effects import FRAME_STYLES, LOGO_EFFECTS, SLOGAN_EFFECTS, TEXT_ENTER, TEXT_EXIT
@@ -23,7 +24,6 @@ from apps.design_studio.pipeline import (
     final_is_current,
     load_project_design,
     project_timing,
-    render_project_final,
     save_project_design,
 )
 from apps.design_studio.render import filmstrip, preview_video
@@ -61,19 +61,14 @@ if not rough_cut.exists():
     st.stop()
 
 pid = project.id
+page_started = time.monotonic()
 fps, seconds = project_timing(project)
 design = load_project_design(project, seconds)
 final = project.folder / FINAL_VIDEO_FILENAME
 
-# Editör geldiğinde video hazır olsun: eski projelerde (Video Stüdyosu'nun otomatik üretiminden önce) burada üretilir.
-if not final.exists() and not ss.get(f"ds_{pid}_auto_failed"):
-    with st.spinner("Son video standart şablonla hazırlanıyor..."):
-        try:
-            render_project_final(project, design)
-        except (RuntimeError, ValueError, FileNotFoundError) as error:
-            ss[f"ds_{pid}_auto_failed"] = True
-            st.error(f"Son video hazırlanamadı: {error}")
-    design = load_project_design(project, seconds)
+# Editör geldiğinde video hazır olsun: eski projelerde (Video Stüdyosu'nun otomatik üretiminden önce) arka planda üretilir.
+if not final.exists() and jobs.get(project) is None:
+    jobs.start(project, design)
 
 
 def key(name: str) -> str:
@@ -118,6 +113,43 @@ def fit_caption(text: str) -> None:
         st.caption(f"⚠️ 2 satıra sığmadı, {block.size} px'e küçüldü. Kısaltmak daha iyi.")
 
 
+def render_status() -> None:
+    """Son video durumu ve düğmeler; üretim arka planda sürerken kendini saniyede bir yeniler."""
+    job = jobs.get(project)
+
+    @st.fragment(run_every=1.0 if job and job.running else None)
+    def status() -> None:
+        job = jobs.get(project)
+        current_design = load_project_design(project, seconds)
+        if job and job.running:
+            st.info(f"⏳ Son video oluşturuluyor… {job.elapsed:.0f} sn. Bu sırada düzenlemeye devam edebilirsin.")
+            st.button("🎬 Oluşturuluyor…", disabled=True, width="stretch")
+            return
+        if job and job.error and not job.seen:
+            job.seen = True
+            st.error(f"Son video oluşturulamadı: {job.error[-600:]}")
+        elif job and job.finished and job.finished > page_started:
+            st.rerun(scope="app")  # iş bu sayfa çalıştıktan sonra bitti: editör yeni videoyu göstersin
+        current = final_is_current(project, current_design)
+        if not final.exists():
+            st.info("Son video yok.")
+        elif current:
+            st.success("Son video hazır ve güncel.")
+        else:
+            st.warning("Değişiklikler son videoya işlenmedi.")
+        if st.button("🎬 Yeniden oluştur" if final.exists() else "🎬 Oluştur", type="secondary" if current else "primary",
+                     width="stretch"):
+            jobs.start(project, current_design)
+            st.rerun()  # tüm sayfa: durum kutusu saniyede bir yenilenmeye başlasın
+        if final.exists():
+            st.download_button("⬇️ İndir", lambda: final.read_bytes(), file_name=f"{pid}.mp4", mime="video/mp4",
+                               width="stretch", on_click="ignore",
+                               help=None if current else "Son oluşturulan hâl (değişiklikler hariç).")
+
+    status()
+    st.divider()
+
+
 with st.sidebar:
     status_box = st.container()
     st.markdown("**Başlıklar**")
@@ -147,27 +179,7 @@ with st.sidebar:
                     st.error(f"{upload.name}: {error}")
 
     with status_box:
-        current = final_is_current(project, design)
-        if not final.exists():
-            st.info("Son video yok.")
-        elif current:
-            st.success("Son video hazır ve güncel.")
-        else:
-            st.warning("Değişiklikler son videoya işlenmedi.")
-        if st.button("🎬 Yeniden oluştur" if final.exists() else "🎬 Oluştur", type="secondary" if current else "primary",
-                     width="stretch"):
-            try:
-                with st.spinner("Son video oluşturuluyor..."):
-                    render_project_final(project, design)
-            except (RuntimeError, ValueError, FileNotFoundError) as error:
-                st.error("Son video oluşturulamadı.")
-                st.code(str(error))
-            else:
-                st.rerun()
-        if final.exists():
-            st.download_button("⬇️ İndir", final.read_bytes(), file_name=f"{pid}.mp4", mime="video/mp4", width="stretch",
-                               help=None if current else "Son oluşturulan hâl (değişiklikler hariç).")
-        st.divider()
+        render_status()
 
 
 # ---------------------------------------------------------------- ana alan: editör
@@ -185,6 +197,7 @@ scene = template.build_scene(design, seconds)
 slot = {"x": VIDEO_SLOT["x"], "y": VIDEO_SLOT["y"], "w": VIDEO_SLOT["width"], "h": VIDEO_SLOT["height"]}
 data = {
     "project": pid,
+    "applied": ss.get(key("edits_v")),  # editörün son gönderdiği değişiklik kaydedildi mi ("Kaydedildi ✓")
     "video": media_url(preview, "video/mp4", "video"),
     "final": media_url(final, "video/mp4", "final") if final.exists() else None,
     "filmstrip": media_url(strip, "image/jpeg", "strip") if strip else None,

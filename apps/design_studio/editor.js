@@ -223,13 +223,38 @@ function setup(root, S) {
   const styleOf = (s) => (s.kind === 'text' ? selText() : d().headline_style);
   const headlineOf = (s) => (s.kind === 'h1' ? d().headline_1 : d().headline_2);
   function select(next) { S.sel = next; S.strikeMode = false; renderAll(); }
-  function send(immediate) {
+  // Geri al / yinele: her gönderimde tasarımın bir kopyası geçmişe eklenir (en fazla 60).
+  function remember() {
+    const text = JSON.stringify(d());
+    if (S.history[S.hIndex] === text) return;
+    S.history = S.history.slice(0, S.hIndex + 1); S.history.push(text);
+    if (S.history.length > 60) S.history.shift();
+    S.hIndex = S.history.length - 1; updateHistoryButtons();
+  }
+  function travel(step) {
+    const next = S.hIndex + step; if (next < 0 || next >= S.history.length) return;
+    S.hIndex = next; S.design = JSON.parse(S.history[next]);
+    if (S.sel && S.sel.kind === 'text' && !d().texts.some((x) => x.id === S.sel.id)) S.sel = null;
+    if (S.sel && S.sel.kind === 'blur' && !d().blurs.some((x) => x.id === S.sel.id)) S.sel = null;
+    renderAll(); send(true, false); updateHistoryButtons();
+  }
+  function updateHistoryButtons() {
+    $('.undo').disabled = S.hIndex <= 0; $('.redo').disabled = S.hIndex >= S.history.length - 1;
+  }
+  function setSaved(state) {
+    const el = $('.saved'); el.dataset.state = state;
+    el.textContent = state === 'saving' ? 'Kaydediliyor…' : state === 'saved' ? 'Kaydedildi ✓' : '';
+  }
+  function send(immediate, record = true) {
     clearTimeout(S.timer);
+    if (record) remember();
+    setSaved('saving');
     const go = () => {
       const patch = { headline_style: d().headline_style, headline_1: { enter: d().headline_1.enter, exit: d().headline_1.exit },
         headline_2: { enter: d().headline_2.enter, exit: d().headline_2.exit }, slogans: d().slogans, logo: d().logo,
         frame: d().frame, background: d().background, texts: d().texts, blurs: d().blurs };
       const payload = { v: `${S.born}-${++S.version}`, design: clone(patch), ops: S.ops.splice(0) };
+      S.lastSent = payload.v;
       S.setStateValue('edits', payload);
     };
     if (immediate) go(); else S.timer = setTimeout(go, 400);
@@ -399,7 +424,9 @@ function setup(root, S) {
     const p = toCanvas(e), t = now(), live = S.live && selBlur();
     if (S.strikeMode && S.sel && ['h1', 'h2', 'text'].includes(S.sel.kind)) {
       const i = wordAt(S.sel.kind, S.sel.id, p);
-      if (i >= 0) { S.ops.push({ op: 'strike', target: S.sel.kind === 'text' ? `text:${S.sel.id}` : S.sel.kind, index: i }); send(true); }
+      if (i < 0) return;
+      if (S.sel.kind === 'text') { const layer = selText(); if (layer) { layer.text = toggleStrike(layer.text, i); renderLeft(); renderTimeline(); send(true); } }
+      else { S.ops.push({ op: 'strike', target: S.sel.kind, index: i }); send(true); }
       return;
     }
     const blurHit = hitBlur(p, t);
@@ -422,8 +449,17 @@ function setup(root, S) {
     }
     renderAll();
   });
+  function hoverCursor(e) {
+    if (S.mode !== 'edit') return;
+    const p = toCanvas(e), t = now();
+    if (S.strikeMode) { canvas.style.cursor = wordAt(S.sel.kind, S.sel.id, p) >= 0 ? 'pointer' : 'not-allowed'; return; }
+    const b = hitBlur(p, t);
+    if (b) { canvas.style.cursor = b.mode === 'resize' ? 'nwse-resize' : b.mode === 'rotate' ? 'grab' : 'move'; return; }
+    const it = hitItem(p, t);
+    canvas.style.cursor = it ? (it.kind === 'text' ? 'move' : 'pointer') : 'default';
+  }
   wrap.addEventListener('pointermove', (e) => {
-    const dr = S.drag; if (!dr) return;
+    const dr = S.drag; if (!dr) { hoverCursor(e); return; }
     const p = toCanvas(e), s = D().slot;
     if (dr.kind === 'text') { dr.dx = p[0] - dr.start[0]; dr.dy = p[1] - dr.start[1]; invalidate(); return; }
     const f = dr.from;
@@ -688,6 +724,10 @@ function setup(root, S) {
   $('.back').onclick = () => seek(now() - 1 / D().fps);
   $('.fwd').onclick = () => seek(now() + 1 / D().fps);
   $('.speed').onchange = (e) => { S.speed = parseFloat(e.target.value); video.playbackRate = S.speed; };
+  $('.loop').onclick = () => { video.loop = !video.loop; $('.loop').classList.toggle('on', video.loop); };
+  $('.undo').onclick = () => travel(-1);
+  $('.redo').onclick = () => travel(1);
+  $('.help').onclick = () => $('.keys').classList.toggle('show');
   $('.t-add-text').onclick = addText;
   $('.t-add-blur').onclick = () => addBlur('blur');
   $('.t-add-mosaic').onclick = () => addBlur('mozaik');
@@ -711,14 +751,38 @@ function setup(root, S) {
     }
     S.tdrag = { seek: true }; seek(timeAt(e));
   });
+  // Mıknatıs: kenarlar oynatma çizgisine, diğer kliplerin kenarlarına, başa/sona yapışır (Canva gibi).
+  function snapTargets(except) {
+    const T = D().times, out = [0, dur(), now(), T.h1_end, T.h2_start, D().logo.start, D().logo.end];
+    D().slogans.forEach((x) => out.push(x.start, x.end));
+    for (const x of [...d().texts, ...d().blurs]) if (x !== except) out.push(x.start, x.end);
+    return out;
+  }
+  function snap(t, except) {
+    const track = tl.querySelector('.ttrack'), px = track ? track.getBoundingClientRect().width : 800;
+    const reach = (10 / px) * dur();
+    let best = t, gap = reach;
+    for (const target of snapTargets(except)) if (Math.abs(target - t) < gap) { gap = Math.abs(target - t); best = target; }
+    return best;
+  }
+  tl.addEventListener('dblclick', (e) => {
+    const clipEl = e.target.closest('.clip'); if (!clipEl) return;
+    const kind = clipEl.dataset.kind, id = clipEl.dataset.id;
+    const item = kind === 'text' ? d().texts.find((x) => x.id === id) : kind === 'blur' ? d().blurs.find((b) => b.id === id) : null;
+    const T = D().times;
+    seek(item ? item.start + 0.01 : kind === 'h2' ? T.h2_start + 0.5 : kind === 'logo' ? D().logo.start + 1 : kind === 'slogans' ? D().slogans[0].start + 0.6 : 0);
+  });
   tl.addEventListener('pointermove', (e) => {
     const g = S.tdrag; if (!g) return;
     if (g.seek) { seek(timeAt(e)); return; }
     const delta = timeAt(e) - g.t0, it = g.item; g.moved = true;
-    if (g.edge === 'start') it.start = r3(Math.max(0, Math.min(g.start + delta, it.end - 0.2)));
-    else if (g.edge === 'end') it.end = r3(Math.min(dur(), Math.max(g.end + delta, it.start + 0.2)));
+    if (g.edge === 'start') it.start = r3(Math.max(0, Math.min(snap(g.start + delta, it), it.end - 0.2)));
+    else if (g.edge === 'end') it.end = r3(Math.min(dur(), Math.max(snap(g.end + delta, it), it.start + 0.2)));
     else {
-      const shift = Math.max(-g.start, Math.min(delta, dur() - g.end));
+      let wanted = g.start + delta;
+      const startSnap = snap(wanted, it), endSnap = snap(wanted + (g.end - g.start), it) - (g.end - g.start);
+      wanted = Math.abs(startSnap - wanted) <= Math.abs(endSnap - wanted) ? startSnap : endSnap;
+      const shift = Math.max(-g.start, Math.min(wanted - g.start, dur() - g.end));
       it.start = r3(g.start + shift); it.end = r3(g.end + shift);
       if (g.keys) it.keys = g.keys.map((k) => ({ ...k, t: r3(k.t + shift) }));
     }
@@ -734,8 +798,62 @@ function setup(root, S) {
     if (data.final && finalVideo.getAttribute('src') !== data.final) finalVideo.setAttribute('src', data.final);
     if (S.sel && S.sel.kind === 'text' && !d().texts.some((x) => x.id === S.sel.id)) S.sel = null;
     if (S.sel && S.sel.kind === 'blur' && !d().blurs.some((x) => x.id === S.sel.id)) S.sel = null;
-    S.fromPython = true; renderAll(); S.fromPython = false;
+    if (S.lastSent && data.applied === S.lastSent) setSaved('saved');
+    S.fromPython = true; renderAll(); S.fromPython = false; updateHistoryButtons();
   };
+
+  // ---------------------------------------------------------------- klavye kısayolları (yazı yazarken devre dışı)
+  S.onKey = (e) => {
+    if (!root.isConnected || S.mode !== 'edit') return;
+    const target = e.composedPath ? e.composedPath()[0] : e.target;
+    if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
+    const ctrl = e.ctrlKey || e.metaKey, k = e.key;
+    const handled = () => { e.preventDefault(); e.stopPropagation(); };
+    if (ctrl && (k === 'z' || k === 'Z')) { handled(); travel(e.shiftKey ? 1 : -1); return; }
+    if (ctrl && (k === 'y' || k === 'Y')) { handled(); travel(1); return; }
+    if (ctrl && (k === 'd' || k === 'D')) { handled(); duplicate(); return; }
+    if (ctrl || e.altKey) return;
+    if (k === ' ') { handled(); if (video.paused) video.play(); else video.pause(); }
+    else if (k === 'ArrowLeft' || k === 'ArrowRight') { handled(); seek(now() + (k === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 1 / D().fps)); }
+    else if (k === 'Home') { handled(); seek(0); }
+    else if (k === 'End') { handled(); seek(dur()); }
+    else if (k === 'Escape') { handled(); if (S.strikeMode) { S.strikeMode = false; renderToolbar(); invalidate(); } else select(null); }
+    else if (k === 'Delete' || k === 'Backspace') {
+      const s = S.sel; if (!s) return; handled();
+      if (s.kind === 'blur') { d().blurs = d().blurs.filter((b) => b.id !== s.id); select(null); send(true); }
+      else if (s.kind === 'text') { d().texts = d().texts.filter((x) => x.id !== s.id); select(null); send(true); }
+    } else if (k === 's' || k === 'S') {
+      if (S.sel && ['h1', 'h2', 'text'].includes(S.sel.kind)) { handled(); S.strikeMode = !S.strikeMode; renderToolbar(); invalidate(); }
+    } else if (k === 'k' || k === 'K') {
+      const b = selBlur(); if (b) { handled(); setKey(b, now(), boxAt(b, now()), tol()); renderAll(); send(true); }
+    } else if (k === 'l' || k === 'L') { handled(); $('.loop').click(); }
+    else if (k === '?') { handled(); $('.keys').classList.toggle('show'); }
+  };
+  document.addEventListener('keydown', S.onKey, true);
+  function duplicate() {
+    const s = S.sel; if (!s) return;
+    const suffix = Date.now().toString(36);
+    if (s.kind === 'blur') { const b = selBlur(); if (!b) return; const copy = clone(b); copy.id = 'b' + suffix; copy.keys.forEach((k) => { k.x += 0.04; k.y += 0.04; }); d().blurs.push(copy); S.sel = { kind: 'blur', id: copy.id }; }
+    else if (s.kind === 'text') { const t = selText(); if (!t) return; const copy = clone(t); copy.id = 't' + suffix; copy.y = clamp(copy.y - 0.05); d().texts.push(copy); S.sel = { kind: 'text', id: copy.id }; }
+    else return;
+    renderAll(); send(true);
+  }
+}
+
+// Python shared/text_layout.toggle_strike ile aynı: `index`. kelimenin ~~ işaretini aç/kapat, satırlar korunur.
+function toggleStrike(text, index) {
+  let strike = false, position = 0;
+  return String(text).split('\n').map((line) => {
+    const words = [];
+    for (const raw of line.split(/\s+/).filter(Boolean)) {
+      let struck = strike, clean = '';
+      raw.split('~~').forEach((piece, i) => { if (i) strike = !strike; if (piece) { clean += piece; struck = struck || strike; } });
+      if (!clean) continue;
+      const on = struck !== (position === index); position += 1;
+      words.push(on ? `~~${clean}~~` : clean);
+    }
+    return words.join(' ');
+  }).filter((line) => line).join('\n');
 }
 
 export default function (component) {
@@ -750,8 +868,10 @@ export default function (component) {
   S.data = data; S.setStateValue = setStateValue;
   if (S.project !== data.project) {  // tasarım editörde tutulur; yalnızca haber değişince Python'dan yüklenir
     S.project = data.project; S.design = clone(data.design); S.sel = null; S.ops = []; S.mode = 'edit';
+    S.history = [JSON.stringify(S.design)]; S.hIndex = 0; S.lastSent = null;
   }
   S.start();
   S.applyData();
   return () => { cancelAnimationFrame(S.raf); S.raf = null; S.observer.disconnect(); S.observing = false; };
+  // (klavye dinleyicisi `root.isConnected` ile kendini susturur; bileşen yeniden takılınca aynı S kullanılır)
 }

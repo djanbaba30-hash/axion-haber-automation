@@ -239,10 +239,14 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
         output.write_bytes(b"final")
         return "x264"
 
-    monkeypatch.setattr("apps.design_studio.pipeline.render_final", fake_render)
+    from apps.design_studio import jobs
+
+    monkeypatch.setattr("apps.design_studio.jobs.render_final", fake_render)
     at = open_page(project, DESIGN_PAGE, "design_project_id")
     assert not at.exception
-    # Editör geldiğinde son video standart şablonla hazırdır (başlıklar haberden).
+    # Son video yoksa arka planda standart şablonla üretilir; editör bu sırada çalışabilir.
+    jobs.wait(project)
+    at.run()
     assert len(calls) == 1 and calls[0].headline_1.text == "KAZA" and calls[0].headline_2.text == "B"
     assert any("güncel" in s.value for s in at.sidebar.success)
     assert any(b.label == "⬇️ İndir" for b in at.sidebar.get("download_button"))
@@ -256,6 +260,9 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
 
     next(b for b in at.sidebar.button if b.label == "🎬 Yeniden oluştur").click().run()
     assert not at.exception
+    assert any(b.label == "🎬 Oluşturuluyor…" for b in at.sidebar.button) or jobs.get(project).finished
+    jobs.wait(project)
+    at.run()
     assert calls[-1].headline_1.text == "KAZA\nYERİ"
     assert any("güncel" in s.value for s in at.sidebar.success)
 
