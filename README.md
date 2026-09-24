@@ -53,6 +53,10 @@ Video akışında Claude kullanılmaz.
 
 ## Kurulum
 
+**Evdeki Windows bilgisayarda tek uygulama olarak (önerilen): [KURULUM.md](KURULUM.md).** Ana giriş `axion_local.py`; Haber Stüdyosu ve Video Studio tek şifreyle aynı arayüzde açılır.
+
+Geliştirme ortamı için:
+
 ```bash
 pip install -r requirements.txt
 ```

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
+from .local_media import LocalMediaFile
 
 
 ALLOWED_VIDEO_EXTENSIONS = {
@@ -30,6 +31,9 @@ def save_uploaded_video(uploaded_file) -> Path:
         raise ValueError(
             f"Desteklenmeyen video formatı: {extension}"
         )
+
+    if isinstance(uploaded_file, LocalMediaFile):
+        return uploaded_file.path
 
     temp_file = tempfile.NamedTemporaryFile(
         delete=False,

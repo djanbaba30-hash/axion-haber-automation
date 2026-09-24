@@ -53,7 +53,7 @@ Sistem, Streamlit Cloud yerine **evdeki bilgisayarda** çalışır.
 
 | Faz | İçerik | Sonuç |
 |---|---|---|
-| 0 | **Yerel çalışma:** tek uygulama ve tek şifre, kalıcı proje klasörü, videoyu diskten/URL'den alma, tek tıkla başlatma, tabletten erişim | Yükleme sorunu biter |
+| 0 ✅ | **Yerel çalışma:** tek uygulama ve tek şifre (`axion_local.py`), kalıcı proje klasörü, videoyu diskten alma, tek tıkla başlatma, tabletten erişim (Tailscale) | Yükleme sorunu biter |
 | 1 | **News Studio:** zaman bilgili TTS (`convert_with_timestamps`), metin değişince sesin geçersiz sayılması, NewsPackage'da ses hash'i | TTS cümleleri zamanlanabilir |
 | 2 | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, sabit kategoriler (enum), uzun shot'ları pencerelere bölme, tanık sesi ve kaynak ses alanları | Planner'a güvenilir veri |
 | 3 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile 1080×1440 MP4 | **CapCut'a gerek kalmaz** |
@@ -61,8 +61,11 @@ Sistem, Streamlit Cloud yerine **evdeki bilgisayarda** çalışır.
 | 5 | **Axion şablon katmanı:** statik şablon PNG + başlık yazısı + logo animasyonu → 1080×1920 | **Canva'ya gerek kalmaz** (font lisansı uygunsa) |
 | 6 | **Blur:** plaka ve yüz önerisi, yalnızca son videoya giren parçalarda, editör onayıyla | Gizlilik |
 
+## Ortam
+
+- Evdeki bilgisayar Windows; güçlü (AMD işlemci ve ekran kartı), 1000 Mbps internet, iş saatlerinde açık kalabilir.
+- DHA videoları editör tarafından panelden normal yolla indirilir; Video Studio indirilenler klasöründen okur. Otomatik DHA erişimi hedef değil.
+
 ## Açık sorular
 
-- Evdeki bilgisayarın işletim sistemi (Windows / Mac).
-- DHA oynatıcı videosunun adresi giriş yapmadan açılıyor mu? (Açılıyorsa "URL ile ekle" yeterli; panele otomatik giriş abonelik şartlarına bağlı.)
 - Canva şablonundaki fontun adı ve lisansı.

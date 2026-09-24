@@ -23,6 +23,7 @@ from apps.news_studio.tts.calibration import load as load_calibration, estimate,
 from apps.news_studio.tts.service import synthesize
 from apps.news_studio.validation.news import validate_news_output, find_censorship_warnings
 from shared.news_package import NewsPackage
+from apps.axion_local.store import is_local_mode, save_news_project
 
 
 st.set_page_config(page_title="Axion Haber İçerik Stüdyosu", layout="wide")
@@ -208,6 +209,7 @@ if st.session_state.icerik:
                 with st.spinner("ElevenLabs ses sentezi yapılıyor..."):
                     audio=synthesize(elevenlabs_client(),st.session_state.tts_metni,voice_id,speed,stability,similarity,style_strength,boost)
                 st.session_state.last_audio_bytes=audio
+                st.session_state.last_audio_text=st.session_state.tts_metni
                 st.session_state.last_audio_filename="axion_haber_ses.mp3"
                 try:
                     duration=float(MP3(io.BytesIO(audio)).info.length)
@@ -225,5 +227,14 @@ if st.session_state.icerik:
     package=NewsPackage(headline_1=st.session_state.baslik1,headline_2=st.session_state.baslik2,caption=st.session_state.icerik,tts_text=st.session_state.tts_metni,source_text=raw,provider=usage.get("provider",""),model=usage.get("model",""),tts_duration_target=duration_label,tts_actual_duration_seconds=st.session_state.last_audio_duration,tts_voice_id=voice_id or "",tts_speed=speed,metadata={"style":style,"usage":usage})
     package_json=package.model_dump_json(indent=2)
     st.download_button("NewsPackage JSON indir",data=package_json,file_name="axion_news_package.json",mime="application/json")
-    if st.session_state.last_audio_bytes:
+    if is_local_mode():
+        audio_stale=bool(st.session_state.last_audio_bytes) and st.session_state.get("last_audio_text")!=st.session_state.tts_metni
+        if audio_stale:
+            st.warning("TTS metni ses üretildikten sonra değişti. Projeye kaydetmeden önce sesi yeniden üret.")
+        elif st.button("Projeye kaydet (Video Studio'da kullan)",use_container_width=True):
+            try:
+                folder=save_news_project(package,st.session_state.last_audio_bytes)
+                st.success(f"Proje kaydedildi: {folder.name}" + ("" if st.session_state.last_audio_bytes else " (ses henüz yok)"))
+            except Exception as e: st.error(f"Proje kaydedilemedi: {e}")
+    elif st.session_state.last_audio_bytes:
         st.caption("Video Studio için JSON ve MP3 dosyasını birlikte kullanabilirsin.")

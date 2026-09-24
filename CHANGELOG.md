@@ -1,3 +1,17 @@
+# v1.3.0 — Axion Local (Faz 0) — 2026-09-24
+
+## Added
+- `axion_local.py`: Haber Stüdyosu and Video Studio run as one Streamlit app with one password (`st.navigation`). The modules stay separate.
+- `apps/axion_local/store.py`: persistent project folder (`data/projects/<time>_<headline>/news_package.json + tts.mp3`) and media inbox listing (default `~/Downloads`, overridable with `AXION_DATA_DIR` / `AXION_INBOX_DIR`).
+- News Studio (local mode only): "Projeye kaydet" stores the package together with the audio and its sha256. Saving is blocked when the TTS text changed after the audio was generated.
+- Video Studio (local mode only):
+  - media can be picked from a local folder and is read in place, without upload or copy (`LocalMediaFile`);
+  - saved news projects load caption and TTS audio directly; the audio hash is verified.
+- Windows `windows/kurulum.bat`, `axion_baslat.bat`, `guncelle.bat` and the Turkish guide `KURULUM.md` (Tailscale access from the tablet).
+
+## Unchanged
+- News generation, prompts and validation. The Streamlit Cloud behaviour of both apps is unchanged outside local mode.
+
 # v1.2.0 — Viral TTS quality — 2026-09-24
 
 ## Changed

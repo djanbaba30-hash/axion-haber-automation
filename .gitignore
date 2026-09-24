@@ -20,3 +20,4 @@ data/tts_calibration.json
 *.aac
 *.ogg
 *.flac
+data/projects/

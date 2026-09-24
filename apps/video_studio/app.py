@@ -7,9 +7,11 @@ from pathlib import Path
 
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+APP_DIR = Path(__file__).resolve().parent
+ROOT = APP_DIR.parents[1]
+for _path in (ROOT, APP_DIR):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from modules.audio_ingestion import (
     probe_audio,
@@ -51,6 +53,18 @@ from modules.video_ingestion import (
 
 from modules.visual_analysis import (
     analyze_media_with_luna,
+)
+
+from modules.local_media import LocalMediaFile
+
+from modules.news_package import news_package_to_state
+
+from apps.axion_local.store import (
+    inbox_dir,
+    is_local_mode,
+    list_inbox_media,
+    list_news_projects,
+    load_news_project,
 )
 
 
@@ -174,26 +188,55 @@ with upload_col:
 
     st.write("**Video ve görseller**")
 
-    uploaded_files = st.file_uploader(
-        "Video ve görselleri seç",
-
-        type=[
-            "mp4",
-            "mov",
-            "mkv",
-            "avi",
-            "webm",
-            "m4v",
-            "jpg",
-            "jpeg",
-            "png",
-            "webp",
-        ],
-
-        accept_multiple_files=True,
-
-        label_visibility="collapsed",
+    source_mode = (
+        st.radio(
+            "Medya kaynağı",
+            ["Bilgisayardaki klasör", "Tarayıcıdan yükle"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        if is_local_mode()
+        else "Tarayıcıdan yükle"
     )
+
+    if source_mode == "Bilgisayardaki klasör":
+
+        folder_text = st.text_input(
+            "Klasör",
+            value=str(inbox_dir()),
+            help="DHA'dan indirdiğin videoların bulunduğu klasör.",
+        )
+        local_files = list_inbox_media(Path(folder_text))
+        if not local_files:
+            st.caption("Bu klasörde video veya görsel bulunamadı.")
+        selected_paths = st.multiselect(
+            "Dosyalar (en yeniden eskiye)",
+            options=local_files,
+            format_func=lambda path: (
+                f"{path.name} · {path.stat().st_size / (1024 * 1024):.0f} MB"
+            ),
+        )
+        uploaded_files = [LocalMediaFile(path) for path in selected_paths]
+
+    else:
+
+        uploaded_files = st.file_uploader(
+            "Video ve görselleri seç",
+            type=[
+                "mp4",
+                "mov",
+                "mkv",
+                "avi",
+                "webm",
+                "m4v",
+                "jpg",
+                "jpeg",
+                "png",
+                "webp",
+            ],
+            accept_multiple_files=True,
+            label_visibility="collapsed",
+        )
 
 
 # =================================================
@@ -727,6 +770,48 @@ if "media_library" in st.session_state:
     # İSTEĞE BAĞLI NEWS PACKAGE İÇE AKTARMA
     # -------------------------------------------------
     st.write("**Axion Haber bağlantısı**")
+
+    if is_local_mode():
+        news_projects = list_news_projects()
+        if news_projects:
+            project_col, load_col = st.columns([3, 1])
+            with project_col:
+                selected_project = st.selectbox(
+                    "Kayıtlı haber projesi",
+                    options=news_projects,
+                    format_func=lambda project: project.label,
+                    label_visibility="collapsed",
+                )
+            with load_col:
+                load_project = st.button("Projeyi yükle", use_container_width=True)
+            if load_project:
+                try:
+                    project_package, project_audio = load_news_project(selected_project)
+                    st.session_state["news_package"] = news_package_to_state(project_package)
+                    st.session_state["loaded_news_package_hash"] = f"project:{selected_project.folder.name}"
+                    if project_package.caption.strip():
+                        st.session_state["project_news_text"] = project_package.caption
+                    if project_audio:
+                        project_audio_metadata = probe_audio(project_audio)
+                        st.session_state["project_audio_path"] = str(project_audio)
+                        st.session_state["project_audio_metadata"] = {
+                            **project_audio_metadata,
+                            "filename": project_audio.name,
+                            "mime_type": "audio/mpeg",
+                            "size_bytes": project_audio.stat().st_size,
+                        }
+                        st.session_state["project_audio_hash"] = project_package.metadata.get("audio_sha256")
+                    st.session_state.pop("edit_project", None)
+                    st.session_state["project_package_message"] = (
+                        "Haber projesi yüklendi"
+                        + ("." if project_audio else "; ses dosyası yok, TTS'i Haber Stüdyosu'nda üretip yeniden kaydet.")
+                    )
+                except Exception as error:
+                    st.error("Haber projesi yüklenemedi.")
+                    st.caption(str(error))
+        else:
+            st.caption("Kayıtlı haber projesi yok. Haber Stüdyosu'nda 'Projeye kaydet' ile oluşturabilirsin.")
+
     package_file = st.file_uploader(
         "Axion Haber NewsPackage JSON",
         type=["json"],
