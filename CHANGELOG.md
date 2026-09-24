@@ -9,6 +9,8 @@
 - Browser upload medya kaynakları aktif proje altında media/ klasöründe saklanıyor.
 - TTS audio metadata'sında gerçek SHA-256 tutuluyor.
 - Faz 2 için ortak sözleşme regresyon testi eklendi.
+- Gerçek Windows testinde medya analizi ve EditProject üretimi doğrulandı: 157.28 sn video, 15 shot, 21.27 sn TTS timeline.
+- EditProject TTSAlignment süre erişim hatası düzeltildi; syntax/import hataları giderildi.
 
 ## Verification
 - Kod GitHub main üzerinde doğrudan güncellendi.
