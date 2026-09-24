@@ -7,24 +7,18 @@ from __future__ import annotations
 
 import streamlit as st
 
-from apps.axion_local.store import ROUGH_CUT_FILENAME, list_news_projects, load_news_project
+from apps.axion_local.project_picker import project_selector, selected_project
+from apps.axion_local.store import ROUGH_CUT_FILENAME, load_news_project
 
 ss = st.session_state
 
 st.set_page_config(page_title="Tasarım Stüdyosu · Axion", page_icon="🎨", layout="wide")
 st.title("Tasarım Stüdyosu")
 
-projects = list_news_projects()
-by_id = {p.id: p for p in projects}
-if not projects:
-    st.info("Henüz kayıtlı haber yok. Haber Stüdyosu'nda başla.")
+project = selected_project("design_project_id")
+project_selector("design_project_id")
+if not project:
     st.stop()
-if ss.get("design_project_id") not in by_id:
-    active = ss.get("active_news_project")
-    ss.design_project_id = active if active in by_id else projects[0].id
-st.selectbox("Haber", list(by_id), key="design_project_id", format_func=lambda i: by_id[i].label, label_visibility="collapsed")
-project = by_id[ss.design_project_id]
-ss.active_news_project = project.id
 package, _ = load_news_project(project)
 
 video_col, text_col = st.columns([2, 3])

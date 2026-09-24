@@ -1,3 +1,17 @@
+# v2.2.0 — Her gün taze başlangıç, metin düzenleme düzeltmesi — 2026-09-24
+
+## Fixed
+- Haber Stüdyosu'nda metin kutusunu düzenleyip dışına tıklayınca değişikliğin kaybolup ilk hâline dönmesi
+  (seslendirme metni, paylaşım metni, başlıklar, ham haber). Metinler sayfa değiştirince de korunur.
+
+## Changed
+- Video ve Tasarım stüdyosu açılışta haber seçili gelmez; Haber Stüdyosu'ndan geçince kaydedilen haber seçilidir.
+- Haber listesi her gün 02:00'de (bilgisayar saati) sıfırlanır; "Önceki günler" ile eski haberler seçilebilir.
+- Geniş özne kaydırması daha yavaş (saniyede kare genişliğinin %2,5'i).
+
+## Verification
+- `make test` geçti (taze açılış, 02:00 sınırı, düzenlenen metnin korunması testleri dahil). Windows testi bekleniyor.
+
 # v2.1.0 — Bulanık dolgu yok, okunabilir saatler — 2026-09-24
 
 ## Changed

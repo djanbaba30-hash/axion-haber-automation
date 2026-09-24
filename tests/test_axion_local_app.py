@@ -122,6 +122,15 @@ def media_library(shots=()):
     }
 
 
+def open_page(project, page=VIDEO_PAGE, key="video_project_id"):
+    """Uygulama taze açılır (seçili haber yok); editör haberi listeden seçer."""
+    at = start()
+    at.switch_page(page).run()
+    assert at.selectbox(key=key).value is None
+    at.selectbox(key=key).select(project.id).run()
+    return at
+
+
 def saved_project(library):
     folder = store.save_news_project(
         NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3"
@@ -138,8 +147,7 @@ def test_saved_media_analysis_is_restored(local_env):
         "visual": {"description": "Kalabalık", "visual_type": "people", "editorial_role": "establishing"},
     }])
     project = saved_project(library)
-    at = start()
-    at.switch_page(VIDEO_PAGE).run()
+    at = open_page(project)
     assert not at.exception
     assert at.session_state["media_library"] == library
     assert at.dataframe[0].value["Görüntü"].tolist() == ["people"]
@@ -166,8 +174,7 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
         "start_seconds": 0.0, "end_seconds": 30.0, "duration_seconds": 30.0,
         "visual": {"description": "Kaza", "visual_type": "event", "editorial_role": "establishing"},
     }]))
-    at = start()
-    at.switch_page(VIDEO_PAGE).run()
+    at = open_page(project)
     assert not at.segmented_control  # kadraj seçimi yok: hep tam dolu
     button(at, "🎬 Videoyu oluştur").click().run()
     assert not at.exception
@@ -177,9 +184,8 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert any(b.label == "Tasarım Stüdyosu'na geç →" for b in at.button)
 
 def test_outdated_media_analysis_asks_for_reanalysis(local_env):
-    saved_project({"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
-    at = start()
-    at.switch_page(VIDEO_PAGE).run()
+    project = saved_project({"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
+    at = open_page(project)
     assert not at.exception
     assert "media_library" not in at.session_state
     assert any("yeniden analiz" in i.value for i in at.info)
@@ -207,9 +213,8 @@ def test_settings_survive_page_switch(local_env):
 
 
 def test_video_studio_shows_no_shot_table_outside_developer_info(local_env):
-    saved_project(media_library())
-    at = start()
-    at.switch_page(VIDEO_PAGE).run()
+    project = saved_project(media_library())
+    at = open_page(project)
     assert not at.exception
     assert not at.text_area
     assert any(e.label == "✅ 2. Görüntüler — dha.mp4" for e in at.expander)
@@ -218,8 +223,7 @@ def test_video_studio_shows_no_shot_table_outside_developer_info(local_env):
 def test_design_studio_shows_video_and_headlines(local_env):
     project = saved_project(media_library())
     (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
-    at = start()
-    at.switch_page(DESIGN_PAGE).run()
+    at = open_page(project, DESIGN_PAGE, "design_project_id")
     assert not at.exception
     assert title(at) == ["Tasarım Stüdyosu"]
     assert [c.value for c in at.code][:2] == ["KAZA", "B"]
@@ -237,8 +241,7 @@ def test_soundbites_are_listed_used_in_cut_and_removable(local_env):
     store.save_project_json(project, SOUNDBITES_FILENAME, [
         {"path": "C:/dha.mp4", "filename": "dha.mp4", "start_s": 2.0, "end_s": 6.0, "placement": "after"},
     ])
-    at = start()
-    at.switch_page(VIDEO_PAGE).run()
+    at = open_page(project)
     assert not at.exception
     assert any("3. Kaynak sesli kesitler (isteğe bağlı) — 1 kesit, 4 sn" in e.label for e in at.expander)
     assert any("Seslendirmeden sonra" in m.value for m in at.markdown)
@@ -263,8 +266,7 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
         check=True,
     )
     project = saved_project({"assets": []})
-    at = start()
-    at.switch_page(VIDEO_PAGE).run()
+    at = open_page(project)
     at.multiselect(key="selected_media").select(video).run()
     button(at, "▶️ Videoyu izle ve kesit seç").click().run()
     assert not at.exception
@@ -278,3 +280,41 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
     assert store.load_project_json(project, SOUNDBITES_FILENAME) == [
         {"path": str(video), "filename": "roportaj.mp4", "start_s": 3.0, "end_s": 8.5, "placement": "after"}
     ]
+
+
+def test_fresh_start_selects_nothing_and_hides_previous_days(local_env):
+    from datetime import datetime, timedelta
+
+    old = store.save_news_project(
+        NewsPackage(headline_1="DÜNKÜ HABER", headline_2="B", caption="c", tts_text="t"), b"mp3",
+        now=store.work_day_start() - timedelta(hours=1),
+    )
+    today = saved_project(media_library())
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    assert not at.exception
+    picker = at.selectbox(key="video_project_id")
+    assert picker.value is None and picker.options == [today.label]
+    at.checkbox(key="video_project_id_old").check().run()
+    assert len(at.selectbox(key="video_project_id").options) == 2
+    assert old.name in [p.id for p in store.list_news_projects()]
+
+
+def test_work_day_starts_at_two_am():
+    from datetime import datetime
+
+    assert store.work_day_start(datetime(2026, 9, 25, 1, 30)) == datetime(2026, 9, 24, 2, 0)
+    assert store.work_day_start(datetime(2026, 9, 25, 2, 0)) == datetime(2026, 9, 25, 2, 0)
+    assert store.work_day_start(datetime(2026, 9, 25, 23, 59)) == datetime(2026, 9, 25, 2, 0)
+
+
+def test_edited_news_texts_survive_reruns_and_page_switch(local_env):
+    at = with_generated_news(start())
+    at.text_area(key="_w_tts_metni").input("Düzenlenmiş seslendirme").run()
+    at.text_input(key="_w_baslik1").input("YENİ BAŞLIK").run()
+    at.run()
+    assert at.session_state["tts_metni"] == "Düzenlenmiş seslendirme"
+    at.switch_page(VIDEO_PAGE).run()
+    at.switch_page(NEWS_PAGE).run()
+    assert at.text_area(key="_w_tts_metni").value == "Düzenlenmiş seslendirme"
+    assert at.text_input(key="_w_baslik1").value == "YENİ BAŞLIK"

@@ -36,6 +36,22 @@ PREFERENCES = {
 AUDIO_STATE = {"last_audio_bytes":None,"last_audio_duration":None,"last_audio_text":None,"last_audio_alignment":None,"last_audio_filename":"axion_haber_ses.mp3"}
 
 
+def _sync_text(field):
+    st.session_state[field]=st.session_state["_w_"+field]
+
+
+def bound_text(widget,label,field,**kwargs):
+    """Metin kutusu kendi anahtarıyla çizilir, değer session_state[field]'da tutulur.
+
+    Anahtarsız kutuya her çalıştırmada value= vermek, tarayıcıda kutu dışına tıklanınca düzenlemenin kaybolmasına
+    yol açıyordu. Bu desenle düzenleme korunur, programın yazdığı değer (yeni haber, başlık yenileme) de kutuya gelir
+    ve sayfa değiştirince metin kaybolmaz.
+    """
+    st.session_state["_w_"+field]=st.session_state[field]
+    widget(label,key="_w_"+field,on_change=_sync_text,args=(field,),**kwargs)
+    return st.session_state[field]
+
+
 def init_state():
     defaults={
         "baslik1":"","baslik2":"","icerik":"","tts_metni":"","raw_text":"",
@@ -121,7 +137,7 @@ persist(st.session_state,PREFERENCES)
 # HAM HABER
 # =================================================
 st.title("Haber Stüdyosu")
-st.session_state.raw_text=st.text_area("Ham haber",value=st.session_state.raw_text,height=200,placeholder="DHA'dan gelen ham haber metnini buraya yapıştır.")
+bound_text(st.text_area,"Ham haber","raw_text",height=200,placeholder="DHA'dan gelen ham haber metnini buraya yapıştır.")
 raw=st.session_state.raw_text.strip()
 if len(raw)>7000: st.warning(f"Ham haber {len(raw):,} karakter. Çok uzun metinler maliyeti artırır.")
 
@@ -161,8 +177,8 @@ if st.session_state.icerik:
     # =================================================
     st.subheader("Başlıklar")
     h1,h2=st.columns(2)
-    st.session_state.baslik1=h1.text_input("1. başlık",value=st.session_state.baslik1)
-    st.session_state.baslik2=h2.text_input("2. başlık",value=st.session_state.baslik2)
+    bound_text(h1.text_input,"1. başlık","baslik1")
+    bound_text(h2.text_input,"2. başlık","baslik2")
     if st.button("↻ Başlıkları yeniden üret",help="Sadece başlıklar için küçük bir yapay zekâ çağrısı yapar."):
         try:
             h,u=regenerate_headlines(openai_client(),anthropic_client(),provider,openai_model,st.session_state.icerik)
@@ -170,7 +186,7 @@ if st.session_state.icerik:
         except Exception as e: st.error(f"Başlıklar üretilemedi: {e}")
 
     st.subheader("Paylaşım metni")
-    st.session_state.icerik=st.text_area("Paylaşım metni",value=st.session_state.icerik,height=260,label_visibility="collapsed")
+    bound_text(st.text_area,"Paylaşım metni","icerik",height=260,label_visibility="collapsed")
     st.caption(f"{len(st.session_state.icerik)}/2200 karakter")
     with st.expander("Kopyalamaya hazır tam metin"):
         st.code(f"{st.session_state.baslik1}\n\n{st.session_state.baslik2}\n\n{st.session_state.icerik}",language="text")
@@ -179,7 +195,7 @@ if st.session_state.icerik:
     # SESLENDİRME
     # =================================================
     st.subheader("Seslendirme")
-    st.session_state.tts_metni=st.text_area("Seslendirme metni",value=st.session_state.tts_metni,height=150,label_visibility="collapsed")
+    bound_text(st.text_area,"Seslendirme metni","tts_metni",height=150,label_visibility="collapsed")
     st.caption(f"{len(st.session_state.tts_metni)} karakter · hedef {tts_min}–{tts_max} ({duration_label})")
     if st.button("🎙️ Seslendir",type="primary",use_container_width=True):
         tts_text=make_speakable(st.session_state.tts_metni.strip())  # "18.00'de" → "akşam 6'da" (spiker okuyabilsin)

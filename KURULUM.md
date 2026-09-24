@@ -62,7 +62,8 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    - Seslendirme metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
    - Aynı haberi düzeltip yeniden kaydedersen aynı proje güncellenir; yapılmış video analizi kaybolmaz.
 3. **DHA videosunu** her zamanki gibi panelden bilgisayarına indir (İndirilenler klasörüne).
-4. **Video Stüdyosu** adım adım ilerler; biten adım tek satıra daralır (tıklayınca yeniden açılır):
+4. **Video Stüdyosu** (ve Tasarım Stüdyosu) açılışta boş gelir: haberi listeden seç. Liste her gün saat 02:00'de
+   sıfırlanır; eski haberler için **Önceki günler**'i işaretle. Video Stüdyosu adım adım ilerler; biten adım tek satıra daralır (tıklayınca yeniden açılır):
    - **1. Haber:** kaydettiğin haber ve sesi. Başka bir haberi buradan seçebilirsin.
    - **2. Görüntüler:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Görüntüleri analiz et**.
      Video kopyalanmaz, yerinden okunur. Analiz projeye kaydedilir; tekrar açınca yeniden ücret ödemezsin.

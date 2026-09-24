@@ -9,6 +9,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
@@ -16,7 +17,6 @@ from apps.axion_local.store import (
     NewsProject,
     inbox_dir,
     list_inbox_media,
-    list_news_projects,
     load_news_project,
     load_project_json,
     save_project_json,
@@ -104,12 +104,7 @@ def save_soundbites(project: NewsProject, soundbites: list[Soundbite]) -> None:
 # 1. HABER
 # =================================================
 
-projects = list_news_projects()
-by_id = {p.id: p for p in projects}
-if ss.get("video_project_id") not in by_id:
-    active = ss.get("active_news_project")
-    ss.video_project_id = active if active in by_id else (projects[0].id if projects else None)
-project: NewsProject | None = by_id.get(ss.video_project_id)
+project: NewsProject | None = selected_project("video_project_id")
 if project and ss.get("loaded_news_project") != project.id:
     try:
         load_project(project)
@@ -123,14 +118,11 @@ with st.expander(
     f"✅ 1. Haber — {project.headline}" if step1_done else "1. Haber",
     expanded=not step1_done,
 ):
-    if not projects:
-        st.info("Henüz kayıtlı haber yok. Haber Stüdyosu'nda haberi hazırlayıp **Kaydet ve Video Stüdyosu'na geç**'e bas.")
-    else:
-        st.selectbox("Haber", list(by_id), key="video_project_id", format_func=lambda i: by_id[i].label, label_visibility="collapsed")
-        if audio_path:
-            st.audio(audio_path)
-        elif project:
-            st.warning("Bu haberin sesi yok. Haber Stüdyosu'nda seslendirip yeniden kaydet.")
+    project_selector("video_project_id")
+    if audio_path:
+        st.audio(audio_path)
+    elif project:
+        st.warning("Bu haberin sesi yok. Haber Stüdyosu'nda seslendirip yeniden kaydet.")
 
 
 # =================================================

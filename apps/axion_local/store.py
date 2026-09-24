@@ -15,7 +15,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -148,12 +148,32 @@ def _project_from_folder(folder: Path) -> NewsProject | None:
     return NewsProject(folder, str(data.get("headline_1") or folder.name), created)
 
 
-def list_news_projects(base_dir: Path | None = None, limit: int = 30) -> list[NewsProject]:
+DAY_START_HOUR = 2  # Uygulama her gün 02:00'de (bilgisayarın saatiyle) "yeni gün"e başlar.
+
+
+def work_day_start(now: datetime | None = None) -> datetime:
+    """İçinde bulunulan iş gününün başlangıcı: bugün 02:00, saat 02:00'den önceyse dün 02:00."""
+    now = now or datetime.now()
+    start = now.replace(hour=DAY_START_HOUR, minute=0, second=0, microsecond=0)
+    return start if now >= start else start - timedelta(days=1)
+
+
+def _folder_time(folder: Path) -> datetime | None:
+    try:
+        return datetime.strptime(folder.name.split("_", 1)[0], "%Y%m%d-%H%M%S")
+    except ValueError:
+        return None
+
+
+def list_news_projects(base_dir: Path | None = None, limit: int = 30, since: datetime | None = None) -> list[NewsProject]:
+    """Projeler, yeniden eskiye. `since` verilirse yalnızca o andan sonra kaydedilenler."""
     base_dir = base_dir or projects_dir()
     if not base_dir.is_dir():
         return []
     projects = []
     for folder in sorted(base_dir.iterdir(), reverse=True):
+        if since is not None and (_folder_time(folder) or datetime.min) < since:
+            continue
         project = _project_from_folder(folder) if folder.is_dir() else None
         if project:
             projects.append(project)

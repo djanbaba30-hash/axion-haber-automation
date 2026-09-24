@@ -7,7 +7,7 @@ Bu dosya, bu repoda çalışan her yapay zekâ geliştiricisi (GPT/Codex, Claude
 
 Axion Haber Automation, bir haber editörünün **evdeki Windows bilgisayarında** çalışan yerel bir uygulamadır.
 Ham haber + DHA videolarından sosyal medyaya hazır haber videosu üretmeyi otomatikleştirir.
-Tek uygulama (Streamlit), iki sayfa: **Haber Stüdyosu** ve **Video Studio**. Bulut/hosting yok.
+Tek uygulama (Streamlit), üç sayfa: **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım Stüdyosu**. Bulut/hosting yok.
 
 - Ürün hedefi, editörün kararları ve faz sırası: `ROADMAP.md`
 - Kullanıcı için kurulum ve kullanım: `KURULUM.md`
@@ -176,7 +176,16 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
     (`Framing.view_region_end`, hız karenin %4'ü/sn). Render `crop` x/y ifadesinde `t` kullanır. Kadraj seçimi arayüzden kalktı.
   - `news_studio/validation/speakable.py`: seslendirme metninde saat/tarih/binlik/ondalık → okunuş ("18.00'de" →
     "akşam 6'da", ek uyumlu). Doğrulamada ve "Seslendir"de uygulanır; çevrilemeyen sayı için uyarı. Prompt'a 2 satır kural.
-- Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
+- v2.2.0 (editörün Kayseri + İnegöl testleri; kaydırma kadrajı beğenildi; video analizi ~2,9k girdi token, $0.0017):
+  - Kaydırma hızı %4 → %2,5/sn (`rough_cut.PAN_SPEED`).
+  - Haber Stüdyosu metin kutuları (ham haber, başlıklar, paylaşım/seslendirme metni) `bound_text` ile anahtarlı:
+    anahtarsız kutuya her çalıştırmada `value=` vermek tarayıcıda düzenlemenin kutu dışına tıklayınca kaybolmasına
+    yol açıyordu. Widget anahtarı `_w_<alan>`, değer `session_state[<alan>]`; sayfa değişince de kaybolmaz.
+  - `axion_local/project_picker.py`: Video/Tasarım stüdyosunda taze açılışta haber seçili gelmez; liste her gün 02:00'de
+    (bilgisayar saati) sıfırlanır (`store.work_day_start`), "Önceki günler" ile eskiler görünür.
+- **Faz 3 sonu:** editör bu sürümü test edecek, ardından Claude ve GPT tüm kodu ayrı ayrı gözden geçirecek
+  (hata, optimizasyon, sadeleştirme); düzeltmelerden sonra Faz 4'e geçilir (Luna Edit Planner: tek metin çağrısı,
+  rough_cut yedek kalır). Plaka/yüz bulanıklaştırma ROADMAP'te Faz 6.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.

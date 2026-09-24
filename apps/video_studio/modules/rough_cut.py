@@ -25,9 +25,10 @@ MAX_CLIP_SECONDS = 5.0
 SENTENCE_END = set(".!?…")
 PAUSE_PUNCTUATION = set(".!?…,;:\"”'’»)")
 EDGE_SECONDS = 0.2
-# Geniş özne kaydırması: özne kadrajdan bu oranda genişse kaydır; hız saniyede kare genişliğinin %4'ü (sakin).
+# Geniş özne kaydırması: özne kadrajdan bu oranda genişse kaydır; hız saniyede kare genişliğinin %2,5'i
+# (editör: %4 biraz hızlıydı).
 PAN_MIN_RATIO = 1.15
-PAN_SPEED = 0.04  # Shot geçişindeki karışık karelerden kaçın.
+PAN_SPEED = 0.025  # Shot geçişindeki karışık karelerden kaçın.
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
 ROLE_BONUS = {
