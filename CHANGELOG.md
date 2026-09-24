@@ -1,3 +1,9 @@
+# v1.6.1 — 2026-09-24
+
+## Changed
+- Removed the logo from the sidebar and the password screen; the sidebar starts with the page links. The Axion X mark stays only as the browser tab icon and the desktop icon.
+- The desktop icon file is renamed to `windows/axion_x.ico` so Windows' icon cache picks up the new X mark. `guncelle.bat` now recreates the desktop shortcut on every update.
+
 # v1.6.0 — Axion branding, remembered settings, leaner Video Studio — 2026-09-24
 
 ## Changed

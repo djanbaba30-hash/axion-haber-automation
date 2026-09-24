@@ -30,7 +30,6 @@ h3 {color: #123249;}
 h1::after {content: ""; display: block; width: 56px; height: 4px; margin-top: .35rem;
            border-radius: 2px; background: linear-gradient(90deg, #D0E491, #BEE1E8);}
 [data-testid="stSidebar"] {border-right: 1px solid #E3EAF0;}
-[data-testid="stSidebar"] [data-testid="stImage"] {margin: -1rem 0 .5rem 0;}
 div[data-testid="stExpander"] details {border-radius: 10px;}
 </style>"""
 
@@ -53,7 +52,7 @@ def authenticated() -> bool:
         st.session_state.axion_password_failed = not ok
         st.session_state.pop("axion_password", None)
 
-    st.image(str(ASSETS / "axion_logo.png"), width=180)
+    st.title("Axion")
     st.text_input("Şifre", type="password", key="axion_password", on_change=entered)
     if st.session_state.get("axion_password_failed"):
         st.error("Şifre yanlış.")
@@ -99,7 +98,6 @@ pages = [
 ]
 page = st.navigation(pages, position="hidden")
 with st.sidebar:
-    st.image(str(ASSETS / "axion_logo.png"), width=150)
     for item in pages:
         st.page_link(item)
     st.divider()

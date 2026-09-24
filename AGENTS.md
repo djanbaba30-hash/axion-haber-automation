@@ -32,9 +32,10 @@ Tek uygulama (Streamlit), iki sayfa: **Haber Stüdyosu** ve **Video Studio**. Bu
 ## Kod haritası
 
 ```text
-axion_local.py                 Ana giriş: logo + menü, isteğe bağlı şifre, stil (CSS), "Axion'u kapat" (sadece localhost)
+axion_local.py                 Ana giriş: menü, isteğe bağlı şifre, stil (CSS), "Axion'u kapat" (sadece localhost)
 .streamlit/config.toml         Port 8501, headless, 4 GB yükleme sınırı, beyaz Axion teması (lacivert #123249)
-assets/                        axion_logo.png (kenar çubuğu), axion_mark.png (sekme ikonu); windows/axion.ico aynı X işareti
+assets/                        axion_mark.png (tarayıcı sekmesi ikonu); windows/axion_x.ico aynı X işareti (masaüstü).
+                               Uygulama içinde logo gösterilmez (editör kararı).
 .streamlit/secrets.toml        API anahtarları (git'te yok; örnek: secrets.toml.example)
 
 apps/axion_local/
@@ -63,7 +64,7 @@ shared/                        Modüller arası sözleşmeler (Pydantic)
   edit_models.py               EditProject / Timeline / Track / Clip (hedef 2.1 modelleri)
 
 windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı), guncelle.bat,
-                               anahtarlar.bat, sorun_giderme.bat, kisayol.ps1, axion.ico
+                               anahtarlar.bat, sorun_giderme.bat, kisayol.ps1, axion_x.ico
 tests/                         pytest; tests/test_axion_local_app.py uygulamayı AppTest ile uçtan uca sürer
 ```
 

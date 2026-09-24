@@ -6,7 +6,7 @@ $s = $shell.CreateShortcut((Join-Path $desktop 'Axion Local.lnk'))
 $s.TargetPath = Join-Path $env:WINDIR 'System32\wscript.exe'
 $s.Arguments = '"' + (Join-Path $root 'windows\axion_baslat.vbs') + '"'
 $s.WorkingDirectory = $root
-$s.IconLocation = Join-Path $root 'windows\axion.ico'
+$s.IconLocation = Join-Path $root 'windows\axion_x.ico'
 $s.Save()
 
 # Eski surumun Windows acilisi kisayolu varsa kaldir.

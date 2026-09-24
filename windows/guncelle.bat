@@ -16,6 +16,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+powershell -NoProfile -ExecutionPolicy Bypass -File "windows\kisayol.ps1"
 echo Axion yeniden baslatiliyor...
 wscript "%~dp0axion_baslat.vbs"
 echo Guncelleme tamam.
