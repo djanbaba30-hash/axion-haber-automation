@@ -98,14 +98,15 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
 - Faz 2 için ortak sözleşme regresyon testi eklendi.
 
 ### Şu anki durum / sonraki adım
-- Faz 2 ana sözleşme geçişi kodlanmış durumda. EditProject importunu kıran tipografik tırnak/syntax hatası düzeltildi; Video Studio sayfasının browser-upload persistence ve yeni MediaLibrary sayımı da güncellendi.
+- Faz 2 ana sözleşme geçişi kodlanmış durumda. Windows gerçek testinde medya analizi + EditProject üretimi başarıyla tamamlandı; syntax hataları ve TTSAlignment süre erişimi düzeltildi. Son doğrulamada 157.28 sn videoda 15 shot üretildi, 21.27 sn TTS timeline oluşturuldu. Ancak 71.6 sn uzun shot henüz windowing ile bölünmüyor ve Luna çıktısında `visual_type` / `editorial_role` / `description` alanları `unknown`/boş kalıyor.
 - Windows üzerinde make test ve gerçek bir haber/video ile uçtan uca test bu oturumda çalıştırılmadı; Windows doğrulaması yapılmış kabul edilmemeli.
 - Sıradaki teknik iş: uzun shot'ları AnalysisWindow'lara deterministik bölmek ve bunu tek Luna çağrısı içinde yapmak.
 - Ardından Faz 3: API çağrısı olmadan TTS segmentlerini shot'larla eşleştirip FFmpeg ile 1080x1440 kaba kurgu MP4 üretmek.
 - AMD h264_amf mevcutsa render adımında tercih edilecek.
 
 ### Bilinen borçlar
-- Uzun shot windowing henüz pipeline'da uygulanmadı.
+- Uzun shot windowing henüz pipeline'da uygulanmadı; örnek testte shot 15 = 71.6 sn ve tek AnalysisWindow kaldı.
+- Luna görsel sınıflandırma kalitesi yetersiz: son gerçek testte 15 shot için `visual_type` ve `editorial_role` `unknown`, `description` boş; `location` ve `confidence` geliyor. `visual_analysis.py` prompt/schema ve normalize katmanı incelenmeli.
 - Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı.
 - ElevenLabs çağrısı retry edilmez; karakter kotası iki kez tüketilmesin diye bilinçli.
 
