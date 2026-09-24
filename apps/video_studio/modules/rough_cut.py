@@ -25,7 +25,9 @@ MAX_CLIP_SECONDS = 5.0
 SENTENCE_END = set(".!?…")
 PAUSE_PUNCTUATION = set(".!?…,;:\"”'’»)")
 EDGE_SECONDS = 0.2
-SUBJECT_MARGIN = 0.08  # Öznenin çevresinde bırakılan pay (her yanda, öznenin boyutuna oranla).  # Shot geçişindeki karışık karelerden kaçın.
+# Geniş özne kaydırması: özne kadrajdan bu oranda genişse kaydır; hız saniyede kare genişliğinin %4'ü (sakin).
+PAN_MIN_RATIO = 1.15
+PAN_SPEED = 0.04  # Shot geçişindeki karışık karelerden kaçın.
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
 ROLE_BONUS = {
@@ -157,50 +159,58 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     return score
 
 
-def _view_region(mode: FramingMode, candidate: Candidate, slot_aspect: float) -> Region:
-    """Kaynakta gösterilecek alan (0–1). Hesap kaynak piksel oranında yapılır (yükseklik = 1 birim).
+def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, direction: int) -> tuple[Region, Region | None]:
+    """Kaynakta gösterilecek alan (0–1) ve varsa kaydırma sonu. Hesap piksel oranında (yükseklik = 1 birim).
 
-    Akıllı kadraj: öznenin tamamı (+pay) sığıyorsa video alanını tam dolduran en büyük alan; özne daha genişse
-    alan özneyi içerecek kadar genişler (üst/alt bulanık dolgu). "Tüm kare": bulanık/siyah kenar hariç her şey.
+    Video alanı HER ZAMAN tam dolar (bulanık dolgu yok, editör kararı): alan, asıl görüntünün (bulanık/siyah kenar
+    hariç) içindeki en büyük video-alanı oranlı dikdörtgendir ve öznenin ortasına kaydırılır. Özne bu alandan
+    belirgin genişse (ör. yandan otobüs) kadraj klip boyunca öznenin üzerinde yavaşça kayar.
     """
     a = candidate.frame_aspect
     c = candidate.content_region or Region(x=0, y=0, width=1, height=1)
-    cx, cy, cw, ch = c.x * a, c.y, c.width * a, c.height  # piksel oranında (yükseklik 1)
-    if mode == FramingMode.FIT_BLUR:
-        return c
-    fill_w, fill_h = (ch * slot_aspect, ch) if cw / ch > slot_aspect else (cw, cw / slot_aspect)
+    cx, cy, cw, ch = c.x * a, c.y, c.width * a, c.height
+    view_w, view_h = (ch * slot_aspect, ch) if cw / ch > slot_aspect else (cw, cw / slot_aspect)
     if candidate.subject:
         s = candidate.subject
         sx0, sx1 = max(cx, s.x * a), min(cx + cw, (s.x + s.width) * a)
         sy0, sy1 = max(cy, s.y), min(cy + ch, s.y + s.height)
-        margin_x, margin_y = (sx1 - sx0) * SUBJECT_MARGIN, (sy1 - sy0) * SUBJECT_MARGIN
-        sx0, sx1, sy0, sy1 = sx0 - margin_x, sx1 + margin_x, sy0 - margin_y, sy1 + margin_y
     else:
         focus = candidate.focus or FocusPoint()
         sx0 = sx1 = focus.x * a
         sy0 = sy1 = focus.y
-    # En az yakınlaştırma: video alanını dolduran en büyük alan; özne sığmıyorsa özne kadar genişlet.
-    view_w = min(cw, max(fill_w, sx1 - sx0))
-    view_h = min(ch, max(fill_h, sy1 - sy0))
-    x = min(max((sx0 + sx1) / 2 - view_w / 2, cx), cx + cw - view_w)
-    y = min(max((sy0 + sy1) / 2 - view_h / 2, cy), cy + ch - view_h)
+    center_x, center_y = (sx0 + sx1) / 2, (sy0 + sy1) / 2
+    pan = 0.0
+    if sx1 - sx0 > view_w * PAN_MIN_RATIO:
+        pan = min(sx1 - sx0 - view_w, PAN_SPEED * a * seconds)
     floor = lambda v: math.floor(v * 10_000) / 10_000  # noqa: E731 — x + width 1'i aşmasın
-    return Region(x=floor(x / a), y=floor(y), width=floor(view_w / a), height=floor(view_h))
+
+    def region(mid_x: float) -> Region:
+        x = min(max(mid_x - view_w / 2, cx), cx + cw - view_w)
+        y = min(max(center_y - view_h / 2, cy), cy + ch - view_h)
+        return Region(x=floor(x / a), y=floor(y), width=floor(view_w / a), height=floor(view_h))
+
+    if pan <= 0:
+        return region(center_x), None
+    first, last = region(center_x - direction * pan / 2), region(center_x + direction * pan / 2)
+    return (first, last) if first != last else (first, None)
 
 
-def clip_framing(mode: FramingMode, candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_HEIGHT) -> Framing:
-    """Odak noktası (Luna, tüm kareye göre) → asıl görüntü alanına göre odak; ve gösterilecek alan."""
+def clip_framing(mode: FramingMode, candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_HEIGHT,
+                 seconds: float = 3.0, direction: int = 1) -> Framing:
+    """Kaynaktaki gösterilecek alan (+ kaydırma). `mode` geriye dönük uyumluluk için; her zaman tam dolu kadraj."""
     fx, fy = (candidate.focus.x, candidate.focus.y) if candidate.focus else (0.5, 0.5)
     region = candidate.content_region
     if region:
         fx = (fx - region.x) / region.width
         fy = (fy - region.y) / region.height
+    view, view_end = _view_regions(candidate, slot_aspect, seconds, direction)
     return Framing(
-        mode=mode,
+        mode=FramingMode.FILL_CROP,
         focus_x=round(min(1.0, max(0.0, fx)), 3),
         focus_y=round(min(1.0, max(0.0, fy)), 3),
         content_region=region,
-        view_region=_view_region(mode, candidate, slot_aspect),
+        view_region=view,
+        view_region_end=view_end,
     )
 
 
@@ -311,7 +321,7 @@ def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, libra
         source_out_s=round(bite.start_s + duration_f / fps, 3),
         start_f=start_f,
         duration_f=duration_f,
-        framing=clip_framing(mode, frame),
+        framing=clip_framing(mode, frame, seconds=duration_f / fps),
         use_source_audio=True,
         origin=ClipOrigin.USER,
         reason=f"Kaynak sesli kesit ({PLACEMENT_LABELS[bite.placement].lower()})",
@@ -385,7 +395,7 @@ def plan_rough_cut(
                     source_out_s=round(source_out, 3),
                     start_f=cursor_f,
                     duration_f=duration_f,
-                    framing=clip_framing(mode, best),
+                    framing=clip_framing(mode, best, seconds=duration_f / fps, direction=1 if len(clips) % 2 else -1),
                     origin=ClipOrigin.RULE,
                     reason=best.description,
                 )

@@ -31,15 +31,20 @@ def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int
     steps = []
     view = framing.view_region
     if view:
-        # Planlayıcının seçtiği alan: öznenin tamamı. Oranı video alanından farklıysa boşluk aynı görüntünün
-        # bulanık kopyasıyla dolar (oran aynıysa dolgu görünmez).
-        steps.append(f"crop=iw*{view.width}:ih*{view.height}:iw*{view.x}:ih*{view.y}")
-        framing = framing.model_copy(update={"mode": FramingMode.FIT_BLUR})
+        # Planlayıcının seçtiği alan (video alanı oranında): tam dolu kadraj, bulanık dolgu yok.
+        # view_region_end varsa kadraj klip boyunca oraya yavaşça kayar.
+        end = framing.view_region_end or view
+        seconds = frames / fps
+        x = f"'iw*({view.x}+({end.x - view.x})*min(t/{seconds:.3f},1))'"
+        y = f"'ih*({view.y}+({end.y - view.y})*min(t/{seconds:.3f},1))'"
+        steps.append(f"crop=iw*{view.width}:ih*{view.height}:{x}:{y},scale={size}")
     region = None if view else framing.content_region
     if region:
         # Önce bulanık/siyah kenarları at: kalan asıl görüntü üzerinden kadrajlanır.
         steps.append(f"crop=iw*{region.width}:ih*{region.height}:iw*{region.x}:ih*{region.y}")
-    if framing.mode == FramingMode.FIT_BLUR:
+    if view:
+        pass
+    elif framing.mode == FramingMode.FIT_BLUR:
         steps.append(
             f"split[b{index}][f{index}];"
             f"[b{index}]scale={size}:force_original_aspect_ratio=increase,crop={size},boxblur=20:2[bb{index}];"

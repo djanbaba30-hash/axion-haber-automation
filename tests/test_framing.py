@@ -106,8 +106,7 @@ def test_render_crops_away_blur_and_follows_focus(tmp_path, monkeypatch):
     assert blue > 200 and red < 50
 
 
-@pytest.mark.parametrize("mode", ["fill_crop", "fit_blur"])
-def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypatch, mode):
+def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypatch):
     """Yeşil dikey görüntü + gri bulanık kenarlar: Akıllı modda çıktının kenarları da yeşil olmalı."""
     from apps.video_studio.modules import render
     from apps.video_studio.modules.edit_plan import build_edit_project
@@ -125,7 +124,7 @@ def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypat
     lib = library([(0.0, 4.0, "event", "establishing", "Kaza", "")], source=str(source))
     lib["assets"][0]["shots"][0]["content_region"] = {"x": 0.3543, "y": 0.0, "width": 0.2934, "height": 1.0}
     text = "Kaza oldu."
-    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 2.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib, mode)
+    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 2.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib)
     output = tmp_path / "out.mp4"
     render.render_rough_cut(project, lib, output)
 
@@ -135,10 +134,7 @@ def test_render_with_detected_region_leaves_no_blurred_strip(tmp_path, monkeypat
         capture_output=True, check=True,
     ).stdout
     red, green, blue = column
-    if mode == "fill_crop":
-        assert green > 90 and red < 40  # sol kenar da asıl (yeşil) görüntü
-    else:
-        assert green > 60  # bulanık arka plan asıl görüntüden (yeşil) üretilir, DHA'nın gri kenarından değil
+    assert green > 90 and red < 40  # sol kenar da asıl (yeşil) görüntü
 
 
 def test_real_dha_overshoot_snaps_to_vertical_phone_aspect():
@@ -195,11 +191,27 @@ def dominant(pixel):
     return "rgb"[max(range(3), key=lambda i: pixel[i])]
 
 
-def test_wide_subject_is_never_cut_in_half(tmp_path, monkeypatch):
-    """Geniş özne (ör. yandan minibüs) kadraja tam sığar: üç renk de görünür; üst/alt bulanık dolgu."""
-    output, _ = render_stripes(tmp_path, monkeypatch, {"x": 0.05, "y": 0.3, "width": 0.9, "height": 0.4})
-    middle = [dominant(p) for p in rgb_row(output, 613)]
-    assert middle[0] == "r" and "g" in middle and middle[-1] == "b"
+def first_and_last_frame_rows(output, y):
+    rows = []
+    for position in ("0.05", "1.9"):
+        raw = subprocess.run(
+            ["ffmpeg", "-v", "error", "-ss", position, "-i", str(output), "-vf", f"crop=960:2:0:{y},scale=6:1",
+             "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+            capture_output=True, check=True,
+        ).stdout
+        rows.append([dominant(tuple(raw[i:i + 3])) for i in range(0, len(raw), 3)])
+    return rows
+
+
+def test_wide_subject_pans_instead_of_blur_bars(tmp_path, monkeypatch):
+    """Geniş özne (yandan otobüs): kadraj tam dolu kalır (üst satır da görüntü), özne üzerinde yavaşça kayar."""
+    output, project = render_stripes(tmp_path, monkeypatch, {"x": 0.05, "y": 0.3, "width": 0.9, "height": 0.4})
+    clip = next(t for t in project["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video")["clips"][0]
+    start, end = clip["framing"]["view_region"], clip["framing"]["view_region_end"]
+    assert end is not None and start["width"] == end["width"] and start["x"] != end["x"]
+    top_first, top_last = first_and_last_frame_rows(output, 0)
+    assert top_first != top_last  # kaydı
+    assert set(top_first) <= {"r", "g", "b"} and set(top_last) <= {"r", "g", "b"}  # en üst satır dahil görüntü
 
 
 def test_narrow_subject_fills_the_frame(tmp_path, monkeypatch):

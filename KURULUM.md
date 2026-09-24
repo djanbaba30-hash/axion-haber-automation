@@ -58,6 +58,7 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
 
 1. **Haber Stüdyosu:** Ham haberi yapıştır → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
 2. Sayfanın altında **Kaydet ve Video Stüdyosu'na geç**. Haber, ses ve metin projeye kaydedilir; Video Stüdyosu bu projeyle açılır.
+   - Seslendirmede saat, tarih ve ondalık sayılar okunabilir biçime çevrilir ("18.00'de" → "akşam 6'da").
    - Seslendirme metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
    - Aynı haberi düzeltip yeniden kaydedersen aynı proje güncellenir; yapılmış video analizi kaybolmaz.
 3. **DHA videosunu** her zamanki gibi panelden bilgisayarına indir (İndirilenler klasörüne).
@@ -72,10 +73,10 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      **Seslendirmeden önce / sonra** → **Kesiti ekle**. Birden fazla kesit ekleyebilirsin (ör. röportajın iki kısmı);
      eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
      İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
-   - **4. Video:** Axion sahneleri seslendirmeye göre kendisi seçer (ek ücret yok). **Kadraj**'ı seç → **Videoyu oluştur**.
+   - **4. Video:** Axion sahneleri seslendirmeye göre kendisi seçer (ek ücret yok) → **Videoyu oluştur**.
      Canva şablonundaki video alanının ölçüsünde (960×1226) MP4 hazırlanır.
-     - **Akıllı** (önerilen): haberin ana öznesi (araç, konuşan kişi) hiç kesilmez, video alanı olabildiğince dolar.
-       Özne genişse (ör. yandan minibüs) üst ve alt, aynı görüntünün bulanık kopyasıyla dolar. **Tüm kare:** görüntünün tamamı görünür.
+     - Video alanı her sahnede tam dolu kalır; hiçbir yanda bulanık dolgu olmaz. Kadraj haberin ana öznesine
+       (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar.
      - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
      - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
 5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'na geç** veya sol menü): videoyu ve kopyalamaya hazır başlıklarla

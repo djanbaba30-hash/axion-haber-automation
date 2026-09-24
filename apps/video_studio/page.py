@@ -9,7 +9,6 @@ from pathlib import Path
 
 import streamlit as st
 
-from apps.axion_local.preferences import persist, remember
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
@@ -47,8 +46,6 @@ ANALYSIS_OPTIONS = {
     "Ayrıntılı — sahne başına 3 kare": 3,
     "En ayrıntılı — sahne başına 4 kare": 4,
 }
-FRAMING_OPTIONS = {"Akıllı": "fill_crop", "Tüm kare": "fit_blur"}
-DEFAULT_FRAMING = "Akıllı"
 UPLOAD_TYPES = ["mp4", "mov", "mkv", "avi", "webm", "m4v", "jpg", "jpeg", "png", "webp"]
 DESIGN_PAGE = "apps/design_studio/page.py"
 
@@ -57,7 +54,6 @@ ss = st.session_state
 st.set_page_config(page_title="Video Stüdyosu · Axion", page_icon="🎬", layout="wide")
 require_secrets("OPENAI_API_KEY")
 st.title("Video Stüdyosu")
-remember(ss, {"framing": DEFAULT_FRAMING}, {"framing": list(FRAMING_OPTIONS)})
 
 
 def mmss(seconds: float) -> str:
@@ -292,8 +288,7 @@ if ready and not ss.get("edit_project"):
                 audio_metadata={**audio_metadata, "mime_type": "audio/mpeg", "size_bytes": audio_metadata.get("file_size_bytes")},
             ),
             media_library,
-            FRAMING_OPTIONS[ss.framing],
-            soundbites,
+            soundbites=soundbites,
         )
     except ValueError as error:
         plan_error = str(error)
@@ -311,22 +306,11 @@ with st.expander("4. Video", expanded=True):
         st.caption("Hazırlık: " + "  ·  ".join(f"{'✅' if ok else '⬜'} {label}" for label, ok in checks))
     else:
         output = project.folder / ROUGH_CUT_FILENAME
-        framing_col, button_col = st.columns([2, 1], vertical_alignment="bottom")
-        framing_col.segmented_control(
-            "Kadraj",
-            list(FRAMING_OPTIONS),
-            key="framing",
-            help="Akıllı: haberin ana öznesi hiç kesilmeden video alanı olabildiğince doldurulur; özne genişse "
-            "üst/alt aynı görüntünün bulanık kopyasıyla dolar. Tüm kare: görüntünün tamamı görünür.",
-        )
-        persist(ss, ["framing"])
         label = "Videoyu yeniden oluştur" if output.exists() else "🎬 Videoyu oluştur"
-        if button_col.button(label, type="primary", use_container_width=True):
+        if st.button(label, type="primary", use_container_width=True):
             try:
-                # Kadraj seçimi gösterilecek alanı değiştirir: plan aynı kurallarla yeniden kurulur (API yok).
-                edit_project = plan_rough_cut(
-                    edit_project, media_library, FRAMING_OPTIONS[ss.framing or DEFAULT_FRAMING], soundbites
-                )
+                # Plan güncel kurallarla yeniden kurulur (API yok): kural güncellemeleri eski projelere de uygulanır.
+                edit_project = plan_rough_cut(edit_project, media_library, soundbites=soundbites)
                 with st.spinner("Video oluşturuluyor... (birkaç dakika sürebilir)"):
                     encoder = render_rough_cut(edit_project, media_library, output)
             except (RuntimeError, ValueError, FileNotFoundError) as error:
@@ -346,7 +330,10 @@ with st.expander("4. Video", expanded=True):
             if design_col.button("Tasarım Stüdyosu'na geç →", use_container_width=True):
                 st.switch_page(DESIGN_PAGE)
         else:
-            st.caption("Sahneler seslendirmeye göre seçildi. Videoyu oluşturup kontrol et.")
+            st.caption(
+                "Sahneler seslendirmeye göre seçildi. Kadraj her sahnede haberin ana öznesine göre ayarlanır, "
+                "video alanı hep tam dolu kalır."
+            )
 
 
 # =================================================

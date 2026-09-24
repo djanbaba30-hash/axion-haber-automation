@@ -111,3 +111,42 @@ def test_user_prompts_no_longer_push_to_fill_length():
     assert "üst sınırdır" in prompt
     correction = build_correction_prompt("Standart", "25–26", 381, 389, 396, "ham", output("t"), ["hata"])
     assert "tekrar veya dolgu ekleme" in correction
+
+
+# Kayseri haberi (Windows testi): ElevenLabs "18.00'de" gibi saatleri okuyamıyor; spiker "akşam 6'da" demeli.
+KAYSERI_TTS = (
+    "Kayseri’de özel halk otobüsünün çarptığı 10 yaşındaki bisikletli çocuk hayatını kaybetti. "
+    "Kocasinan’da saat 18.00'de yaşanan kazada çocuk olay yerinde yaşamını yitirdi."
+)
+
+
+def test_clock_times_become_speakable():
+    from apps.news_studio.validation.speakable import make_speakable
+
+    assert "akşam 6'da yaşanan" in make_speakable(KAYSERI_TTS)
+    cases = {
+        "Kaza, saat 18.00 sıralarında meydana geldi.": "Kaza, akşam 6 sıralarında meydana geldi.",
+        "Saat 17.00’de ekipler geldi.": "Akşam 5'te ekipler geldi.",
+        "saat 09.30'da": "Sabah 9 buçukta",
+        "olay 14.15'te yaşandı": "olay öğleden sonra 2'yi çeyrek geçe yaşandı",
+        "kaza 23.45'te oldu": "kaza gece 12'ye çeyrek kala oldu",
+        "yangın 03.00'te çıktı": "yangın gece 3'te çıktı",
+        "13.00'e kadar sürdü": "Öğleden sonra 1'e kadar sürdü",
+        "kaza 24.09.2026'da oldu": "kaza 24 Eylül'de oldu",
+        "1.500 kişi katıldı": "1500 kişi katıldı",
+        "2,5 metre yükseklikten": "2 buçuk metre yükseklikten",
+        "bilet 12.50 lira": "bilet 12.50 lira",  # saat bağlamı yok: dokunma
+        "akşam 6'da yaşanan": "akşam 6'da yaşanan",
+    }
+    for text, expected in cases.items():
+        assert make_speakable(text) == expected, text
+
+
+def test_generated_tts_is_made_speakable_and_hard_numbers_warned():
+    result = SimpleNamespace(
+        baslik1="KAZA", baslik2="YARALI VAR", icerik="Uzun paylaşım metni. " * 20,
+        tts="Kaza saat 18.00'de oldu. Araç 3,2 metre sürüklendi.",
+    )
+    check = validate_news_output(result, "Ham haber", 10, 400)
+    assert result.tts == "Kaza akşam 6'da oldu. Araç 3,2 metre sürüklendi."
+    assert any("3,2" in w for w in check.warnings)

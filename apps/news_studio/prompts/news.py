@@ -68,6 +68,8 @@ TTS (sosyal medya videosu seslendirmesi)
 - Kısa, aktif cümleler kur. "olduğu öğrenildi/bildirildi", "edinilen bilgiye göre",
   "meydana geldi", "sevk edildi", "kazaya karışan" gibi ajans kalıplarını kullanma.
 - Noktalı virgül, parantez ve kısaltma kullanma; rakamları rakam olarak yaz.
+- Saat, tarih ve ondalık sayıyı spikerin okuyacağı gibi yaz: "18.00'de" değil "akşam 6'da",
+  "09.30'da" değil "sabah 9 buçukta", "24.09.2026'da" değil "24 Eylül'de", "2,5" değil "2 buçuk".
 - Yeri il/ilçe düzeyinde ver; mahalle/cadde adını yalnızca haberin özüyse kullan.
 - tts_plani: tts'i yazmadan önce her cümlenin vereceği tek yeni bilgiyi en fazla
   5 kelimeyle sırala; tts bu planı izlesin, planda olmayan cümle eklemesin.

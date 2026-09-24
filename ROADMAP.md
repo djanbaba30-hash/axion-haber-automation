@@ -53,6 +53,8 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
   - tamamlayıcı röportaj → TTS'ten sonra;
   - gerekmiyorsa → kullanılmaz.
   Video Stüdyosu'nda "Kaynak sesli kesitler" adımıyla yapılır (v2.0.0); birden fazla kesit seçilebilir.
+- Video alanı hep tam dolu: hiçbir sahnede üst/alt/yan bulanık dolgu yok (editör, Kayseri testi).
+- Seslendirmede saat/tarih/ondalık sayı okunuşuyla: "18.00'de" değil "akşam 6'da" (ElevenLabs okuyamıyor).
 - Plaka ve reşit olmayanların yüzü bulanıklaştırılır. Otomasyon yalnızca öneri üretir; son kontrol editördedir.
 
 ## Fazlar

@@ -122,10 +122,12 @@ def test_short_material_is_reused_instead_of_leaving_gaps():
     assert sum(c["duration_f"] for c in clips) == round(21.27 * 30)
 
 
-def test_framing_choice_applies_to_all_clips():
-    project = plan_rough_cut(edit_project(), library(), "fit_blur")
-    assert {c["framing"]["mode"] for c in video_clips(project)} == {"fit_blur"}
-
+def test_every_clip_fills_the_video_area_without_blur_bars():
+    """Editör kararı: hiçbir sahnede bulanık dolgu yok; gösterilen alan hep video alanı oranında."""
+    for mode in ("fill_crop", "fit_blur"):  # eski "Tüm kare" tercihi de tam dolu kadraja döner
+        for clip in video_clips(plan_rough_cut(edit_project(), library(), mode)):
+            view = clip["framing"]["view_region"]
+            assert abs(view["width"] * 16 / 9 / view["height"] - 960 / 1226) < 0.01
 
 def test_render_command_reports_missing_source(tmp_path):
     audio = tmp_path / "tts.mp3"

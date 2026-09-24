@@ -152,11 +152,11 @@ def test_saved_media_analysis_is_restored(local_env):
     assert any(label.startswith("✅ 2. Görüntüler — dha.mp4") for label in labels)
 
 
-def test_render_button_creates_video_with_chosen_framing(local_env, monkeypatch):
+def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     rendered = []
 
     def fake_render(edit_project, media_library, output):
-        rendered.append({c["framing"]["mode"] for t in edit_project["edit_plan"]["timeline"]["tracks"] for c in t["clips"] if t["kind"] == "video"})
+        rendered.append([c["framing"]["view_region"] for t in edit_project["edit_plan"]["timeline"]["tracks"] for c in t["clips"] if t["kind"] == "video"])
         output.write_bytes(b"mp4")
         return "x264 (işlemci)"
 
@@ -168,15 +168,13 @@ def test_render_button_creates_video_with_chosen_framing(local_env, monkeypatch)
     }]))
     at = start()
     at.switch_page(VIDEO_PAGE).run()
-    at.segmented_control(key="framing").set_value("Tüm kare").run()
+    assert not at.segmented_control  # kadraj seçimi yok: hep tam dolu
     button(at, "🎬 Videoyu oluştur").click().run()
     assert not at.exception
-    assert rendered == [{"fit_blur"}]
+    assert rendered and all(view is not None for view in rendered[0])
     assert (project.folder / store.ROUGH_CUT_FILENAME).exists()
     assert any(b.label == "Videoyu yeniden oluştur" for b in at.button)
-    from apps.axion_local.preferences import load_preferences
-    assert load_preferences()["framing"] == "Tüm kare"
-
+    assert any(b.label == "Tasarım Stüdyosu'na geç →" for b in at.button)
 
 def test_outdated_media_analysis_asks_for_reanalysis(local_env):
     saved_project({"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})

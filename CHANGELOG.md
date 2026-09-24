@@ -1,3 +1,16 @@
+# v2.1.0 — Bulanık dolgu yok, okunabilir saatler — 2026-09-24
+
+## Changed
+- Video alanı her sahnede tam dolu; hiçbir yanda bulanık dolgu yok. Kadraj haberin ana öznesine kayar; özne çok
+  genişse (ör. yandan otobüs) kadraj sahne boyunca onun üzerinde yavaşça kayar. "Akıllı / Tüm kare" seçimi kaldırıldı.
+- Seslendirme metninde saat, tarih, binlik ve ondalık sayılar okunuşuna çevrilir: "saat 18.00'de" → "akşam 6'da",
+  "09.30'da" → "sabah 9 buçukta", "24.09.2026'da" → "24 Eylül'de", "1.500" → "1500", "2,5" → "2 buçuk".
+  Haber üretiminde ve "Seslendir"de uygulanır; çevrilemeyen sayı için uyarı çıkar. Yönergeye kural eklendi.
+
+## Verification
+- `make test` geçti: tam dolu kadraj ve kaydırma (gerçek FFmpeg render), saat/tarih dönüşümü regresyon testleri
+  (Kayseri haberi). Windows testi bekleniyor.
+
 # v2.0.0 — Kaynak sesli kesitler, adım adım Video Stüdyosu, Tasarım Stüdyosu — 2026-09-24
 
 ## Added

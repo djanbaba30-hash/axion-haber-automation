@@ -169,6 +169,13 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
   - Video Stüdyosu adım adım: biten adım daralır; ayarlar `st.popover`'da (expander iç içe olamaz).
   - Yeni sayfa `apps/design_studio/page.py` (Tasarım Stüdyosu): Canva'nın yerini alacak araçlar burada olacak.
   - Arayüz terimleri Türkçeleştirildi (Video Stüdyosu, seslendirme/paylaşım metni, sahne, girdi/çıktı token).
+- v2.1.0 (editörün Kayseri testi: token 17.5k → 4.1k girdi, $0.0022; kesit ses geçişi ve sahne temposu iyi):
+  - Bulanık dolgu tamamen kaldırıldı (editör: "videonun hiçbir yanında bulanıklaştırma istemiyorum"). Luna'nın özne
+    kutusu genelde tüm kareyi kaplıyordu → v1.9.4'te neredeyse her sahne dolgulu çıkıyordu. `_view_regions`: hep video
+    alanı oranında en büyük alan, öznenin ortasına; özne %15'ten fazla genişse kadraj klip boyunca kayar
+    (`Framing.view_region_end`, hız karenin %4'ü/sn). Render `crop` x/y ifadesinde `t` kullanır. Kadraj seçimi arayüzden kalktı.
+  - `news_studio/validation/speakable.py`: seslendirme metninde saat/tarih/binlik/ondalık → okunuş ("18.00'de" →
+    "akşam 6'da", ek uyumlu). Doğrulamada ve "Seslendir"de uygulanır; çevrilemeyen sayı için uyarı. Prompt'a 2 satır kural.
 - Sıradaki: editörün v1.9.x testi (bulanık kenarlı ve normal yatay videolarla) → kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar

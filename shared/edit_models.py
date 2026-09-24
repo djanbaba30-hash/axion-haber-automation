@@ -66,6 +66,9 @@ class Framing(BaseModel):
     # Kaynakta gösterilecek dikdörtgen (0–1, tüm kareye göre). Oranı video alanından genişse üst/alt boşluk
     # aynı görüntünün bulanık kopyasıyla dolar. Doluysa render content_region/focus yerine bunu kullanır.
     view_region: Region | None = None
+    # Doluysa kadraj klip boyunca view_region'dan buna yavaşça kayar (aynı boyut): geniş özne bulanık dolgu
+    # olmadan gösterilir.
+    view_region_end: Region | None = None
 
     @field_validator("focus_x", "focus_y")
     @classmethod

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from ..config import TTS_HARD_MIN_RATIO, TTS_TOLERANCE_CHARS
+from .speakable import make_speakable, unreadable_numbers
 
 
 @dataclass
@@ -92,8 +93,11 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
     result.baslik1 = turkish_upper((result.baslik1 or "").strip())
     result.baslik2 = turkish_upper((result.baslik2 or "").strip())
     result.icerik = (result.icerik or "").strip()
-    result.tts = normalize_tts_punctuation((result.tts or "").strip())
+    result.tts = make_speakable(normalize_tts_punctuation((result.tts or "").strip()))
     errors=[]; warnings=[]
+    hard_numbers = unreadable_numbers(result.tts)
+    if hard_numbers:
+        warnings.append("Seslendirme metninde spikerin yanlış okuyabileceği sayı var: " + ", ".join(hard_numbers) + ". Kelimeyle yazmayı düşün.")
 
     plate_removed = False
     for field in ("baslik1", "baslik2", "icerik", "tts"):

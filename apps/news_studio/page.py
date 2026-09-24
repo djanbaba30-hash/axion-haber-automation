@@ -15,6 +15,7 @@ from apps.news_studio.prompts.news import build_news_prompt, build_correction_pr
 from apps.news_studio.tts.calibration import load as load_calibration, estimate, update as update_calibration
 from apps.news_studio.tts.service import synthesize
 from apps.news_studio.validation.news import validate_news_output, find_censorship_warnings
+from apps.news_studio.validation.speakable import make_speakable
 from apps.axion_local.preferences import persist, remember
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import get_news_project, save_news_project
@@ -181,7 +182,7 @@ if st.session_state.icerik:
     st.session_state.tts_metni=st.text_area("Seslendirme metni",value=st.session_state.tts_metni,height=150,label_visibility="collapsed")
     st.caption(f"{len(st.session_state.tts_metni)} karakter · hedef {tts_min}–{tts_max} ({duration_label})")
     if st.button("🎙️ Seslendir",type="primary",use_container_width=True):
-        tts_text=st.session_state.tts_metni.strip()
+        tts_text=make_speakable(st.session_state.tts_metni.strip())  # "18.00'de" → "akşam 6'da" (spiker okuyabilsin)
         if not voice_id: st.error("Spiker seçilemedi; ElevenLabs anahtarını kontrol et.")
         elif not tts_text: st.error("Seslendirme metni boş.")
         else:
