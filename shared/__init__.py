@@ -4,6 +4,7 @@ from .news_package import (
     TTSAlignment,
     migrate_news_package_v1_to_v1_1,
     normalize_news_package_payload,
+    parse_news_package,
 )
 from .media_models import (
     AnalysisFrame,
@@ -45,7 +46,7 @@ from .edit_models import (
 
 __all__ = [
     "NEWS_PACKAGE_VERSION", "NewsPackage", "TTSAlignment",
-    "migrate_news_package_v1_to_v1_1", "normalize_news_package_payload",
+    "migrate_news_package_v1_to_v1_1", "normalize_news_package_payload", "parse_news_package",
     "AnalysisFrame", "AnalysisWindow", "AudioTechnicalInfo", "DisplayGeometry",
     "EditorialRole", "FocusPoint", "ImageAsset", "ImageGeometry", "MediaAssetRef",
     "MediaLibrary", "MediaSource", "MediaType", "Region", "Shot", "VideoAsset",

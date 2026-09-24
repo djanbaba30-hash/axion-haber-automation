@@ -3,66 +3,27 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from pydantic import ValidationError
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.0", "1.1"}
+from shared.news_package import NewsPackage, parse_news_package
 
 
-def normalize_news_package(data: dict[str, Any]) -> dict[str, Any]:
-    """Axion Haber'den gelen JSON'u Video Studio'nun ortak sözleşmesine normalize eder.
-
-    Hem mevcut Axion Haber formatını (haber alanları root seviyesinde)
-    hem de nested ``news`` yapısını destekler.
-    """
-    if not isinstance(data, dict):
-        raise ValueError("NewsPackage JSON nesnesi olmalı.")
-
-    nested_news = data.get("news") if isinstance(data.get("news"), dict) else {}
-
-    def first_value(*values: Any) -> str:
-        for value in values:
-            if value is not None and str(value).strip():
-                return str(value).strip()
-        return ""
-
-    normalized = {
-        "schema_version": str(data.get("schema_version") or "1.0"),
+def news_package_to_state(package: NewsPackage) -> dict[str, Any]:
+    """Video Studio session state'inde kullanılan sözlük görünümü."""
+    return {
+        "schema_version": package.schema_version,
         "news": {
-            "headline_1": first_value(
-                nested_news.get("headline_1"),
-                nested_news.get("baslik1"),
-                data.get("headline_1"),
-                data.get("baslik1"),
-            ),
-            "headline_2": first_value(
-                nested_news.get("headline_2"),
-                nested_news.get("baslik2"),
-                data.get("headline_2"),
-                data.get("baslik2"),
-            ),
-            "caption": first_value(
-                nested_news.get("caption"),
-                nested_news.get("icerik"),
-                data.get("caption"),
-                data.get("icerik"),
-            ),
-            "tts_text": first_value(
-                nested_news.get("tts_text"),
-                nested_news.get("tts"),
-                data.get("tts_text"),
-                data.get("tts"),
-            ),
-            "source_text": first_value(
-                nested_news.get("source_text"),
-                nested_news.get("raw_text"),
-                data.get("source_text"),
-                data.get("raw_text"),
-            ),
+            "headline_1": package.headline_1,
+            "headline_2": package.headline_2,
+            "caption": package.caption,
+            "tts_text": package.tts_text,
+            "source_text": package.source_text,
         },
-        "audio": data.get("audio") if isinstance(data.get("audio"), dict) else {},
-        "metadata": data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
+        "tts_alignment": (
+            package.tts_alignment.model_dump() if package.tts_alignment else None
+        ),
+        "metadata": package.metadata,
     }
-
-    return normalized
 
 
 def parse_news_package_bytes(raw_bytes: bytes) -> dict[str, Any]:
@@ -71,15 +32,15 @@ def parse_news_package_bytes(raw_bytes: bytes) -> dict[str, Any]:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"NewsPackage okunamadı: {exc}") from exc
 
-    package = normalize_news_package(data)
-    schema = package["schema_version"]
-    if schema not in SUPPORTED_SCHEMA_VERSIONS:
-        raise ValueError(
-            f"Desteklenmeyen NewsPackage sürümü: {schema}. "
-            f"Desteklenen: {', '.join(sorted(SUPPORTED_SCHEMA_VERSIONS))}."
-        )
+    if not isinstance(data, dict):
+        raise ValueError("NewsPackage JSON nesnesi olmalı.")
 
-    if not package["news"]["caption"] and not package["news"]["source_text"]:
+    try:
+        package = parse_news_package(data)
+    except ValidationError as exc:
+        raise ValueError(f"NewsPackage doğrulanamadı: {exc}") from exc
+
+    if not package.caption.strip() and not package.source_text.strip():
         raise ValueError("NewsPackage içinde caption veya source_text bulunamadı.")
 
-    return package
+    return news_package_to_state(package)

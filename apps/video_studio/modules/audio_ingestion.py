@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import subprocess
-
-FFMPEG_TIMEOUT_SECONDS = 120
+import json
 import tempfile
 from pathlib import Path
 from typing import Any
+
+from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, run_ffmpeg
 
 
 ALLOWED_AUDIO_EXTENSIONS = {
@@ -86,13 +86,7 @@ def probe_audio(
         str(audio_path),
     ]
 
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=FFMPEG_TIMEOUT_SECONDS,
-    )
+    result = run_ffmpeg(command, PROBE_TIMEOUT_SECONDS, "FFprobe ses analizi")
 
     if result.returncode != 0:
 
@@ -109,8 +103,6 @@ def probe_audio(
                 else ""
             )
         )
-
-    import json
 
     try:
 

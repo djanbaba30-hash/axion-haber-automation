@@ -7,9 +7,9 @@ from ..validation.news import turkish_upper
 from ..prompts.news import SYSTEM_PROMPT, HEADLINE_SYSTEM_PROMPT
 
 
+# SDK'nın kendi retry'ı kapalı; tek retry katmanı retry_transient.
 def _make(cls, api_key):
-    try: return cls(api_key=api_key, timeout=AI_TIMEOUT_SECONDS)
-    except TypeError: return cls(api_key=api_key)
+    return cls(api_key=api_key, timeout=AI_TIMEOUT_SECONDS, max_retries=0)
 
 
 def make_openai(api_key): return _make(OpenAI, api_key)

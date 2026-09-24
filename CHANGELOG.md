@@ -1,3 +1,44 @@
+# v1.1.2 — Contract revision and fixes — 2026-09-24
+
+## Fixed
+- Video Studio: Luna image data URLs were sent as the literal text `{image_mime_type(...)}` (missing f-string), breaking visual analysis for every video. Frames and standalone images now both use the real MIME type from the file extension (`image_data_url`).
+- Video Studio: every FFmpeg/FFprobe call goes through `modules/ffmpeg_runner.py`. Probe and frame extraction: 60 s. Proxy transcode (previously no timeout) and scene detection: 4× video duration, clamped to 300–3600 s. A timeout raises a readable `RuntimeError`, and temporary proxy/frame files are removed.
+- Video Studio: wrong password now shows "Şifre yanlış."; password comparison uses `hmac.compare_digest`.
+- News prompt: the caption source instruction was truncated ("ek." → "ekle.").
+- News prompt: `build_correction_prompt` no longer uses a backslash inside an f-string expression (SyntaxError on Python < 3.12). Prompt output is unchanged.
+- Retry: `anthropic.OverloadedError` (529) is now treated as transient. The OpenAI/Anthropic SDK internal retries are disabled (`max_retries=0`), so `retry_transient` is the only retry layer (previously up to 3×3 = 9 requests).
+
+## Contract (shared/)
+- NewsPackage: `parse_news_package` is the single entry point for every version. 1.0 files (flat, nested `news`, Turkish field names, `schema_version: null`) are migrated to 1.1. Unknown legacy fields are kept under `metadata.legacy_fields`.
+- Video Studio's NewsPackage import now uses the shared contract instead of its own parser.
+- NewsReference validates `tts_alignment` against `tts_text`.
+- EditProject cross-validation:
+  - segment text equals `tts_text[char_start:char_end]`;
+  - segments are ordered, non-overlapping and cover the whole `tts_text` (whitespace excepted);
+  - clip `asset_id` exists in `media` (audio clips: `audio.asset_id` or `media`) and clip `segment_id` exists;
+  - timeline end does not exceed the TTS duration;
+  - `media` has no duplicate asset ids.
+- Timeline and track rules:
+  - no overlapping clips within a track;
+  - clip and track ids are unique;
+  - transition in + out ≤ clip duration;
+  - `cut`/`none` transitions have a duration of 0 and `fade` has a duration above 0;
+  - segment `order` runs 1..n.
+- Media:
+  - Shot `start_seconds` ≥ 0;
+  - AnalysisWindow must lie inside its Shot, and AnalysisFrame inside its window;
+  - fractional rotation is rejected;
+  - `exif_orientation` must be 1–8.
+- `FramingMode.VERTICAL_CROP` merged into `FILL_CROP` (both are documented). The unused `EditPlan.snapshot_id` field was removed.
+
+## Process
+- Tests run with pytest: `make test` (80 tests; previously only 4 unittest tests ran). `pytest` moved to `requirements-dev.txt`.
+- `.github/workflows/extract-repo.yml` removed. `.pytest_cache/` and `*.zip` added to `.gitignore`.
+
+## Known / deferred
+- Video Studio still builds its draft project with `apps/video_studio/modules/edit_plan.py` (format 1.1). The target contract is `shared/edit_models.py` (2.1); the switch happens when the Edit Planner is connected.
+- ElevenLabs TTS calls are not retried, because a retry could consume character quota twice.
+
 # Axion Repo Reset — 2026-09-24
 
 ## Included
@@ -8,13 +49,11 @@
 - Generated TTS bytes persist in Streamlit session state across reruns.
 - Real MP3 duration measured with Mutagen and calibration persisted locally.
 - Selected ElevenLabs voice is remembered in session state.
-- AI/TTS transient retry and timeout handling added.
+- AI (OpenAI/Claude) transient retry and request timeouts added. ElevenLabs has a request timeout but no retry.
 - Censorship terms are reported as validation warnings rather than silently rewritten.
 - Simple SQLite production history log added.
 - Shared `NewsPackage` contract added for News → Video handoff.
 - Video Studio accepts NewsPackage JSON and continues to use GPT-5.6 Luna only for visual analysis.
-- FFmpeg subprocess calls receive bounded timeouts.
-- Visual analysis now derives image MIME type from the actual frame/image extension.
 - Basic unit tests included.
 
 ## Deliberately deferred

@@ -1,34 +1,18 @@
 import time
 
-try:
-    from openai import APIConnectionError as OpenAIAPIConnectionError
-    from openai import APITimeoutError as OpenAIAPITimeoutError
-    from openai import InternalServerError as OpenAIInternalServerError
-    from openai import RateLimitError as OpenAIRateLimitError
-except ImportError:
-    OpenAIAPIConnectionError = OpenAIAPITimeoutError = OpenAIInternalServerError = OpenAIRateLimitError = ()
+import anthropic
+import openai
 
-try:
-    from anthropic import APIConnectionError as AnthropicAPIConnectionError
-    from anthropic import APITimeoutError as AnthropicAPITimeoutError
-    from anthropic import InternalServerError as AnthropicInternalServerError
-    from anthropic import RateLimitError as AnthropicRateLimitError
-except ImportError:
-    AnthropicAPIConnectionError = AnthropicAPITimeoutError = AnthropicInternalServerError = AnthropicRateLimitError = ()
-
-TRANSIENT_EXCEPTIONS = tuple(
-    item
-    for item in (
-        OpenAIRateLimitError,
-        OpenAIAPITimeoutError,
-        OpenAIAPIConnectionError,
-        OpenAIInternalServerError,
-        AnthropicRateLimitError,
-        AnthropicAPITimeoutError,
-        AnthropicAPIConnectionError,
-        AnthropicInternalServerError,
-    )
-    if isinstance(item, type)
+TRANSIENT_EXCEPTIONS = (
+    openai.RateLimitError,
+    openai.APITimeoutError,
+    openai.APIConnectionError,
+    openai.InternalServerError,
+    anthropic.RateLimitError,
+    anthropic.APITimeoutError,
+    anthropic.APIConnectionError,
+    anthropic.InternalServerError,
+    anthropic.OverloadedError,
 )
 
 

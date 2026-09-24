@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
 
-FFMPEG_TIMEOUT_SECONDS = 120
+from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
 
 
 ALLOWED_VIDEO_EXTENSIONS = {
@@ -62,13 +61,7 @@ def probe_video(video_path: Path) -> dict[str, Any]:
         str(video_path),
     ]
 
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=FFMPEG_TIMEOUT_SECONDS,
-    )
+    result = run_ffmpeg(command, PROBE_TIMEOUT_SECONDS, "FFprobe video analizi")
 
     if result.returncode != 0:
         error_message = result.stderr.strip()
@@ -173,6 +166,7 @@ def build_metadata(
 def create_proxy(
     video_path: Path,
     width: int = 960,
+    duration_seconds: float | None = None,
 ) -> Path:
     """
     Orijinal videodan düşük çözünürlüklü proxy oluşturur.
@@ -209,12 +203,15 @@ def create_proxy(
         str(proxy_path),
     ]
 
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = run_ffmpeg(
+            command,
+            long_job_timeout(duration_seconds),
+            "FFmpeg proxy oluşturma",
+        )
+    except RuntimeError:
+        proxy_path.unlink(missing_ok=True)
+        raise
 
     if result.returncode != 0:
 

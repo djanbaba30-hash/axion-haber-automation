@@ -1,3 +1,8 @@
+"""Video Studio'nun mevcut taslak EditProject formatı (1.1).
+
+Hedef sözleşme shared/edit_models.py (2.1); Edit Planner bağlanırken bu modül onunla değiştirilecek.
+"""
+
 from __future__ import annotations
 
 from typing import Any

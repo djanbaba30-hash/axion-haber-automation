@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from .media_models import MediaAssetRef
-from .news_package import TTSAlignment
+from .news_package import TTSAlignment, ensure_alignment_matches_text
 
 
 EDIT_PROJECT_VERSION = "2.1"
@@ -14,9 +15,16 @@ EDIT_PLAN_VERSION = "2.1"
 
 
 class FramingMode(str, Enum):
+    """Kaynağın timeline kadrajına (ör. 1080x1440) yerleştirilme biçimi.
+
+    FILL_CROP: Kaynak kadrajı tamamen dolduracak kadar ölçeklenir; taşan kısım
+        focus_x/focus_y merkez alınarak kırpılır. Yatay videodan dikey kesit de budur.
+    FIT_BLUR: Kaynağın tamamı kadraja sığdırılır; boş kalan alan aynı kaynağın
+        büyütülmüş ve bulanıklaştırılmış kopyasıyla doldurulur.
+    """
+
     FILL_CROP = "fill_crop"
     FIT_BLUR = "fit_blur"
-    VERTICAL_CROP = "vertical_crop"
 
 
 class ClipOrigin(str, Enum):
@@ -76,8 +84,21 @@ class Transition(BaseModel):
             raise ValueError("transition duration_f negatif olamaz.")
         return value
 
+    @model_validator(mode="after")
+    def duration_matches_type(self) -> "Transition":
+        if self.type in {TransitionType.NONE, TransitionType.CUT} and self.duration_f != 0:
+            raise ValueError(f"{self.type.value} geçişinin duration_f değeri 0 olmalı.")
+        if self.type == TransitionType.FADE and self.duration_f == 0:
+            raise ValueError("fade geçişinin duration_f değeri 0'dan büyük olmalı.")
+        return self
+
 
 class Clip(BaseModel):
+    """Timeline öğesi. Kaynak tarafı saniye (source_*_s), timeline tarafı frame (*_f).
+
+    duration_f ile source süresi/speed tutarlılığı fps gerektirdiği için Timeline'da doğrulanır.
+    """
+
     model_config = ConfigDict(extra="forbid")
     id: str
     clip_type: ClipType = ClipType.MEDIA
@@ -126,10 +147,16 @@ class Clip(BaseModel):
             raise ValueError("confidence 0–1 aralığında olmalı.")
         return value
 
+    @property
+    def end_f(self) -> int:
+        return self.start_f + self.duration_f
+
     @model_validator(mode="after")
     def validate_clip(self) -> "Clip":
         if self.duration_f <= 0:
             raise ValueError("Clip duration_f sıfırdan büyük olmalı.")
+        if self.transition_in.duration_f + self.transition_out.duration_f > self.duration_f:
+            raise ValueError(f"Clip {self.id} geçiş süreleri toplamı klip süresini aşamaz.")
         if self.clip_type == ClipType.OVERLAY_TEXT:
             if self.asset_id is not None or not self.text or not self.text.strip():
                 raise ValueError("overlay_text clip asset_id içermemeli ve text taşımalı.")
@@ -150,7 +177,7 @@ class Track(BaseModel):
     clips: list[Clip] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_clip_kinds(self) -> "Track":
+    def validate_clips(self) -> "Track":
         expected = {
             TrackKind.VIDEO: {ClipType.MEDIA},
             TrackKind.OVERLAY: {ClipType.OVERLAY_TEXT},
@@ -159,10 +186,18 @@ class Track(BaseModel):
         for clip in self.clips:
             if clip.clip_type not in expected:
                 raise ValueError(f"{self.kind.value} track içinde {clip.clip_type.value} clip kullanılamaz.")
+        ordered = sorted(self.clips, key=lambda clip: clip.start_f)
+        for previous, current in zip(ordered, ordered[1:]):
+            if current.start_f < previous.end_f:
+                raise ValueError(
+                    f"Track {self.id} içinde {previous.id} ile {current.id} çakışıyor."
+                )
         return self
 
 
 class NewsSegment(BaseModel):
+    """tts_text içindeki [char_start, char_end) aralığı; zamanlar TTS alignment'tan türetilir."""
+
     model_config = ConfigDict(extra="forbid")
     segment_id: str
     order: int
@@ -202,16 +237,29 @@ class Timeline(BaseModel):
             raise ValueError("Timeline fps/width/height pozitif olmalı.")
         return value
 
+    @property
+    def clips(self) -> list[Clip]:
+        return [clip for track in self.tracks for clip in track.clips]
+
+    @property
+    def end_f(self) -> int:
+        return max((clip.end_f for clip in self.clips), default=0)
+
     @model_validator(mode="after")
-    def validate_clip_durations(self) -> "Timeline":
-        for track in self.tracks:
-            for clip in track.clips:
-                if clip.clip_type == ClipType.OVERLAY_TEXT:
-                    continue
-                source_duration = (clip.source_out_s or 0) - (clip.source_in_s or 0)
-                expected_frames = round((source_duration / clip.speed) * self.fps)
-                if abs(expected_frames - clip.duration_f) > 1:
-                    raise ValueError(f"Clip {clip.id} duration_f, source süresi/speed ile tutarlı değil.")
+    def validate_timeline(self) -> "Timeline":
+        track_ids = [track.id for track in self.tracks]
+        if len(track_ids) != len(set(track_ids)):
+            raise ValueError("Track id'leri benzersiz olmalı.")
+        clip_ids = [clip.id for clip in self.clips]
+        if len(clip_ids) != len(set(clip_ids)):
+            raise ValueError("Clip id'leri timeline genelinde benzersiz olmalı.")
+        for clip in self.clips:
+            if clip.clip_type == ClipType.OVERLAY_TEXT:
+                continue
+            source_duration = clip.source_out_s - clip.source_in_s
+            expected_frames = round((source_duration / clip.speed) * self.fps)
+            if abs(expected_frames - clip.duration_f) > 1:
+                raise ValueError(f"Clip {clip.id} duration_f, source süresi/speed ile tutarlı değil.")
         return self
 
 
@@ -224,6 +272,13 @@ class AudioReference(BaseModel):
     duration_seconds: float
     sha256: str | None = None
 
+    @field_validator("duration_seconds")
+    @classmethod
+    def positive_duration(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("Ses süresi pozitif olmalı.")
+        return value
+
 
 class EditPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -231,7 +286,16 @@ class EditPlan(BaseModel):
     status: Literal["draft", "approved", "rendered"] = "draft"
     segments: list[NewsSegment] = Field(default_factory=list)
     timeline: Timeline = Field(default_factory=Timeline)
-    snapshot_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_segments(self) -> "EditPlan":
+        ids = [segment.segment_id for segment in self.segments]
+        if len(ids) != len(set(ids)):
+            raise ValueError("segment_id değerleri benzersiz olmalı.")
+        orders = sorted(segment.order for segment in self.segments)
+        if orders != list(range(1, len(orders) + 1)):
+            raise ValueError("Segment order değerleri 1'den başlayıp ardışık olmalı.")
+        return self
 
 
 class NewsReference(BaseModel):
@@ -244,6 +308,11 @@ class NewsReference(BaseModel):
     source_text: str = ""
     tts_alignment: TTSAlignment | None = None
 
+    @model_validator(mode="after")
+    def validate_tts_alignment(self) -> "NewsReference":
+        ensure_alignment_matches_text(self.tts_alignment, self.tts_text)
+        return self
+
 
 class EditProject(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -255,3 +324,50 @@ class EditProject(BaseModel):
     audio: AudioReference
     media: list[MediaAssetRef] = Field(default_factory=list)
     edit_plan: EditPlan = Field(default_factory=EditPlan)
+
+    @model_validator(mode="after")
+    def validate_references(self) -> "EditProject":
+        self._validate_segments_cover_tts_text()
+
+        media_ids = [ref.asset_id for ref in self.media]
+        if len(media_ids) != len(set(media_ids)):
+            raise ValueError("media listesinde aynı asset_id birden fazla kez var.")
+        media_id_set = set(media_ids)
+        segment_ids = {segment.segment_id for segment in self.edit_plan.segments}
+
+        timeline = self.edit_plan.timeline
+        for clip in timeline.clips:
+            if clip.clip_type == ClipType.MEDIA and clip.asset_id not in media_id_set:
+                raise ValueError(f"Clip {clip.id} asset_id {clip.asset_id!r} media listesinde yok.")
+            if clip.clip_type == ClipType.AUDIO and clip.asset_id not in media_id_set | {self.audio.asset_id}:
+                raise ValueError(f"Clip {clip.id} asset_id {clip.asset_id!r} bilinen bir ses değil.")
+            if clip.segment_id is not None and clip.segment_id not in segment_ids:
+                raise ValueError(f"Clip {clip.id} segment_id {clip.segment_id!r} segmentlerde yok.")
+
+        max_frames = math.ceil(self.audio.duration_seconds * timeline.fps) + 1
+        if timeline.end_f > max_frames:
+            raise ValueError(
+                f"Timeline süresi ({timeline.end_f} frame) TTS süresini "
+                f"({self.audio.duration_seconds:.2f} sn) aşıyor."
+            )
+        return self
+
+    def _validate_segments_cover_tts_text(self) -> None:
+        """Segmentler sırayla birleşince (aradaki boşluklar hariç) tts_text'in tamamını vermeli."""
+        segments = sorted(self.edit_plan.segments, key=lambda segment: segment.order)
+        if not segments:
+            return
+        text = self.news.tts_text
+        cursor = 0
+        for segment in segments:
+            if segment.char_end > len(text):
+                raise ValueError(f"Segment {segment.segment_id} tts_text sınırının dışında.")
+            if segment.char_start < cursor:
+                raise ValueError(f"Segment {segment.segment_id} önceki segmentle çakışıyor veya sırası yanlış.")
+            if text[cursor:segment.char_start].strip():
+                raise ValueError(f"Segment {segment.segment_id} öncesinde segmentlere girmemiş metin var.")
+            if text[segment.char_start:segment.char_end] != segment.text:
+                raise ValueError(f"Segment {segment.segment_id} metni tts_text aralığıyla eşleşmiyor.")
+            cursor = segment.char_end
+        if text[cursor:].strip():
+            raise ValueError("Son segmentten sonra segmentlere girmemiş metin var.")
