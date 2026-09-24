@@ -3,6 +3,8 @@ import time
 import anthropic
 import openai
 
+from ..config import RETRY_ATTEMPTS
+
 TRANSIENT_EXCEPTIONS = (
     openai.RateLimitError,
     openai.APITimeoutError,
@@ -16,7 +18,7 @@ TRANSIENT_EXCEPTIONS = (
 )
 
 
-def retry_transient(fn, attempts=3, base_delay=1.0):
+def retry_transient(fn, attempts=RETRY_ATTEMPTS, base_delay=1.0):
     last = None
     for n in range(attempts):
         try:

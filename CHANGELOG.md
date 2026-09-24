@@ -1,3 +1,29 @@
+# v2.4.0 — Faz 3 kod incelemesi düzeltmeleri — 2026-09-24
+
+GPT ve Claude incelemesinin sonucu (`reviews/`). Kullanıcıya görünen davranış aynı; daha hızlı, daha ucuz, daha sağlam.
+
+## Changed
+- Luna görsel analizi düşük düşünme seviyesiyle (`low`) çalışır; 180 sn zaman aşımı.
+- Analiz kopyası (proxy) 640 px, sessiz ve en hızlı ayarla üretilir: görüntü analizi daha kısa sürer.
+- Video başına Luna'ya en fazla 40 kare gider (yüksek analiz yoğunluğunda maliyet tavanı).
+- Render tek kadraj yoluna indirildi; bulanık dolgu kodu tamamen kaldırıldı.
+
+## Fixed
+- Otomatik silmede silinemeyen klasör artık sessizce "silindi" sayılmıyor; `data/axion.log`'a yazılır, ertesi gün
+  yeniden denenir. Temizlik hatası uygulamanın açılmasını engellemez.
+- Tarayıcıdan yüklenen dosya yalnızca ad+boyutla eşleştiriliyordu; artık SHA-256 ile.
+- Kesit olarak seçilen aralık, aynı sahnenin komşu kısmından uzayan dolgu görüntüsüyle tekrar görünebiliyordu.
+- Kesit videonun süresini aşıyorsa açık hata; sonu taşıyorsa kırpılır.
+- FFmpeg sahne tespiti hata verirse video sessizce tek sahne sayılıyordu; artık hata gösterilir.
+- Yarıda kalan analiz geçici klasörde proxy/kare bırakıyordu.
+
+## Removed
+- Kullanılmayan kod: `validate_edit_project`, `add_timeline_item`, `add_news_segment`, `build_news_package`,
+  `save_news_package`, kadraj modu parametreleri.
+
+## Verification
+- `make test`: 178 test geçti (gerçek FFmpeg ile). Gerçek Luna çağrısı ve Windows E2E editörde.
+
 # v2.3.0 — Dikey çekimlerde güvenli kaydırma — 2026-09-24
 
 ## Fixed

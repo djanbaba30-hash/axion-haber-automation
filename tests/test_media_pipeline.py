@@ -100,3 +100,50 @@ def test_uploaded_image_is_kept_in_project_folder(tmp_path, monkeypatch):
 def test_old_analysis_is_not_current():
     assert not media_pipeline.is_current_media_library({"assets": [{"asset_type": "video", "shots": []}]})
     assert not media_pipeline.is_current_media_library(None)
+
+
+def test_failed_frame_extraction_leaves_no_temp_frames(tmp_path, monkeypatch):
+    from apps.video_studio.modules import representative_sampling as sampling
+
+    video = tmp_path / "dha.mp4"
+    make_video(video)
+    made = []
+    real = sampling.extract_single_frame
+
+    def flaky(*args):
+        if len(made) == 2:
+            raise RuntimeError("FFmpeg temsilci frame oluşturamadı.")
+        made.append(real(*args))
+        return made[-1]
+
+    monkeypatch.setattr(sampling, "extract_single_frame", flaky)
+    shots = [{"shot_number": 1, "start_seconds": 0.0, "end_seconds": 8.0, "duration_seconds": 8.0}]
+    with pytest.raises(RuntimeError):
+        sampling.extract_representative_frames(video, shots, frame_count=4)
+    assert made and not any(path.exists() for path in made)
+
+
+def test_frame_count_is_capped_for_long_videos():
+    shots = [{"start_seconds": 0.0, "end_seconds": 300.0}]  # 5 dk tek sahne → 30 pencere
+    assert media_pipeline.capped_frame_count(shots, 4) == 1   # 120 kare yerine 30
+    assert media_pipeline.capped_frame_count(shots[:0] + [{"start_seconds": 0.0, "end_seconds": 60.0}], 4) == 4
+    assert media_pipeline.capped_frame_count(shots, 1) == 1   # ekonomik mod: her pencerede 1 kare kalır
+
+
+def test_same_name_same_size_different_upload_is_not_reused(tmp_path):
+    from apps.video_studio.modules.video_ingestion import store_upload
+
+    class Upload:
+        name = "dha.mp4"
+
+        def __init__(self, data):
+            self.data = data
+
+        def getbuffer(self):
+            return memoryview(self.data)
+
+    first = store_upload(Upload(b"AAAA"), tmp_path)
+    again = store_upload(Upload(b"AAAA"), tmp_path)
+    different = store_upload(Upload(b"BBBB"), tmp_path)  # aynı ad, aynı boyut, farklı içerik
+    assert first == again and different != first
+    assert different.read_bytes() == b"BBBB" and first.read_bytes() == b"AAAA"

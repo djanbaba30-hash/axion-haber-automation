@@ -14,6 +14,8 @@ LUNA_MODEL = "gpt-5.6-luna"
 
 LUNA_INPUT_PRICE_PER_MILLION = 0.20
 LUNA_OUTPUT_PRICE_PER_MILLION = 1.20
+LUNA_REASONING_EFFORT = "low"
+LUNA_TIMEOUT_SECONDS = 180  # SDK'nın kendi 2 yeniden denemesi geçici ağ hatalarını karşılar.
 
 
 # Luna sabit kategorilerden seçmek zorunda (structured output enum); "unknown" seçeneği yok.
@@ -111,97 +113,29 @@ def image_mime_type(image_path: Path) -> str:
     return mime
 
 
-def encode_image(
-    image_path: Path,
-) -> str:
-
+def image_data_url(image_path: Path) -> str:
     if not image_path.exists():
-
-        raise FileNotFoundError(
-            f"Görüntü bulunamadı: "
-            f"{image_path}"
-        )
-
-    image_bytes = (
-        image_path.read_bytes()
-    )
-
-    return base64.b64encode(
-        image_bytes
-    ).decode("utf-8")
+        raise FileNotFoundError(f"Görüntü bulunamadı: {image_path}")
+    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    return f"data:{image_mime_type(image_path)};base64,{encoded}"
 
 
-def image_data_url(
-    image_path: Path,
-) -> str:
-    return f"data:{image_mime_type(image_path)};base64,{encode_image(image_path)}"
-
-
-def get_usage_value(
-    usage: Any,
-    attribute: str,
-    default: int = 0,
-) -> int:
-
-    value = getattr(
-        usage,
-        attribute,
-        default,
-    )
-
+def get_usage_value(usage: Any, attribute: str, default: int = 0) -> int:
     try:
-
-        return int(
-            value or 0
-        )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
-
+        return int(getattr(usage, attribute, default) or 0)
+    except (TypeError, ValueError):
         return default
 
 
-def get_reasoning_tokens(
-    usage: Any,
-) -> int:
-
-    output_details = getattr(
-        usage,
-        "output_tokens_details",
-        None,
-    )
-
-    if output_details is None:
-        return 0
-
-    return get_usage_value(
-        output_details,
-        "reasoning_tokens",
-        0,
-    )
+def get_reasoning_tokens(usage: Any) -> int:
+    details = getattr(usage, "output_tokens_details", None)
+    return get_usage_value(details, "reasoning_tokens") if details is not None else 0
 
 
-def calculate_cost(
-    input_tokens: int,
-    output_tokens: int,
-) -> float:
-
-    input_cost = (
-        input_tokens
-        / 1_000_000
-        * LUNA_INPUT_PRICE_PER_MILLION
-    )
-
-    output_cost = (
-        output_tokens
-        / 1_000_000
-        * LUNA_OUTPUT_PRICE_PER_MILLION
-    )
-
+def calculate_cost(input_tokens: int, output_tokens: int) -> float:
     return round(
-        input_cost + output_cost,
+        input_tokens / 1_000_000 * LUNA_INPUT_PRICE_PER_MILLION
+        + output_tokens / 1_000_000 * LUNA_OUTPUT_PRICE_PER_MILLION,
         8,
     )
 
@@ -249,13 +183,15 @@ def analyze_media_with_luna(
         content.append({"type": "input_image", "image_url": image_data_url(Path(image["path"])), "detail": "auto"})
         frame_total += 1
 
-    response = OpenAI(api_key=api_key).responses.parse(
+    response = OpenAI(api_key=api_key, timeout=LUNA_TIMEOUT_SECONDS).responses.parse(
         model=LUNA_MODEL,
         input=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": content},
         ],
         text_format=VisualAnalysisResponse,
+        # Görsel indeksleme uzun akıl yürütme gerektirmiyor: düşük seviye yeterli ve ucuz (editör kararı).
+        reasoning={"effort": LUNA_REASONING_EFFORT},
     )
     parsed = response.output_parsed
     if parsed is None:

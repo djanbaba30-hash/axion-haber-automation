@@ -124,10 +124,19 @@ def test_short_material_is_reused_instead_of_leaving_gaps():
 
 def test_every_clip_fills_the_video_area_without_blur_bars():
     """Editör kararı: hiçbir sahnede bulanık dolgu yok; gösterilen alan hep video alanı oranında."""
-    for mode in ("fill_crop", "fit_blur"):  # eski "Tüm kare" tercihi de tam dolu kadraja döner
-        for clip in video_clips(plan_rough_cut(edit_project(), library(), mode)):
-            view = clip["framing"]["view_region"]
-            assert abs(view["width"] * 16 / 9 / view["height"] - 960 / 1226) < 0.01
+    for clip in video_clips(plan_rough_cut(edit_project(), library())):
+        view = clip["framing"]["view_region"]
+        assert abs(view["width"] * 16 / 9 / view["height"] - 960 / 1226) < 0.01
+
+
+def test_render_never_builds_a_blur_fill_even_for_old_fit_blur_clips():
+    """Eski kayıtta mode=fit_blur kalmış olsa bile render bulanık dolgu üretmez (tek kadraj yolu)."""
+    from apps.video_studio.modules.render import _clip_filter
+    from shared.edit_models import Framing
+
+    for framing in (Framing(mode="fit_blur"), Framing(mode="fit_blur", view_region={"x": 0.2, "y": 0, "width": 0.44, "height": 1})):
+        graph = _clip_filter(0, framing, 960, 1226, 30, 90)
+        assert "boxblur" not in graph and "overlay" not in graph
 
 def test_render_command_reports_missing_source(tmp_path):
     audio = tmp_path / "tts.mp3"
@@ -138,8 +147,7 @@ def test_render_command_reports_missing_source(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
-@pytest.mark.parametrize("framing", ["fill_crop", "fit_blur"])
-def test_render_produces_template_sized_mp4_matching_voiceover(tmp_path, monkeypatch, framing):
+def test_render_produces_template_sized_mp4_matching_voiceover(tmp_path, monkeypatch):
     monkeypatch.setattr(render, "amd_encoder_available", lambda: False)
     source, audio = tmp_path / "dha.mp4", tmp_path / "tts.mp3"
     subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=duration=12:size=640x360:rate=25", str(source)], check=True)
@@ -149,7 +157,7 @@ def test_render_produces_template_sized_mp4_matching_voiceover(tmp_path, monkeyp
     lib = library(shots, source=str(source))
     from apps.video_studio.modules.edit_plan import build_edit_project
 
-    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 4.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib, framing)
+    project = plan_rough_cut(build_edit_project(lib, text, str(audio), 4.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib)
     output = tmp_path / "kaba_kurgu.mp4"
 
     assert render.render_rough_cut(project, lib, output) == "x264 (işlemci)"
@@ -199,3 +207,30 @@ def test_clock_time_is_not_a_sentence_end():
 
     text = "Kaza meydana geldi. Saat 17.00’de ekipler geldi."
     assert [text[a:b] for a, b in _segment_ranges(text)] == ["Kaza meydana geldi.", "Saat 17.00’de ekipler geldi."]
+
+
+def test_amd_failure_falls_back_to_x264(tmp_path, monkeypatch):
+    """AMD donanım kodlayıcısı hata verirse video işlemciyle (x264) yine üretilir; yarım dosya kalmaz."""
+    import types
+
+    audio = tmp_path / "tts.mp3"
+    audio.write_bytes(b"mp3")
+    source = tmp_path / "dha.mp4"
+    source.write_bytes(b"video")
+    project = plan_rough_cut(edit_project(audio_path=str(audio)), library(source=str(source)))
+    calls = []
+
+    def fake_ffmpeg(command, timeout, label):
+        calls.append(command)
+        output = Path(command[-1])
+        output.write_bytes(b"partial")
+        if "h264_amf" in command:
+            return types.SimpleNamespace(returncode=1, stderr="AMF init failed", stdout="")
+        return types.SimpleNamespace(returncode=0, stderr="", stdout="")
+
+    monkeypatch.setattr(render, "amd_encoder_available", lambda: True)
+    monkeypatch.setattr(render, "run_ffmpeg", fake_ffmpeg)
+    output = tmp_path / "kaba_kurgu.mp4"
+    assert render.render_rough_cut(project, library(source=str(source)), output) == "x264 (işlemci)"
+    assert [("h264_amf" in c, "libx264" in c) for c in calls] == [(True, False), (False, True)]
+    assert output.exists() and not (tmp_path / "kaba_kurgu.yaziliyor.mp4").exists()

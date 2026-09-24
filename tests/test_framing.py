@@ -8,7 +8,6 @@ import pytest
 
 from apps.video_studio.modules.framing import detect_content_region
 from apps.video_studio.modules.rough_cut import Candidate, clip_framing
-from shared.edit_models import FramingMode
 from shared.media_models import EditorialRole, FocusPoint, Region, VisualType
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
@@ -69,11 +68,11 @@ def candidate(focus, region=None):
 
 
 def test_focus_is_converted_to_content_coordinates():
-    framing = clip_framing(FramingMode.FILL_CROP, candidate(FocusPoint(x=0.5, y=0.3), Region(x=0.34, y=0, width=0.32, height=1)))
+    framing = clip_framing(candidate(FocusPoint(x=0.5, y=0.3), Region(x=0.34, y=0, width=0.32, height=1)))
     assert (framing.focus_x, framing.focus_y) == (0.5, 0.3)
-    framing = clip_framing(FramingMode.FILL_CROP, candidate(FocusPoint(x=0.8, y=0.5)))
+    framing = clip_framing(candidate(FocusPoint(x=0.8, y=0.5)))
     assert framing.focus_x == 0.8 and framing.content_region is None
-    assert clip_framing(FramingMode.FILL_CROP, candidate(None)).focus_x == 0.5
+    assert clip_framing(candidate(None)).focus_x == 0.5
 
 
 def test_render_crops_away_blur_and_follows_focus(tmp_path, monkeypatch):

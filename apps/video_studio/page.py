@@ -14,6 +14,7 @@ from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
     MEDIA_LIBRARY_FILENAME,
+    ROUGH_CUT_FILENAME,
     NewsProject,
     inbox_dir,
     list_inbox_media,
@@ -27,7 +28,7 @@ from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_library import detect_media_type
 from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
 from apps.video_studio.modules.news_package import news_package_to_state
-from apps.video_studio.modules.render import ROUGH_CUT_FILENAME, render_rough_cut
+from apps.video_studio.modules.render import render_rough_cut
 from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut
 from apps.video_studio.modules.soundbites import (
     PLACEMENT_LABELS,
@@ -143,7 +144,8 @@ with st.expander(
         analysis_mode = st.selectbox(
             "Analiz yoğunluğu",
             list(ANALYSIS_OPTIONS),
-            help="Kare sayısı arttıkça analiz daha ayrıntılı ama daha pahalı olur. Ekonomik çoğu haber için yeterli.",
+            help="Kare sayısı arttıkça analiz daha ayrıntılı ama daha pahalı olur. Ekonomik çoğu haber için yeterli. "
+            "Uzun videolarda maliyet sınırı için kare sayısı otomatik azaltılır.",
         )
     frame_count = ANALYSIS_OPTIONS[analysis_mode]
 

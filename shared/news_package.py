@@ -174,16 +174,5 @@ def parse_news_package(data: dict[str, Any]) -> NewsPackage:
     return NewsPackage.model_validate(normalize_news_package_payload(data))
 
 
-def build_news_package(**kwargs: Any) -> NewsPackage:
-    return NewsPackage(**kwargs)
-
-
-def save_news_package(package: NewsPackage, path: str | Path) -> Path:
-    target = Path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(package.model_dump_json(indent=2), encoding="utf-8")
-    return target
-
-
 def load_news_package(path: str | Path) -> NewsPackage:
     return parse_news_package(json.loads(Path(path).read_text(encoding="utf-8-sig")))

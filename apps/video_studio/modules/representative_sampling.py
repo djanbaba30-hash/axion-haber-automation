@@ -64,92 +64,100 @@ def extract_representative_frames(
     )
 
     results = []
+    created: list[Path] = []
 
-    for shot in shots:
+    try:
+        for shot in shots:
 
-        start_seconds = float(
-            shot["start_seconds"]
-        )
-
-        end_seconds = float(
-            shot["end_seconds"]
-        )
-
-        duration = (
-            end_seconds - start_seconds
-        )
-
-        if duration <= 0:
-            continue
-
-        windows = []
-        frame_paths = []
-        frame_index = 0
-
-        for window_start, window_end in split_into_windows(
-            start_seconds,
-            end_seconds,
-        ):
-
-            window_frames = []
-
-            for timestamp in calculate_representative_timestamps(
-                window_start,
-                window_end,
-                frame_count,
-            ):
-
-                frame_index += 1
-
-                frame_path = extract_single_frame(
-                    video_path,
-                    timestamp,
-                    shot["shot_number"],
-                    frame_index,
-                )
-
-                frame = {
-                    "frame_index": frame_index,
-                    "timestamp_seconds": round(
-                        timestamp,
-                        3,
-                    ),
-                    "path": str(frame_path),
-                }
-                window_frames.append(frame)
-                frame_paths.append(frame)
-
-            windows.append(
-                {
-                    "start_seconds": round(window_start, 3),
-                    "end_seconds": round(window_end, 3),
-                    "frames": window_frames,
-                }
+            start_seconds = float(
+                shot["start_seconds"]
             )
 
-        shot_data = dict(shot)
+            end_seconds = float(
+                shot["end_seconds"]
+            )
 
-        shot_data[
-            "analysis_windows"
-        ] = windows
+            duration = (
+                end_seconds - start_seconds
+            )
 
-        shot_data[
-            "analysis_frames"
-        ] = frame_paths
+            if duration <= 0:
+                continue
 
-        shot_data[
-            "sampling"
-        ] = {
-            "method": "representative",
-            "window_count": len(windows),
-            "frame_count": len(
-                frame_paths
-            ),
-        }
+            windows = []
+            frame_paths = []
+            frame_index = 0
 
-        results.append(
-            shot_data
-        )
+            for window_start, window_end in split_into_windows(
+                start_seconds,
+                end_seconds,
+            ):
+
+                window_frames = []
+
+                for timestamp in calculate_representative_timestamps(
+                    window_start,
+                    window_end,
+                    frame_count,
+                ):
+
+                    frame_index += 1
+
+                    frame_path = extract_single_frame(
+                        video_path,
+                        timestamp,
+                        shot["shot_number"],
+                        frame_index,
+                    )
+                    created.append(frame_path)
+
+                    frame = {
+                        "frame_index": frame_index,
+                        "timestamp_seconds": round(
+                            timestamp,
+                            3,
+                        ),
+                        "path": str(frame_path),
+                    }
+                    window_frames.append(frame)
+                    frame_paths.append(frame)
+
+                windows.append(
+                    {
+                        "start_seconds": round(window_start, 3),
+                        "end_seconds": round(window_end, 3),
+                        "frames": window_frames,
+                    }
+                )
+
+            shot_data = dict(shot)
+
+            shot_data[
+                "analysis_windows"
+            ] = windows
+
+            shot_data[
+                "analysis_frames"
+            ] = frame_paths
+
+            shot_data[
+                "sampling"
+            ] = {
+                "method": "representative",
+                "window_count": len(windows),
+                "frame_count": len(
+                    frame_paths
+                ),
+            }
+
+            results.append(
+                shot_data
+            )
+    except Exception:
+        # Yarıda kalırsa o ana kadar çıkarılan kareler geçici klasörde kalmasın.
+        for path in created:
+            path.unlink(missing_ok=True)
+        raise
 
     return results
 

@@ -179,19 +179,3 @@ def build_edit_project(
         ),
     )
     return project.model_dump(mode="json")
-
-
-def validate_edit_project(project: dict[str, Any]) -> list[str]:
-    try:
-        EditProject.model_validate(project)
-        return []
-    except Exception as error:
-        return [str(error)]
-
-
-def add_timeline_item(*args, **kwargs):
-    raise NotImplementedError("EditProject 2.1'de timeline değişiklikleri Planner tarafından yapılmalıdır.")
-
-
-def add_news_segment(*args, **kwargs):
-    raise NotImplementedError("NewsSegment 2.1 segmentleri TTS metninden deterministik üretilir.")

@@ -14,13 +14,14 @@ from shared.media_models import MediaLibrary
 from .framing import detect_content_region
 from .local_media import LocalMediaFile
 from .media_library import build_image_asset, build_media_library, detect_media_type
-from .representative_sampling import extract_representative_frames
+from .representative_sampling import extract_representative_frames, split_into_windows
 from .shot_detection import detect_shots
 from .video_asset import LUNA_PROMPT_VERSION, build_image_asset_model, build_video_asset
 from .video_ingestion import create_proxy, probe_video, save_uploaded_video, store_upload
 from .visual_analysis import analyze_media_with_luna
 
-PROXY_WIDTH = 960
+PROXY_WIDTH = 640  # Luna'ya giden analiz kareleri de 640 px; daha büyük proxy yalnızca süre kaybı.
+MAX_FRAMES_PER_VIDEO = 40
 Progress = Callable[[str], None]
 
 
@@ -41,6 +42,17 @@ def _scratch_files(metadata: dict[str, Any], shots: list[dict[str, Any]]) -> lis
     return paths
 
 
+def capped_frame_count(shots: list[dict[str, Any]], frame_count: int) -> int:
+    """Pencere başına kare sayısı; bir videodan Luna'ya en fazla MAX_FRAMES_PER_VIDEO kare gitsin (maliyet tavanı).
+
+    Ekonomik modda (1 kare) sınır uygulanmaz: her pencerenin en az bir karesi olmalı.
+    """
+    windows = sum(len(split_into_windows(float(s["start_seconds"]), float(s["end_seconds"]))) for s in shots)
+    if windows * frame_count <= MAX_FRAMES_PER_VIDEO:
+        return frame_count
+    return max(1, MAX_FRAMES_PER_VIDEO // max(1, windows))
+
+
 def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, storage_dir: Path | None = None):
     progress(f"{file.name}: video okunuyor")
     video_path = save_uploaded_video(file, storage_dir=storage_dir)
@@ -56,9 +68,14 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
         "width": PROXY_WIDTH,
     }
 
-    progress(f"{file.name}: sahneler tespit ediliyor")
-    shots = detect_shots(proxy_path, metadata["duration_seconds"])
-    shots = extract_representative_frames(proxy_path, shots, frame_count=frame_count)
+    try:
+        progress(f"{file.name}: sahneler tespit ediliyor")
+        shots = detect_shots(proxy_path, metadata["duration_seconds"])
+        shots = extract_representative_frames(proxy_path, shots, frame_count=capped_frame_count(shots, frame_count))
+    except Exception:
+        # Yarıda kalan analiz geçici dosya bırakmasın (başarılıysa temizlik prepare_media_library'de).
+        proxy_path.unlink(missing_ok=True)
+        raise
     progress(f"{file.name}: kadraj alanı belirleniyor")
     for shot in shots:
         region = detect_content_region([Path(frame["path"]) for frame in shot["analysis_frames"]])

@@ -7,8 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from apps.axion_local.store import ROUGH_CUT_FILENAME  # noqa: F401  (sayfa buradan alır)
-from shared.edit_models import ClipType, EditProject, Framing, FramingMode, TrackKind
+from shared.edit_models import ClipType, EditProject, Framing, TrackKind
 from shared.media_models import MediaLibrary
 
 from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
@@ -27,38 +26,24 @@ def amd_encoder_available() -> bool:
 
 
 def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int, frames: int) -> str:
+    """Tek kadraj yolu: planlayıcının seçtiği alan kırpılıp video alanına ölçeklenir (hep tam dolu).
+
+    Bulanık dolgu hiçbir durumda üretilmez (editör kararı); `framing.mode` yok sayılır. view_region_end varsa kadraj
+    klip boyunca oraya yavaşça kayar. Alan yoksa (eski kayıt) ortadan tam dolu kırpılır.
+    """
     size = f"{width}:{height}"
-    steps = []
     view = framing.view_region
     if view:
-        # Planlayıcının seçtiği alan (video alanı oranında): tam dolu kadraj, bulanık dolgu yok.
-        # view_region_end varsa kadraj klip boyunca oraya yavaşça kayar.
         end = framing.view_region_end or view
         seconds = frames / fps
         x = f"'iw*({view.x}+({end.x - view.x})*min(t/{seconds:.3f},1))'"
         y = f"'ih*({view.y}+({end.y - view.y})*min(t/{seconds:.3f},1))'"
-        steps.append(f"crop=iw*{view.width}:ih*{view.height}:{x}:{y},scale={size}")
-    region = None if view else framing.content_region
-    if region:
-        # Önce bulanık/siyah kenarları at: kalan asıl görüntü üzerinden kadrajlanır.
-        steps.append(f"crop=iw*{region.width}:ih*{region.height}:iw*{region.x}:ih*{region.y}")
-    if view:
-        pass
-    elif framing.mode == FramingMode.FIT_BLUR:
-        steps.append(
-            f"split[b{index}][f{index}];"
-            f"[b{index}]scale={size}:force_original_aspect_ratio=increase,crop={size},boxblur=20:2[bb{index}];"
-            f"[f{index}]scale={size}:force_original_aspect_ratio=decrease[ff{index}];"
-            f"[bb{index}][ff{index}]overlay=(W-w)/2:(H-h)/2"
-        )
+        framing_steps = f"crop=iw*{view.width}:ih*{view.height}:{x}:{y},scale={size}"
     else:
-        # Kadrajı odak noktasına ortala; görüntü dışına taşmasın diye sınırla.
-        x = f"'clip(iw*{framing.focus_x}-{width / 2},0,iw-{width})'"
-        y = f"'clip(ih*{framing.focus_y}-{height / 2},0,ih-{height})'"
-        steps.append(f"scale={size}:force_original_aspect_ratio=increase,crop={size}:{x}:{y}")
+        framing_steps = f"scale={size}:force_original_aspect_ratio=increase,crop={size}"
     # tpad + trim: kaynak birkaç kare kısa kalsa bile klip tam `frames` kare olur (ses ile senkron).
     return (
-        f"[{index}:v]{','.join(steps)},setsar=1,fps={fps},format=yuv420p,"
+        f"[{index}:v]{framing_steps},setsar=1,fps={fps},format=yuv420p,"
         f"tpad=stop_mode=clone:stop=5,trim=end_frame={frames},setpts=PTS-STARTPTS[v{index}]"
     )
 

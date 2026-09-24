@@ -95,7 +95,17 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
 - Ses üretildikten sonra TTS metni değişirse kaydetme engellenir.
-- Local inbox dosyaları yerinde okunur (`LocalMediaFile`); browser upload dosyaları aktif proje altındaki `media/` klasörüne kalıcı yazılır. Proxy ve analiz kareleri analizden sonra silinir.
+
+### Dosya yaşam döngüsü
+
+| Dosya | Nerede | Ne zaman silinir |
+|---|---|---|
+| DHA kaynak videosu | İndirilenler (yerinde okunur, kopyalanmaz) | Axion hiç dokunmaz |
+| Tarayıcıdan yüklenen video/görsel | `<proje>/media/` (SHA-256 ile tekrar yazılmaz) | Proje ile (3 gün) |
+| Proxy (640 px, sessiz) ve analiz kareleri | Sistem geçici klasörü | Analiz bitince veya hata olunca (`media_pipeline`) |
+| `news_package.json`, `tts.mp3`, `media_library.json`, `kesitler.json`, `edit_project.json`, `kaba_kurgu.mp4`, `onizleme/` | `data/projects/<zaman>_<başlık>/` | 3 iş günü sonra (`store.delete_old_projects`); `edit_project`/MP4 ayrıca haber veya görüntü değişince |
+| Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
+| Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 
 
 ## Nerede kaldık (2026-09-24) — Faz 3 tamamlandı, kod incelemesi aşaması
@@ -123,11 +133,15 @@ Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de (v1.7.1 → v
 Doğrudan `main`; token tasarrufu; arayüz Türkçe ve sade; uygulamada logo yok; hiçbir sahnede bulanık dolgu yok;
 seslendirmede saat/sayı okunuşuyla; şablon zamanları sabit (9/13/16. sn), video en az 20 sn; haberler 3 gün.
 
-### Şimdiki aşama: Faz 3 sonu kod incelemesi
-Claude ve GPT tüm repoyu **ayrı ayrı** inceler; ikisi de bulgularını `reviews/` altına yazar (GPT:
-`reviews/gpt-faz3.md`, Claude: `reviews/claude-faz3.md`). İnceleme sırasında kod değiştirilmez. Editör iki raporu
-karşılaştırır, onaylanan düzeltmeler tek seferde yapılır, sonra **Faz 4** (Luna Edit Planner: TTS segmentleri +
-sahne açıklamaları → tek metin çağrısı → kurgu planı; `rough_cut` yedek kalır). Plaka/yüz bulanıklaştırma Faz 6.
+### Faz 3 kod incelemesi tamamlandı (v2.4.0)
+GPT (`reviews/gpt-faz3.md`) ve Claude (`reviews/claude-faz3.md`) ayrı ayrı inceledi; kararlar ve yapılan düzeltmeler
+Claude raporundaki tablolarda. Luna görsel analizi artık `reasoning.effort="low"`.
+
+### Sıradaki: Faz 4 — Luna Edit Planner
+TTS segmentleri + sahne pencerelerinin açıklamaları → tek Luna metin çağrısı (görsel yok, ucuz) → hangi cümleye hangi
+sahne. Kesme noktaları, kadraj, kaydırma, kesitler ve render `rough_cut`'taki kurallarla aynı kalır; planlayıcı yalnızca
+sahne seçimini iyileştirir. Çağrı başarısız olursa `rough_cut` kural tabanlı seçimle devam eder. Plaka/yüz
+bulanıklaştırma Faz 6.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.

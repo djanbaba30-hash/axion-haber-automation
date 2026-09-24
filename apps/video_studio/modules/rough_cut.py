@@ -12,10 +12,11 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from .soundbites import PLACEMENT_LABELS, Soundbite, ordered
 from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH, video_seconds
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
 from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
+
+from .soundbites import PLACEMENT_LABELS, Soundbite, ordered
 
 # Sahne süresi: çok hızlı geçiş olmasın (editör: "yarım saniyede bir sahne değişmesin"),
 # 5 sn'den uzun kesintisiz konuşmada araya sahne girebilir.
@@ -24,10 +25,10 @@ IDEAL_CLIP_SECONDS = 3.0
 MAX_CLIP_SECONDS = 5.0
 SENTENCE_END = set(".!?…")
 PAUSE_PUNCTUATION = set(".!?…,;:\"”'’»)")
-EDGE_SECONDS = 0.2
+EDGE_SECONDS = 0.2  # Shot geçişindeki karışık karelerden kaçın.
 # Özne kaydırması: özne kadrajdan bu oranda büyükse kaydır; hız saniyede kare genişliğinin %3'ü (editör ayarı).
 PAN_MIN_RATIO = 1.15
-PAN_SPEED = 0.03  # Shot geçişindeki karışık karelerden kaçın.
+PAN_SPEED = 0.03
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
 ROLE_BONUS = {
@@ -124,12 +125,26 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
 def _source_range(candidate: Candidate, usage: _Usage, need: float) -> tuple[float, float, bool]:
     """Pencereden kullanılabilir kaynak aralığı: (başlangıç, kullanılabilir süre, tekrar mı)."""
     lead = EDGE_SECONDS if candidate.start <= candidate.shot_start else 0.0
-    limit = candidate.shot_end - EDGE_SECONDS
-    fresh = max(candidate.start + lead, usage.cursor.get(candidate.shot_id, 0.0))
-    if limit - fresh >= min(need, MIN_CLIP_SECONDS):
-        return fresh, limit - fresh, False
-    again = candidate.start + lead
-    return again, max(0.0, limit - again), True
+    shot_limit = candidate.shot_end - EDGE_SECONDS
+
+    blocked = [(start, end) for asset, start, end in usage.blocked if asset == candidate.asset_id]
+
+    def skip_blocked(begin: float) -> float:
+        # Kaynak sesli kesit olarak ayrılan aralığın içinden başlama: aralığın sonuna atla.
+        for start, end in sorted(blocked):
+            if start <= begin < end:
+                begin = end
+        return begin
+
+    def limit_from(begin: float) -> float:
+        # Ayrılan aralığa taşma (aynı sahnenin komşu penceresinden uzayan klip dahil).
+        return min([shot_limit, *(start for start, _ in blocked if begin < start < shot_limit)])
+
+    fresh = skip_blocked(max(candidate.start + lead, usage.cursor.get(candidate.shot_id, 0.0)))
+    if limit_from(fresh) - fresh >= min(need, MIN_CLIP_SECONDS):
+        return fresh, limit_from(fresh) - fresh, False
+    again = skip_blocked(candidate.start + lead)
+    return again, max(0.0, limit_from(again) - again), True
 
 
 def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previous_shot: str | None, usage: _Usage, need: float) -> float:
@@ -197,9 +212,9 @@ def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, dire
     return (first, last) if first != last else (first, None)
 
 
-def clip_framing(mode: FramingMode, candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_HEIGHT,
+def clip_framing(candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_HEIGHT,
                  seconds: float = 3.0, direction: int = 1) -> Framing:
-    """Kaynaktaki gösterilecek alan (+ kaydırma). `mode` geriye dönük uyumluluk için; her zaman tam dolu kadraj."""
+    """Kaynaktaki gösterilecek alan (+ kaydırma). Kadraj her zaman tam dolu (editör kararı)."""
     fx, fy = (candidate.focus.x, candidate.focus.y) if candidate.focus else (0.5, 0.5)
     region = candidate.content_region
     if region:
@@ -297,12 +312,15 @@ def _segment_at(project: EditProject, time: float) -> str:
 
 
 def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, library: MediaLibrary,
-                    candidates: list[Candidate], mode: FramingMode) -> Clip:
+                    candidates: list[Candidate]) -> Clip:
     asset = next(
         (a for a in library.assets if isinstance(a, VideoAsset) and a.source.original_path == bite.path), None
     ) or next((a for a in library.assets if isinstance(a, VideoAsset) and a.source.filename == bite.filename), None)
     if asset is None:
         raise ValueError(f"Kesitin videosu analiz edilmedi: {bite.filename}. Görüntüleri analiz ederken bu videoyu da seç.")
+    length = asset.source.duration_seconds or 0.0
+    if length and bite.start_s >= length - 0.1:
+        raise ValueError(f"Kesit ({bite.filename}, {bite.start_s:.1f} sn) videonun süresini ({length:.1f} sn) aşıyor; kesiti kaldırıp yeniden seç.")
     # Kadraj: kesitin başladığı sahne penceresinin öznesi ve kenar bilgisi.
     frame = next(
         (c for c in candidates if c.asset_id == asset.asset_id and c.start <= bite.start_s < c.end),
@@ -314,7 +332,8 @@ def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, libra
             role=EditorialRole.UNKNOWN, visual_type=VisualType.UNKNOWN, confidence=0, plate=False, description="",
             frame_aspect=asset.geometry.display.width / asset.geometry.display.height,
         )
-    duration_f = max(1, round(bite.duration_s * fps))
+    end_s = min(bite.end_s, length) if length else bite.end_s  # Video sonrasına taşan kısım kırpılır.
+    duration_f = max(1, round((end_s - bite.start_s) * fps))
     return Clip(
         id=clip_id,
         asset_id=asset.asset_id,
@@ -323,7 +342,7 @@ def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, libra
         source_out_s=round(bite.start_s + duration_f / fps, 3),
         start_f=start_f,
         duration_f=duration_f,
-        framing=clip_framing(mode, frame, seconds=duration_f / fps),
+        framing=clip_framing(frame, seconds=duration_f / fps),
         use_source_audio=True,
         origin=ClipOrigin.USER,
         reason=f"Kaynak sesli kesit ({PLACEMENT_LABELS[bite.placement].lower()})",
@@ -333,7 +352,6 @@ def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, libra
 def plan_rough_cut(
     edit_project: dict[str, Any],
     media_library: dict[str, Any],
-    framing_mode: str = FramingMode.FILL_CROP.value,
     soundbites: list[Soundbite] | None = None,
 ) -> dict[str, Any]:
     """EditProject'in video_main izini kural tabanlı kliplerle doldurur.
@@ -347,23 +365,22 @@ def plan_rough_cut(
         raise ValueError("Kurgu için analiz edilmiş video sahnesi yok.")
 
     fps = project.edit_plan.timeline.fps
-    mode = FramingMode(framing_mode)
     soundbites = soundbites or []
     usage = _Usage(blocked=[])
     clips: list[Clip] = []
 
-    def add_soundbites(placement: str, start_f: int) -> int:
+    def soundbite_clips(placement: str) -> list[Clip]:
+        result = []
         for bite in ordered(soundbites, placement):
-            clip = _soundbite_clip(bite, f"video_{len(clips) + 1:03d}", start_f, fps, library, candidates, mode)
-            clips.append(clip)
+            clip = _soundbite_clip(bite, "", 0, fps, library, candidates)
+            result.append(clip)
             usage.blocked.append((clip.asset_id, bite.start_s, bite.end_s))
-            start_f += clip.duration_f
-        return start_f
+        return result
 
-    # Önce kesitler yerleşir (b-roll'un onları tekrar etmemesi için aralıkları da bilinsin).
-    intro_end_f = add_soundbites("before", 0)
-    intro_s = intro_end_f / fps
-    outro_s = sum(round(b.duration_s * fps) for b in ordered(soundbites, "after")) / fps
+    # Önce kesitler hazırlanır: süreleri toplamı belirler, aralıkları dolgu görüntüsünde tekrar edilmez.
+    before, after = soundbite_clips("before"), soundbite_clips("after")
+    intro_end_f = sum(c.duration_f for c in before)
+    intro_s, outro_s = intro_end_f / fps, sum(c.duration_f for c in after) / fps
     # Seslendirme kısmı; video toplamda şablonun en kısa süresinden kısa kalmasın (sessiz uzatma).
     tts_s = project.audio.duration_seconds
     broll_s = max(tts_s, video_seconds(tts_s, intro_s + outro_s) - intro_s - outro_s)
@@ -397,7 +414,7 @@ def plan_rough_cut(
                     source_out_s=round(source_out, 3),
                     start_f=cursor_f,
                     duration_f=duration_f,
-                    framing=clip_framing(mode, best, seconds=duration_f / fps, direction=1 if len(clips) % 2 else -1),
+                    framing=clip_framing(best, seconds=duration_f / fps, direction=1 if len(clips) % 2 else -1),
                     origin=ClipOrigin.RULE,
                     reason=best.description,
                 )
@@ -407,11 +424,19 @@ def plan_rough_cut(
             previous_shot = best.shot_id
             cursor_f += duration_f
 
-    add_soundbites("after", broll_end_f)
+    cursor_f = 0
+    for clip in before:
+        clip.start_f, cursor_f = cursor_f, cursor_f + clip.duration_f
+    cursor_f = broll_end_f
+    for clip in after:
+        clip.start_f, cursor_f = cursor_f, cursor_f + clip.duration_f
+    clips = sorted([*before, *clips, *after], key=lambda c: c.start_f)
+    for number, clip in enumerate(clips, 1):
+        clip.id = f"video_{number:03d}"
 
     for track in project.edit_plan.timeline.tracks:
         if track.kind == TrackKind.VIDEO:
-            track.clips = sorted(clips, key=lambda c: c.start_f)
+            track.clips = clips
         elif track.kind == TrackKind.AUDIO:
             for clip in track.clips:
                 if clip.asset_id == project.audio.asset_id:

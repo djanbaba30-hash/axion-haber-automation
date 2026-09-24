@@ -5,6 +5,7 @@ Geliştirme: `make run` (streamlit run axion_local.py). Ayarlar ve tema: .stream
 """
 
 import hmac
+import logging
 import os
 import sys
 import threading
@@ -98,9 +99,16 @@ if not authenticated():
 
 @st.cache_resource(show_spinner=False)
 def clean_up_for_day(day: str) -> list[str]:
-    """Her iş günü bir kez: 3 günden eski haber projelerini ve üretim kayıtlarını sil (editör kararı)."""
-    delete_runs_before(HISTORY_DB_PATH, work_day_start() - timedelta(days=KEEP_DAYS - 1))
-    return delete_old_projects()
+    """Her iş günü bir kez: 3 günden eski haber projelerini ve üretim kayıtlarını sil (editör kararı).
+
+    Temizlik hatası uygulamanın açılmasını engellemez; ayrıntı data/axion.log'a yazılır.
+    """
+    try:
+        delete_runs_before(HISTORY_DB_PATH, work_day_start() - timedelta(days=KEEP_DAYS - 1))
+        return delete_old_projects()
+    except Exception:
+        logging.getLogger("axion").exception("Günlük temizlik başarısız")
+        return []
 
 
 clean_up_for_day(work_day_start().date().isoformat())

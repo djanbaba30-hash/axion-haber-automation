@@ -154,3 +154,19 @@ def test_old_history_rows_are_deleted(tmp_path):
     assert delete_runs_before(db, datetime(2026, 9, 23, 2, 0)) == 1
     with sqlite3.connect(db) as con:
         assert [row[0] for row in con.execute("SELECT tts FROM news_runs")] == ["yeni"]
+
+
+def test_folder_that_cannot_be_deleted_is_logged_not_reported(tmp_path, monkeypatch, caplog):
+    import logging
+    from datetime import datetime
+
+    old = store.save_news_project(package("ESKİ"), b"mp3", base_dir=tmp_path, now=datetime(2026, 9, 1, 12, 0))
+
+    def locked(path, *args, **kwargs):
+        raise PermissionError("dosya başka bir işlem tarafından kullanılıyor")
+
+    monkeypatch.setattr(store.shutil, "rmtree", locked)
+    with caplog.at_level(logging.WARNING):
+        assert store.delete_old_projects(tmp_path, now=datetime(2026, 9, 25, 10, 0)) == []
+    assert old.exists()
+    assert "silinemedi" in caplog.text and old.name in caplog.text

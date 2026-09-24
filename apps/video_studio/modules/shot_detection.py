@@ -227,6 +227,10 @@ def detect_scene_changes(
         "FFmpeg sahne tespiti",
     )
 
+    if result.returncode != 0:
+        # Sessizce "tek sahne" saymak yerine hatayı göster.
+        raise RuntimeError("FFmpeg sahne tespiti başarısız.\n\n" + result.stderr.strip()[-800:])
+
     # FFmpeg scdet çıktısı stderr üzerinden gelir.
     output = result.stderr
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -172,7 +173,7 @@ def build_metadata(
 
 def create_proxy(
     video_path: Path,
-    width: int = 960,
+    width: int = 640,
     duration_seconds: float | None = None,
 ) -> Path:
     """
@@ -195,16 +196,14 @@ def create_proxy(
         str(video_path),
         "-vf",
         f"scale={width}:-2",
+        # Proxy yalnızca sahne tespiti ve analiz kareleri için: ses gereksiz, en hızlı kodlama yeterli.
+        "-an",
         "-c:v",
         "libx264",
         "-preset",
-        "veryfast",
+        "ultrafast",
         "-crf",
         "28",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
         "-movflags",
         "+faststart",
         str(proxy_path),
@@ -309,20 +308,30 @@ def format_duration(seconds: float) -> str:
     )
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def store_upload(uploaded_file, storage_dir: Path) -> Path:
     """Tarayıcıdan yüklenen dosyayı proje klasörüne yazar.
 
-    Aynı ad ve boyutta dosya zaten varsa (yeniden analiz) tekrar yazmaz; farklıysa numaralı ad verir.
+    Aynı içerik (SHA-256) zaten varsa (yeniden analiz) tekrar yazmaz; aynı adlı farklı içerik numaralı ad alır.
     """
     storage_dir.mkdir(parents=True, exist_ok=True)
     name = Path(uploaded_file.name)
-    size = int(getattr(uploaded_file, "size", 0) or len(uploaded_file.getbuffer()))
+    data = uploaded_file.getbuffer()
+    digest = hashlib.sha256(data).hexdigest()
     target = storage_dir / name.name
     number = 1
     while target.exists():
-        if target.stat().st_size == size:
+        # Boyut hızlı ön elemedir; eşleşme içerik özetiyle doğrulanır.
+        if target.stat().st_size == len(data) and _sha256_file(target) == digest:
             return target
         number += 1
         target = storage_dir / f"{name.stem}_{number}{name.suffix}"
-    target.write_bytes(uploaded_file.getbuffer())
+    target.write_bytes(data)
     return target

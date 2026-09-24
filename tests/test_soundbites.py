@@ -92,3 +92,23 @@ def test_render_plays_soundbite_audio_then_voiceover(tmp_path, monkeypatch):
     assert loudness(0.5, 2.0) > -35          # kesitin kendi sesi
     assert loudness(3.5, 3.0) > -35          # seslendirme
     assert loudness(12.0, 6.0) < -60         # seslendirme bitti: sessiz dolgu
+
+
+def test_soundbite_outside_the_video_is_reported_and_overhang_is_trimmed():
+    lib = library()
+    lib["assets"][0]["source"]["duration_seconds"] = 157.28
+    with pytest.raises(ValueError, match="süresini"):
+        plan_rough_cut(edit_project(), lib, soundbites=[bite(158.0, 162.0, "after")])
+    clips = video_clips(plan_rough_cut(edit_project(), lib, soundbites=[bite(155.0, 160.0, "after")]))
+    assert clips[-1]["use_source_audio"] and clips[-1]["source_out_s"] <= 157.28
+    assert clips[-1]["duration_f"] == round((157.28 - 155.0) * 30)
+
+
+def test_broll_next_to_a_soundbite_does_not_run_into_it():
+    """Kesit aralığı aynı sahnenin komşu penceresinden uzayan dolgu klibiyle de görüntüye girmez."""
+    shots = [(0.0, 40.0, "event", "action", "Yanan tır dorsesi ve itfaiye", "")]  # tek uzun sahne: 4 pencere
+    for reserved in [(12.0, 20.0), (2.4, 9.0), (0.0, 6.0)]:  # (2.4: ilk dolgu klibinin tam bittiği yer)
+        project = plan_rough_cut(edit_project(), library(shots), soundbites=[bite(*reserved, "after")])
+        for clip in video_clips(project):
+            if not clip["use_source_audio"]:
+                assert clip["source_out_s"] <= reserved[0] + 1e-6 or clip["source_in_s"] >= reserved[1] - 1e-6, (reserved, clip)

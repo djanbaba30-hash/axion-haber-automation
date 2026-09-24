@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import logging
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -149,6 +150,8 @@ def _project_from_folder(folder: Path) -> NewsProject | None:
     return NewsProject(folder, str(data.get("headline_1") or folder.name), created)
 
 
+logger = logging.getLogger(__name__)
+
 DAY_START_HOUR = 2  # Uygulama her gün 02:00'de (bilgisayarın saatiyle) "yeni gün"e başlar.
 
 
@@ -174,9 +177,16 @@ def delete_old_projects(base_dir: Path | None = None, now: datetime | None = Non
     deleted = []
     for folder in base_dir.iterdir():
         created = _folder_time(folder) if folder.is_dir() else None
-        if created is not None and created < cutoff:
-            shutil.rmtree(folder, ignore_errors=True)
+        if created is None or created >= cutoff:
+            continue
+        try:
+            shutil.rmtree(folder)
+        except OSError as error:
+            # Ör. Windows'ta açık bir video dosyası: sessizce geçme, günlüğe yaz (data/axion.log); ertesi gün yeniden denenir.
+            logger.warning("Eski proje silinemedi: %s (%s)", folder.name, error)
+        if not folder.exists():
             deleted.append(folder.name)
+            logger.info("Eski proje silindi (3 gün saklama): %s", folder.name)
     return deleted
 
 
