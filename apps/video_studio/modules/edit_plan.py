@@ -25,7 +25,7 @@ from shared.edit_models import (
     Track,
     TrackKind,
 )
-from shared.media_models import MediaAssetRef, MediaLibrary
+from shared.media_models import MediaLibrary
 from shared.news_package import TTSAlignment, ensure_alignment_matches_text
 
 
@@ -108,6 +108,8 @@ def build_edit_project(
     source_text = str(package.get("news", {}).get("source_text") or package.get("source_text") or "").strip()
 
     alignment = _tts_alignment(package, tts_text)
+    if not alignment and not tts_text:
+        raise ValueError("TTS metni boş; EditProject 2.1 oluşturulamaz.")
     duration = float(audio_duration_seconds or 0.0)
     if alignment and alignment.duration_seconds > 0:
         duration = max(duration, alignment.duration_seconds)
