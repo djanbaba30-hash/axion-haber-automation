@@ -108,10 +108,11 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 
 
-## Nerede kaldık (2026-09-24) — Faz 3 tamamlandı, kod incelemesi aşaması
+## Nerede kaldık (2026-09-24) — Faz 3 ve kod incelemesi tamamlandı, sıradaki Faz 4
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
-Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de (v1.7.1 → v2.3.0).
+Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de (v1.7.1 → v2.4.0). v2.4.0 (inceleme düzeltmeleri,
+Luna `reasoning=low`) editör tarafından Windows'ta doğrulandı.
 
 ### Şu an çalışan akış
 1. **Haber Stüdyosu:** ham haber → GPT/Claude (tek çağrı + gerekirse tek düzeltme çağrısı) → başlıklar, paylaşım
