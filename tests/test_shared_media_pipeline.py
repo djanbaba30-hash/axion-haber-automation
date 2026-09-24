@@ -20,6 +20,8 @@ def test_media_library_builders_use_shared_2_1_contract(tmp_path):
         },
         "audio": {"codec": "aac", "sample_rate": "48000", "channels": 2, "channel_layout": "stereo"},
     }
+    frame = tmp_path / "frame.jpg"
+    frame.write_bytes(b"frame")
     shots = [{
         "shot_id": "video_001_shot_001",
         "asset_id": "video_001",
@@ -30,7 +32,7 @@ def test_media_library_builders_use_shared_2_1_contract(tmp_path):
         "analysis_frames": [{
             "frame_index": 1,
             "timestamp_seconds": 1.0,
-            "path": str(tmp_path / "frame.jpg"),
+            "path": str(frame),
         }],
         "visual_asset": {
             "description": "Araç",
