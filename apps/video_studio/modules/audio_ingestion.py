@@ -1,64 +1,10 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 from typing import Any
 
 from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, run_ffmpeg
-
-
-ALLOWED_AUDIO_EXTENSIONS = {
-    ".mp3",
-    ".wav",
-    ".m4a",
-    ".aac",
-    ".ogg",
-    ".flac",
-}
-
-
-def save_uploaded_audio(
-    uploaded_file,
-) -> Path:
-    """
-    Yüklenen TTS ses dosyasını geçici dosyaya kaydeder.
-    """
-
-    original_name = Path(
-        uploaded_file.name
-    ).name
-
-    extension = (
-        Path(original_name)
-        .suffix
-        .lower()
-    )
-
-    if extension not in ALLOWED_AUDIO_EXTENSIONS:
-        raise ValueError(
-            f"Desteklenmeyen ses formatı: "
-            f"{extension}"
-        )
-
-    temp_file = tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=extension,
-    )
-
-    try:
-        temp_file.write(
-            uploaded_file.getbuffer()
-        )
-
-        temp_file.flush()
-
-    finally:
-        temp_file.close()
-
-    return Path(
-        temp_file.name
-    )
 
 
 def probe_audio(

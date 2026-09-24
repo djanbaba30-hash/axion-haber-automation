@@ -3,22 +3,31 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from apps.axion_local import store
+from shared.news_package import NewsPackage
+
 ROOT = Path(__file__).resolve().parents[1]
+NEWS_PAGE = "apps/news_studio/page.py"
+VIDEO_PAGE = "apps/video_studio/page.py"
 KEYS = {
     "OPENAI_API_KEY": "sk-test",
     "ANTHROPIC_API_KEY": "sk-ant-test",
     "ELEVENLABS_API_KEY": "el-test",
 }
+TTS = "Bayrampaşa'da savrulan otomobil berber dükkânına çarptı."
 
 
 @pytest.fixture
 def local_env(tmp_path, monkeypatch):
-    monkeypatch.setenv("AXION_LOCAL", "1")
     monkeypatch.setenv("AXION_DATA_DIR", str(tmp_path / "data"))
     inbox = tmp_path / "Downloads"
     inbox.mkdir()
     (inbox / "dha_kaza.mp4").write_bytes(b"video")
     monkeypatch.setenv("AXION_INBOX_DIR", str(inbox))
+    monkeypatch.setattr(
+        "apps.video_studio.modules.audio_ingestion.probe_audio",
+        lambda path: {"filename": Path(path).name, "duration_seconds": 24.2, "duration_formatted": "00:24", "file_size_bytes": 3},
+    )
     return tmp_path
 
 
@@ -30,22 +39,32 @@ def start(password=""):
     return at
 
 
-def login():
-    return start()
+def with_generated_news(at, tts=TTS, audio_text=TTS):
+    at.session_state["raw_text"] = "Ham haber"
+    at.session_state["baslik1"] = "SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI"
+    at.session_state["baslik2"] = "5 KİŞİ YARALANDI"
+    at.session_state["icerik"] = TTS
+    at.session_state["tts_metni"] = tts
+    at.session_state["last_audio_bytes"] = b"mp3"
+    at.session_state["last_audio_text"] = audio_text
+    return at.run()
 
 
 def button(at, label):
     return next(b for b in at.button if b.label == label)
 
 
+def title(at):
+    return [t.value for t in at.title]
+
+
 def test_no_password_opens_directly(local_env):
     at = start()
     assert not at.exception
-    assert not at.text_input or at.text_input[0].label != "Şifre"
-    assert [t.value for t in at.title] == ["Axion Haber İçerik Stüdyosu"]
-    at.switch_page("apps/video_studio/app.py").run()
+    assert title(at) == ["Axion Haber İçerik Stüdyosu"]
+    at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
-    assert [t.value for t in at.title] == ["Axion Video Studio"]
+    assert title(at) == ["Axion Video Studio"]
 
 
 def test_optional_password_still_protects(local_env):
@@ -55,7 +74,7 @@ def test_optional_password_still_protects(local_env):
     assert [e.value for e in at.error] == ["Şifre yanlış."]
     at.text_input[0].input("Gizli-Şifre1").run()
     assert not at.exception
-    assert [t.value for t in at.title] == ["Axion Haber İçerik Stüdyosu"]
+    assert title(at) == ["Axion Haber İçerik Stüdyosu"]
 
 
 def test_shutdown_button_hidden_for_remote_access(local_env):
@@ -63,44 +82,57 @@ def test_shutdown_button_hidden_for_remote_access(local_env):
     assert not any(b.label == "Axion'u kapat" for b in at.button)
 
 
-def test_video_news_text_survives_page_switch(local_env):
-    at = start()
-    at.switch_page("apps/video_studio/app.py").run()
-    at.session_state["media_library"] = {"assets": [{"asset_id": "video_001"}]}
-    at.run()
-    at.text_area(key="project_news_text").input("Kalıcı haber metni").run()
-    at.switch_page("apps/news_studio/app.py").run()
-    at.switch_page("apps/video_studio/app.py").run()
-    assert at.session_state["project_news_text"] == "Kalıcı haber metni"
-
-
-def test_news_project_flows_to_video_studio(local_env):
-    at = login()
-
-    at.session_state["baslik1"] = "SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI"
-    at.session_state["baslik2"] = "5 KİŞİ YARALANDI"
-    at.session_state["icerik"] = "Bayrampaşa'da savrulan otomobil berber dükkânına çarptı."
-    at.session_state["tts_metni"] = "Bayrampaşa'da savrulan otomobil berber dükkânına çarptı."
-    at.session_state["last_audio_bytes"] = b"mp3"
-    at.session_state["last_audio_text"] = "Bayrampaşa'da savrulan otomobil berber dükkânına çarptı."
-    at.run()
-    button(at, "Projeye kaydet (Video Studio'da kullan)").click().run()
-    assert any("Proje kaydedildi" in s.value for s in at.success)
-    assert len(list((local_env / "data" / "projects").iterdir())) == 1
-
-    at.switch_page("apps/video_studio/app.py").run()
+def test_save_and_continue_opens_project_in_video_studio(local_env):
+    at = with_generated_news(start())
+    button(at, "Kaydet ve Video Studio'ya geç").click().run()
+    assert not at.exception
+    assert title(at) == ["Axion Video Studio"]
+    projects = store.list_news_projects()
+    assert len(projects) == 1
+    assert at.session_state["loaded_news_project"] == projects[0].id
+    assert at.session_state["project_news_text"] == TTS
     assert "dha_kaza.mp4" in at.multiselect[0].options[0]
-    at.session_state["media_library"] = {"assets": [{"asset_id": "video_001"}]}
-    at.run()
-    assert "SAVRULAN OTOMOBİL" in at.selectbox[-1].options[0]
 
 
-def test_stale_audio_blocks_project_save(local_env):
-    at = login()
-    at.session_state["icerik"] = "Caption"
-    at.session_state["tts_metni"] = "Düzenlenmiş TTS"
-    at.session_state["last_audio_bytes"] = b"mp3"
-    at.session_state["last_audio_text"] = "Eski TTS"
-    at.run()
+def test_saving_same_news_again_updates_project(local_env):
+    at = with_generated_news(start())
+    button(at, "Sadece kaydet").click().run()
+    button(at, "Sadece kaydet").click().run()
+    assert len(store.list_news_projects()) == 1
+
+
+def test_stale_audio_blocks_saving(local_env):
+    at = with_generated_news(start(), tts="Düzenlenmiş TTS", audio_text="Eski TTS")
     assert any("sesi yeniden üret" in w.value for w in at.warning)
-    assert not any(b.label == "Projeye kaydet (Video Studio'da kullan)" for b in at.button)
+    assert not any(b.label == "Sadece kaydet" for b in at.button)
+
+
+def test_saved_media_analysis_is_restored(local_env):
+    folder = store.save_news_project(
+        NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3"
+    )
+    project = store.get_news_project(folder.name)
+    library = {
+        "video_count": 1, "image_count": 0, "analysis": {"estimated_cost_usd": 0.0046},
+        "assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": [
+            {"shot_number": 1, "start_formatted": "00:00.00", "end_formatted": "00:08.32", "duration_seconds": 8.32,
+             "visual": {"visual_type": "olay yeri", "editorial_role": "genel plan", "subjects": ["Kalabalık"]}},
+        ]}],
+    }
+    store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, library)
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    assert not at.exception
+    assert at.session_state["media_library"] == library
+    assert at.dataframe[0].value["Görüntü"].tolist() == ["olay yeri"]
+    assert any(b.label == "Projeyi hazırla" for b in at.button)
+
+
+def test_video_news_text_survives_page_switch(local_env):
+    store.save_news_project(NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3")
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    at.text_area(key="project_news_text").input("Düzenlenmiş haber metni").run()
+    at.switch_page(NEWS_PAGE).run()
+    at.switch_page(VIDEO_PAGE).run()
+    assert at.session_state["project_news_text"] == "Düzenlenmiş haber metni"

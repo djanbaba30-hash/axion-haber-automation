@@ -1,0 +1,11 @@
+# Axion Local çalışma ayarları (Windows başlatıcısı ve `make run` bunları kullanır).
+[server]
+port = 8501
+headless = true
+maxUploadSize = 4096
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

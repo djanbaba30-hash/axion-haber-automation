@@ -1,3 +1,27 @@
+# v1.4.0 — Fully local, single linked app — 2026-09-24
+
+## Changed
+- Streamlit Cloud support removed. Axion runs only on the editor's PC:
+  - no `AXION_LOCAL` mode switch;
+  - no per-page passwords (the optional password lives only in `axion_local.py`);
+  - no NewsPackage JSON download or upload, no TTS upload;
+  - `packages.txt` and `REPO_MANIFEST.txt` deleted.
+- Pages renamed to `apps/news_studio/page.py` and `apps/video_studio/page.py`; `axion_local.py` is the only entry point. Streamlit settings moved to `.streamlit/config.toml`.
+- News → Video linking:
+  - "Kaydet ve Video Studio'ya geç" saves the project and opens it in Video Studio;
+  - re-saving the same raw news updates the same project instead of creating a new one;
+  - the sidebar shows the active project.
+- Video Studio page rewritten (1140 → about 230 lines) in the order 1. news project → 2. media → 3. project:
+  - the media pipeline moved to `modules/media_pipeline.py`;
+  - a time-coded shot table (usable for manual CapCut cuts) is shown;
+  - media analysis and the EditProject are saved to the project folder and restored when the project is reopened, so Luna does not run again.
+- Proxy videos and analysis frames are deleted after analysis; previously they piled up in the temp folder.
+- News Studio data files use the fixed `data/` folder (`AXION_DATA_DIR`) regardless of the working directory.
+- Axion no longer starts with Windows; it runs only when the desktop icon is clicked. `kisayol.ps1` removes the old Startup shortcut.
+
+## Added
+- `AGENTS.md`: shared guide for AI developers (rules, code map, where we left off, known debts). `CLAUDE.md` imports it. README rewritten; KURULUM.md covers phone access and full remote desktop.
+
 # v1.3.1 — Axion Local polish — 2026-09-24
 
 ## Changed

@@ -3,7 +3,6 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from apps.video_studio.modules.news_package import parse_news_package_bytes
 from shared.news_package import (
     NewsPackage,
     TTSAlignment,
@@ -87,29 +86,3 @@ def test_load_news_package_migrates_file(tmp_path):
     path = tmp_path / "old.json"
     path.write_text(json.dumps({"baslik1": "A", "icerik": "C"}), encoding="utf-8")
     assert load_news_package(path).caption == "C"
-
-
-def test_video_studio_parser_uses_shared_contract():
-    state = parse_news_package_bytes(json.dumps({"news": {"baslik1": "A", "icerik": "C", "tts": "D"}}).encode())
-    assert state["schema_version"] == "1.1"
-    assert state["news"]["caption"] == "C"
-    assert state["news"]["tts_text"] == "D"
-
-
-def test_video_studio_parser_rejects_bad_alignment():
-    payload = {
-        "schema_version": "1.1", "headline_1": "A", "headline_2": "B", "caption": "C", "tts_text": "Selam",
-        "tts_alignment": alignment_for("Merhaba"),
-    }
-    with pytest.raises(ValueError, match="doğrulanamadı"):
-        parse_news_package_bytes(json.dumps(payload).encode())
-
-
-def test_video_studio_parser_requires_caption_or_source():
-    with pytest.raises(ValueError, match="caption veya source_text"):
-        parse_news_package_bytes(json.dumps({"schema_version": "1.0", "baslik1": "A"}).encode())
-
-
-def test_video_studio_parser_rejects_invalid_json():
-    with pytest.raises(ValueError, match="okunamadı"):
-        parse_news_package_bytes(b"{bozuk")

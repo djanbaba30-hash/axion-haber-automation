@@ -1,4 +1,4 @@
-from pathlib import Path
+from apps.axion_local.store import data_dir
 
 CLAUDE_MODEL = "claude-sonnet-5"
 OPENAI_MODELS = {
@@ -23,6 +23,6 @@ TTS_DURATION_PRESETS = {
     "30–32 saniye": (30.0, 32.0),
 }
 
-DATA_DIR = Path("data")
+DATA_DIR = data_dir()
 CALIBRATION_PATH = DATA_DIR / "tts_calibration.json"
 HISTORY_DB_PATH = DATA_DIR / "history.sqlite3"

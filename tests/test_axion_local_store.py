@@ -86,3 +86,38 @@ def test_local_file_rejects_unsupported_video_extension(tmp_path):
     other.write_bytes(b"x")
     with pytest.raises(ValueError):
         save_uploaded_video(LocalMediaFile(other))
+
+
+def test_updating_project_keeps_media_and_drops_stale_edit_project(tmp_path):
+    folder = store.save_news_project(package(), b"v1", base_dir=tmp_path)
+    project = store.get_news_project(folder.name, base_dir=tmp_path)
+    store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, {"assets": []})
+    store.save_project_json(project, store.EDIT_PROJECT_FILENAME, {"old": True})
+
+    same = store.save_news_project(package("YENİ BAŞLIK"), b"v2", folder=folder)
+    assert same == folder
+    project = store.get_news_project(folder.name, base_dir=tmp_path)
+    loaded, audio = store.load_news_project(project)
+    assert loaded.headline_1 == "YENİ BAŞLIK"
+    assert audio.read_bytes() == b"v2"
+    assert project.has_media and "medya hazır" in project.label
+    assert store.load_project_json(project, store.EDIT_PROJECT_FILENAME) is None
+
+
+def test_updating_project_without_audio_removes_old_audio(tmp_path):
+    folder = store.save_news_project(package(), b"ses", base_dir=tmp_path)
+    store.save_news_project(package(), None, folder=folder)
+    project = store.get_news_project(folder.name, base_dir=tmp_path)
+    assert project.audio_path is None
+    assert "audio_sha256" not in store.load_news_project(project)[0].metadata
+
+
+def test_get_missing_project_returns_none(tmp_path):
+    assert store.get_news_project("yok", base_dir=tmp_path) is None
+
+
+def test_corrupt_project_json_is_ignored(tmp_path):
+    folder = store.save_news_project(package(), None, base_dir=tmp_path)
+    (folder / store.MEDIA_LIBRARY_FILENAME).write_text("{bozuk", encoding="utf-8")
+    project = store.get_news_project(folder.name, base_dir=tmp_path)
+    assert store.load_project_json(project, store.MEDIA_LIBRARY_FILENAME) is None

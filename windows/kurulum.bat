@@ -34,7 +34,7 @@ echo Paketler kuruluyor, birkac dakika surebilir...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip >nul
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
-  echo Paket kurulumu basarisiz oldu. Hata mesajini Claude'a gonder.
+  echo Paket kurulumu basarisiz oldu. Hata mesajini Claude'a veya GPT'ye gonder.
   pause
   exit /b 1
 )
@@ -53,5 +53,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "windows\kisayol.ps1"
 echo.
 echo Kurulum tamam.
 echo  - Masaustundeki "Axion Local" ikonuyla acabilirsin.
-echo  - Bilgisayar acildiginda Axion arka planda kendiliginden baslar.
+echo  - Axion sadece sen ikona tikladiginda calisir. Kapatmak icin uygulamadaki Axion'u kapat dugmesini kullan.
 pause

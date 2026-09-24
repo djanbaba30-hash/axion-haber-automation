@@ -6,8 +6,6 @@ __pycache__/
 venv/
 .env
 .streamlit/secrets.toml
-data/*.sqlite3
-data/tts_calibration.json
 *.mp3
 *.mp4
 *.mov
@@ -20,4 +18,4 @@ data/tts_calibration.json
 *.aac
 *.ogg
 *.flac
-data/projects/
+data/

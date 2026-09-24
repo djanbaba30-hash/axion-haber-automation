@@ -1,6 +1,6 @@
 # Axion Haber Automation — Yol Haritası
 
-Bu dosya ürünün ana referansıdır. Her değişiklik şu soruyla değerlendirilir:
+Bu dosya ürünün ana referansıdır. Güncel durum ve sıradaki iş: `AGENTS.md` → "Nerede kaldık". Her değişiklik şu soruyla değerlendirilir:
 **"Bu, bizi güvenilir, otomatik ve editoryal olarak kullanılabilir haber videosu üretimine yaklaştırıyor mu?"**
 Yaklaştırmıyorsa, sadece teknik olarak yapılabildiği için eklenmez.
 
@@ -25,12 +25,13 @@ Ham haber + video ─► News Studio ─► NewsPackage + TTS ─┐
 
 ## Çalışma ortamı kararı: yerel öncelikli
 
-Sistem, Streamlit Cloud yerine **evdeki bilgisayarda** çalışır.
+Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kullanılmaz.
 
 - Büyük videolar internete yüklenmez; diskten okunur.
 - Veriler (projeler, TTS kalibrasyonu, üretim geçmişi) kalıcıdır.
-- İş yerindeki tabletten erişim, bilgisayar açıkken özel bir ağ bağlantısıyla sağlanır (Tailscale gibi; internete açık port yok).
-- Tek uygulama, tek şifre: News Studio ve Video Studio aynı projede buluşur. JSON/MP3 indirip yeniden yükleme adımı kalkar.
+- Axion yalnızca editör ikona tıkladığında çalışır (Windows açılışında başlamaz). Şifre isteğe bağlıdır.
+- Telefon/tabletten erişim, bilgisayar açıkken Tailscale ile sağlanır (internete açık port yok).
+- Tek uygulama: Haber Stüdyosu ve Video Studio aynı projede buluşur ("Kaydet ve Video Studio'ya geç"). JSON/MP3 indirip yükleme yok.
 
 ## Ürün kararları (editör)
 
@@ -53,7 +54,7 @@ Sistem, Streamlit Cloud yerine **evdeki bilgisayarda** çalışır.
 
 | Faz | İçerik | Sonuç |
 |---|---|---|
-| 0 ✅ | **Yerel çalışma:** tek uygulama ve tek şifre (`axion_local.py`), kalıcı proje klasörü, videoyu diskten alma, tek tıkla başlatma, tabletten erişim (Tailscale) | Yükleme sorunu biter |
+| 0 ✅ | **Yerel çalışma:** tek uygulama (`axion_local.py`), kalıcı proje klasörü, videoyu diskten alma, ikonla konsolsuz başlatma, Tailscale ile uzaktan erişim | Yükleme sorunu biter |
 | 1 | **News Studio:** zaman bilgili TTS (`convert_with_timestamps`), metin değişince sesin geçersiz sayılması, NewsPackage'da ses hash'i | TTS cümleleri zamanlanabilir |
 | 2 | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, sabit kategoriler (enum), uzun shot'ları pencerelere bölme, tanık sesi ve kaynak ses alanları | Planner'a güvenilir veri |
 | 3 | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile 1080×1440 MP4 | **CapCut'a gerek kalmaz** |

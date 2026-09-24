@@ -6,13 +6,13 @@ powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8501 -State List
 echo Son surum indiriliyor...
 git pull --ff-only
 if errorlevel 1 (
-  echo Guncelleme basarisiz. Hata mesajini Claude'a gonder.
+  echo Guncelleme basarisiz. Hata mesajini Claude'a veya GPT'ye gonder.
   pause
   exit /b 1
 )
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
-  echo Paket kurulumu basarisiz. Hata mesajini Claude'a gonder.
+  echo Paket kurulumu basarisiz. Hata mesajini Claude'a veya GPT'ye gonder.
   pause
   exit /b 1
 )

@@ -1,16 +1,10 @@
+"""Haber Stüdyosu: ham haber → başlıklar, caption, TTS metni ve sesi → Axion projesi."""
+
 from __future__ import annotations
 
 import io
-import json
-import sys
-from pathlib import Path
 
 import streamlit as st
-
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 from mutagen.mp3 import MP3
 from elevenlabs.client import ElevenLabs
 
@@ -22,8 +16,11 @@ from apps.news_studio.prompts.news import build_news_prompt, build_correction_pr
 from apps.news_studio.tts.calibration import load as load_calibration, estimate, update as update_calibration
 from apps.news_studio.tts.service import synthesize
 from apps.news_studio.validation.news import validate_news_output, find_censorship_warnings
+from apps.axion_local.settings import require_secrets, secret
+from apps.axion_local.store import get_news_project, save_news_project
 from shared.news_package import NewsPackage
-from apps.axion_local.store import is_local_mode, save_news_project
+
+VIDEO_PAGE = "apps/video_studio/page.py"
 
 
 st.set_page_config(page_title="Axion Haber İçerik Stüdyosu", layout="wide")
@@ -31,48 +28,14 @@ st.set_page_config(page_title="Axion Haber İçerik Stüdyosu", layout="wide")
 DEFAULT_EXAMPLES = {"Standart (Ana Haber) Dili":"","Tepkili Haber Dili":"","Eleştirel Haber Dili":"","Son Dakika Dili":"","Mizahi Haber Dili":""}
 
 
-def secret(name: str) -> str | None:
-    try:
-        value = st.secrets.get(name)
-    except Exception:
-        return None
-    return str(value).strip() if value else None
-
-
-def require_secrets():
-    required=("OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY") if is_local_mode() else ("APP_PASSWORD","OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY")
-    missing=[x for x in required if not secret(x)]
-    if missing:
-        st.error("Eksik Streamlit secret: " + ", ".join(missing))
-        st.code("APP_PASSWORD = \"...\"\nOPENAI_API_KEY = \"...\"\nANTHROPIC_API_KEY = \"...\"\nELEVENLABS_API_KEY = \"...\"")
-        st.stop()
-
-
 def init_state():
     defaults={
-        "password_correct":False,"baslik1":"","baslik2":"","icerik":"","tts_metni":"","raw_text":"",
+        "baslik1":"","baslik2":"","icerik":"","tts_metni":"","raw_text":"",
         "examples":DEFAULT_EXAMPLES.copy(),"last_usage":None,"last_validation":[],"last_warnings":[],
         "last_correction_reason":"","tts_calibration":load_calibration(),"last_audio_duration":None,
-        "last_audio_bytes":None,"last_audio_filename":"axion_haber_ses.mp3","last_headline_usage":None,
-        "news_package_json":""
+        "last_audio_bytes":None,"last_audio_filename":"axion_haber_ses.mp3","last_headline_usage":None
     }
     for k,v in defaults.items(): st.session_state.setdefault(k,v)
-
-
-def check_password():
-    expected=secret("APP_PASSWORD")
-    if not expected:
-        st.error("APP_PASSWORD secret tanımlı değil.")
-        return False
-    if st.session_state.get("password_correct"):
-        return True
-    def entered():
-        st.session_state.password_correct=(st.session_state.get("password","")==expected)
-        st.session_state.pop("password",None)
-    st.text_input("Şifre", type="password", key="password", on_change=entered)
-    if st.session_state.get("password_correct") is False and "password" not in st.session_state:
-        st.error("Şifre yanlış.")
-    return False
 
 
 @st.cache_resource
@@ -104,11 +67,10 @@ def reset_state():
     keep={"examples","tts_calibration"}
     for k in list(st.session_state.keys()):
         if k not in keep: del st.session_state[k]
-    st.session_state.update({"password_correct":True,"last_audio_bytes":None,"last_audio_duration":None,"last_audio_filename":"axion_haber_ses.mp3"})
+    st.session_state.update({"last_audio_bytes":None,"last_audio_duration":None,"last_audio_filename":"axion_haber_ses.mp3"})
 
 
-require_secrets(); init_state()
-if not is_local_mode() and not check_password(): st.stop()
+require_secrets("OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY"); init_state()
 
 st.title("Axion Haber İçerik Stüdyosu")
 
@@ -170,6 +132,7 @@ if st.button("Haberi İşle",type="primary",use_container_width=True):
                         corrected_check=validate_news_output(corrected,raw,tts_min,tts_max)
                         if len(corrected_check.errors)<len(check.errors): result,check=corrected,corrected_check
                     except Exception as exc: st.warning(f"Kalite düzeltme çağrısı başarısız; ilk sonuç korunuyor: {exc}")
+                if st.session_state.get("active_news_source")!=raw: st.session_state.pop("active_news_project",None)
                 st.session_state.baslik1=result.baslik1; st.session_state.baslik2=result.baslik2; st.session_state.icerik=result.icerik; st.session_state.tts_metni=result.tts
                 st.session_state.last_usage=total; st.session_state.last_validation=check.errors; st.session_state.last_warnings=check.warnings+find_censorship_warnings(result.tts+"\n"+result.icerik); st.session_state.last_correction_reason=correction_reason; st.session_state.last_headline_usage=None
                 log_run(HISTORY_DB_PATH,raw_text=raw,result=result,usage=total,style=style,provider=provider,model=total.get("model",""),validation=check.errors)
@@ -224,18 +187,23 @@ if st.session_state.icerik:
         if st.session_state.last_audio_duration: st.success(f"Gerçek ses süresi: {st.session_state.last_audio_duration:.1f} sn · Hedef {duration_range[0]:g}–{duration_range[1]:g} sn")
         st.download_button("MP3 Olarak İndir",data=st.session_state.last_audio_bytes,file_name=st.session_state.last_audio_filename,mime="audio/mp3")
 
-    st.divider(); st.markdown("### 🔗 Video Studio Paketi")
+    st.divider(); st.markdown("### 🎬 Video Studio")
     package=NewsPackage(headline_1=st.session_state.baslik1,headline_2=st.session_state.baslik2,caption=st.session_state.icerik,tts_text=st.session_state.tts_metni,source_text=raw,provider=usage.get("provider",""),model=usage.get("model",""),tts_duration_target=duration_label,tts_actual_duration_seconds=st.session_state.last_audio_duration,tts_voice_id=voice_id or "",tts_speed=speed,metadata={"style":style,"usage":usage})
-    package_json=package.model_dump_json(indent=2)
-    st.download_button("NewsPackage JSON indir",data=package_json,file_name="axion_news_package.json",mime="application/json")
-    if is_local_mode():
-        audio_stale=bool(st.session_state.last_audio_bytes) and st.session_state.get("last_audio_text")!=st.session_state.tts_metni
-        if audio_stale:
-            st.warning("TTS metni ses üretildikten sonra değişti. Projeye kaydetmeden önce sesi yeniden üret.")
-        elif st.button("Projeye kaydet (Video Studio'da kullan)",use_container_width=True):
+    active=get_news_project(st.session_state.active_news_project) if st.session_state.get("active_news_project") else None
+    if active: st.caption(f"Bu haberin projesi: {active.id}. Kaydetmek projeyi günceller; medya analizi korunur.")
+    audio_stale=bool(st.session_state.last_audio_bytes) and st.session_state.get("last_audio_text")!=st.session_state.tts_metni
+    if audio_stale:
+        st.warning("TTS metni ses üretildikten sonra değişti. Kaydetmeden önce sesi yeniden üret.")
+    else:
+        if not st.session_state.last_audio_bytes: st.caption("Henüz ses yok; proje sessiz kaydedilir, video kurgusu için ses gerekir.")
+        go_col,save_col=st.columns([2,1])
+        go=go_col.button("Kaydet ve Video Studio'ya geç",type="primary",use_container_width=True)
+        save_only=save_col.button("Sadece kaydet",use_container_width=True)
+        if go or save_only:
             try:
-                folder=save_news_project(package,st.session_state.last_audio_bytes)
-                st.success(f"Proje kaydedildi: {folder.name}" + ("" if st.session_state.last_audio_bytes else " (ses henüz yok)"))
+                folder=save_news_project(package,st.session_state.last_audio_bytes,folder=active.folder if active else None)
+                st.session_state.active_news_project=folder.name; st.session_state.active_news_source=raw
+                st.session_state.pop("loaded_news_project",None)
+                if go: st.switch_page(VIDEO_PAGE)
+                st.success(f"Proje kaydedildi: {folder.name}")
             except Exception as e: st.error(f"Proje kaydedilemedi: {e}")
-    elif st.session_state.last_audio_bytes:
-        st.caption("Video Studio için JSON ve MP3 dosyasını birlikte kullanabilirsin.")
