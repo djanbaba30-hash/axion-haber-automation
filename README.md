@@ -9,7 +9,8 @@ Tek uygulama, üç sayfa:
   "Kaydet ve Video Stüdyosu'na geç" ile haber, projesiyle birlikte Video Stüdyosu'na aktarılır.
 - **🎬 Video Stüdyosu:** Haber projesi + bilgisayardaki videolar → sahne tespiti → GPT-5.6 Luna görsel analizi →
   isteğe bağlı kaynak sesli kesitler → kural tabanlı kaba kurgu → Canva şablonunun video alanı ölçüsünde MP4.
-- **🎨 Tasarım Stüdyosu:** Video ve kopyalamaya hazır metinler; ileride Axion şablonunu (1080×1920) kendisi uygulayacak.
+- **🎨 Tasarım Stüdyosu:** Canva'nın yerine Axion şablonu (arka plan, başlık animasyonları, sloganlar, logo kutusu),
+  canlı önizleme ve elle blur (sürükleyerek takip) → 1080×1920 son video.
 
 Her haber `data/projects/` altında bir proje klasörüdür; haber, ses, görüntü analizi, kesitler, kurgu ve video orada durur.
 

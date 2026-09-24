@@ -1,3 +1,36 @@
+# v2.5.0 — Tasarım Stüdyosu: Canva'nın yerine Axion şablonu ve elle blur (Faz 5) — 2026-09-24
+
+## Added
+- **Tasarım Stüdyosu son videoyu kendisi hazırlar (1080×1920, sesiyle):** günün arka planı (8'li sıra, her iş günü
+  02:00'de sonrakine geçer), beyaz çerçeveli yuvarlak köşeli video alanı, 1. başlık (0–9 sn, "merge" çıkışı), iki
+  slogan ("old tv"), 2. başlık (13. sn'den sona, kelime kelime "merge" girişi), alttan yükselen logo kutusu (ışık
+  geçişiyle). Ölçü ve zamanlar editörün Canva örneğinden kare kare ölçüldü. Tek FFmpeg komutu; önce AMD donanım
+  kodlayıcısı, olmazsa x264. API/token yok.
+- Başlıklar sayfada düzeltilebilir (Enter ile satır bölme; yoksa en dengeli 2 satır, sığmazsa yazı küçülür).
+  Arka plan elle de seçilebilir. Ayarlar projeye kaydedilir (`tasarim.json`).
+- **Canlı önizleme:** 9:16 tuvalde arka plan, video, çerçeve, o anki başlık/slogan ve logo; oynat, 0,5x/0,25x, zaman
+  çizelgesinde şablon öğeleri ve blurlar.
+- **Elle blur (plaka/yüz):** kutu ekle; şekil (dikdörtgen, yuvarlak köşeli, elips), güç, opaklık; videoyu bir ana
+  getirip sürükle/boyutlandır → anahtar kare, kutu aralarda doğrusal kayar; başlangıç/bitiş "şu an"; anahtar kareler
+  arasında gezinme ve silme; **canlı takip** (basılı tutunca video yavaş oynar, yol kaydedilir). Son videoda aynı
+  hareketle Gauss bulanıklığı. Otomatik tespit yok (editör kararı).
+- Şablon dosyaları `assets/sablon/` (editörden): 8 arka plan, logo, slogan görselleri, Google Sans Bold (SIL OFL)
+  ve örnek Canva videosu.
+- Son video değiştiyse uyarı: başlık, arka plan, blur veya kurgu değişince "yeniden oluştur".
+
+## Changed
+- Yazı tipi Binate Bold yerine Google Sans Bold (editör kararı; lisansı serbest).
+- `shared/axion_template.py` Canva örneğinden ölçülen değerlerle güncellendi; slogan 1 "TARAFSIZ VE ŞEFFAF HABERCİLİK".
+  Logo kutusu örnekteki gibi 15,03–17,69 sn (notlardaki 16–19 sn yerine).
+- Faz 4 (Luna Edit Planner) ertelendi; blur Faz 6 yerine Tasarım Stüdyosu'nun elle kullanılan aracı oldu (ROADMAP).
+
+## Verification
+- `make test`: 175 geçti, 21 atlandı (FFmpeg'siz). FFmpeg ile son video testi (1080x1920, blur, ses) geçti.
+- Editörün Canva örneğinin görüntüsüyle yan yana karşılaştırıldı (başlık yeri/boyutu, çerçeve, slogan ve logo zamanları).
+- Tarayıcı editörü headless Chromium'da elle denendi: blur ekleme, iki anda sürükleme (ara karede kayma), canlı
+  takip, kayıt ve "Son videoyu oluştur" düğmesiyle blurlu 1080x1920 çıktı.
+- Editörün Windows'ta gerçek haberle denemesi bekleniyor (animasyonların Canva'ya benzerliği, yazı tipi, AMD kodlayıcı).
+
 # v2.4.0 — Faz 3 kod incelemesi düzeltmeleri — 2026-09-24
 
 GPT ve Claude incelemesinin sonucu (`reviews/`). Kullanıcıya görünen davranış aynı; daha hızlı, daha ucuz, daha sağlam.

@@ -67,13 +67,19 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
 
-apps/design_studio/page.py    TASARIM STÜDYOSU: video + kopyalanacak başlık/paylaşım metni; Faz 5'te Axion şablonu (Canva yerine)
+apps/design_studio/            TASARIM STÜDYOSU (Faz 5, Canva'nın yerine; API yok)
+  page.py                      Sayfa: başlık düzeltme, arka plan, canlı önizleme + blur editörü, "Son videoyu oluştur"
+  template.py                  Şablon katmanları (Pillow): arka plan, çerçeve, başlık "merge", slogan "old tv", logo kutusu;
+                               yalnız değişen kareler PNG, sabit anlar süreli tek kare (FFmpeg concat listesi)
+  blur.py                      Elle blur: doğrulama, anahtar kareler arası doğrusal kutu, kare kare maske
+  editor.py                    Tarayıcı editörü (Streamlit components v2, JS): oynat/sar, blur ekle/sürükle, canlı takip
+  render.py                    Tek FFmpeg komutu: kurgu → blur (gblur+maske) → arka plan/çerçeve/üst şerit/logo → son_video.mp4
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
   media_models.py              MediaLibrary / VideoAsset / Shot / AnalysisWindow (hedef 2.1 modelleri)
   edit_models.py               EditProject / Timeline / Track / Clip (hedef 2.1 modelleri)
-  axion_template.py            Editörün Canva şablonu: video alanı (kurgu ölçüsü), başlık/slogan/logo konum ve zamanları (Faz 5)
+  axion_template.py            Axion şablonu: video alanı (kurgu ölçüsü), başlık/slogan/logo konum ve zamanları (Canva örneğinden ölçüldü)
 
 windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı), guncelle.bat,
                                anahtarlar.bat, sorun_giderme.bat, kisayol.ps1, axion_x.ico
@@ -91,7 +97,8 @@ Video Stüdyosu ──analiz────►   media_library.json (shared MediaLi
                ──hazırla───►   edit_project.json (shared EditProject 2.1; video izi rough_cut ile dolu)
                ──kesit─────►   kesitler.json (kaynak sesli kesitler) + onizleme/*.mp4 (360p, kesit seçmek için)
                ──oluştur───►   kaba_kurgu.mp4 (960x1226 = Canva şablonunun video alanı, TTS + kesit sesleriyle)
-Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlıklar (Faz 5: 1080x1920 şablon)
+Tasarım Stüdyosu ──düzenle──►   tasarim.json (başlık düzeltmeleri, arka plan seçimi, blurlar) + onizleme/tasarim_onizleme.mp4
+                 ──oluştur───►   son_video.mp4 (1080x1920: kaba kurgu + blur + Axion şablonu, sesiyle)
 ```
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
@@ -104,12 +111,13 @@ Tasarım Stüdyosu ◄──────────   kaba_kurgu.mp4 + başlık
 | DHA kaynak videosu | İndirilenler (yerinde okunur, kopyalanmaz) | Axion hiç dokunmaz |
 | Tarayıcıdan yüklenen video/görsel | `<proje>/media/` (SHA-256 ile tekrar yazılmaz) | Proje ile (3 gün) |
 | Proxy (640 px, sessiz) ve analiz kareleri | Sistem geçici klasörü | Analiz bitince veya hata olunca (`media_pipeline`) |
-| `news_package.json`, `tts.mp3`, `media_library.json`, `kesitler.json`, `edit_project.json`, `kaba_kurgu.mp4`, `onizleme/` | `data/projects/<zaman>_<başlık>/` | 3 iş günü sonra (`store.delete_old_projects`); `edit_project`/MP4 ayrıca haber veya görüntü değişince |
+| Şablon katmanları ve blur maskeleri (PNG + concat listesi) | Sistem geçici klasörü | Son video bitince veya hata olunca (`design_studio/render.py`) |
+| `news_package.json`, `tts.mp3`, `media_library.json`, `kesitler.json`, `edit_project.json`, `kaba_kurgu.mp4`, `onizleme/`, `tasarim.json`, `son_video.mp4` | `data/projects/<zaman>_<başlık>/` | 3 iş günü sonra (`store.delete_old_projects`); `edit_project`/MP4 ayrıca haber veya görüntü değişince |
 | Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 
 
-## Nerede kaldık (2026-09-24) — Faz 3 ve kod incelemesi tamamlandı, Faz 4 ertelendi, sıradaki Faz 5
+## Nerede kaldık (2026-09-24) — Faz 5 (Tasarım Stüdyosu) yapıldı, editörün Windows testi bekleniyor
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de (v1.7.1 → v2.4.0). v2.4.0 (inceleme düzeltmeleri,
@@ -128,7 +136,9 @@ Luna `reasoning=low`) editör tarafından Windows'ta doğrulandı.
      eşleşmesi + kavram grupları + rol; kadraj hep tam dolu (bulanık dolgu yok), özneye göre; özne büyükse yavaş
      kaydırma (dikey çekimde yalnız yukarı/aşağı). Video en az 20 sn.
    - Render: tek FFmpeg komutu, 960x1226 (Canva şablonundaki video alanı), önce AMD `h264_amf`, olmazsa x264.
-3. **Tasarım Stüdyosu:** video + kopyalanacak başlıklar/paylaşım metni (Faz 5'te Canva'nın yerini alacak).
+3. **Tasarım Stüdyosu (v2.5.0, Canva'nın yerine):** şablon kendiliğinden dolar (günün arka planı, başlıklar, sloganlar,
+   logo kutusu); başlıklar düzeltilebilir; canlı önizlemede elle blur (anahtar kare/canlı takip) → tek FFmpeg
+   komutuyla 1080x1920 `son_video.mp4`. Yazı tipi Google Sans Bold (OFL). API yok.
 4. **Veri:** haberler 3 iş günü saklanır; liste her gün 02:00'de sıfırlanır; taze açılışta haber seçili gelmez.
 
 ### Editör kararları (değiştirme; ayrıntı ROADMAP → Ürün kararları)
@@ -143,17 +153,20 @@ Claude raporundaki tablolarda. Luna görsel analizi artık `reasoning.effort="lo
 Luna Edit Planner şimdilik yok. Sahne seçimi şikâyetleri önce `rough_cut` kurallarıyla (API'siz) çözülür; gerekirse
 yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çalışır (her haberde otomatik değil).
 
-### Sıradaki: Faz 5 — Tasarım Stüdyosu (Canva'nın yerine)
-Plan (editör onayladı): 5a şablon otomatik dolar (günün arka planı 02:00'de döner, başlıklar düzeltilebilir, sloganlar,
-logo kutusu) → tek FFmpeg komutuyla 1080x1920 MP4; 5b canlı önizleme + zaman çizelgesi (Streamlit components v2);
-5c elle blur aracı (şekil/boyut/güç/opaklık, anahtar karelerle sürükleyerek takip, isteğe bağlı canlı takip). Yapay
-zekâ yok. Editör şablon dosyalarını `assets/sablon/` klasörüne yükleyecek (README orada); Binate Bold lisansı açık.
+### Faz 5 — Tasarım Stüdyosu (v2.5.0, Windows doğrulaması bekliyor)
+Şablon ölçü/zamanları editörün Canva örneğinden (`assets/sablon/ornek_canva.mp4`) kare kare ölçüldü; Canva
+animasyonlarının (merge, old tv, slow baseline) yakın taklitleri. Editör Windows'ta gerçek bir haberle deneyip
+animasyon, yazı tipi (Google Sans, Binate'ten biraz dar) ve blur kullanımı hakkında geri bildirim verecek.
+Sıradaki iş bu geri bildirim; sonra günlük kullanımdaki sahne seçimi şikâyetleri (kurallarla, API'siz).
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
 - ElevenLabs çağrısı retry edilmez; karakter kotası iki kez tüketilmesin diye bilinçli.
 - `edit_plan.py` ve `media_library.py` isimleri tarihsel (Faz 2 öncesi); davranışları shared 2.1 sözleşmesine uyar.
 - Arayüz testleri AppTest ile; tarayıcıya özgü davranışlar (ör. v2.2.0'daki metin kutusu hatası) AppTest'te görünmeyebilir.
+  Tasarım editörü (JS) AppTest'te çalışmaz; v2.5.0'da Playwright/Chromium ile elle denendi (test paketinde değil).
+- Tasarım önizlemesi videoyu Streamlit'in medya sunucusuyla verir (`runtime.media_file_mgr`, iç API; streamlit sürümü
+  sabit). Olmazsa gömülü veriye (data URL) düşer.
 
 ## Komutlar
 

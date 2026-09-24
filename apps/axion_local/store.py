@@ -17,7 +17,7 @@ import re
 import logging
 import shutil
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,8 @@ AUDIO_FILENAME = "tts.mp3"
 MEDIA_LIBRARY_FILENAME = "media_library.json"
 EDIT_PROJECT_FILENAME = "edit_project.json"
 ROUGH_CUT_FILENAME = "kaba_kurgu.mp4"
+DESIGN_FILENAME = "tasarim.json"  # Tasarım Stüdyosu: başlık düzeltmeleri, arka plan seçimi, blurlar
+FINAL_VIDEO_FILENAME = "son_video.mp4"  # 1080x1920, Axion şablonuyla
 
 
 def data_dir() -> Path:
@@ -92,6 +94,11 @@ class NewsProject:
     @property
     def has_media(self) -> bool:
         return (self.folder / MEDIA_LIBRARY_FILENAME).exists()
+
+    @property
+    def work_day(self) -> date:
+        """Haberin kaydedildiği iş günü (02:00'de başlar); bilinmiyorsa bugünün iş günü."""
+        return work_day_start(_folder_time(self.folder) or datetime.now()).date()
 
     @property
     def label(self) -> str:

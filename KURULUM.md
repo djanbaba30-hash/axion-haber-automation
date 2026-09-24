@@ -81,8 +81,20 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
        (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar.
      - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
      - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
-5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'na geç** veya sol menü): videoyu ve kopyalamaya hazır başlıklarla
-   paylaşım metnini burada bulursun; Canva şablonuna aktar. Bu sayfa ileride Canva'nın yerini alacak.
+5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'na geç** veya sol menü): Canva'nın yerini alır.
+   - Şablon kendiliğinden dolar: günün arka planı (her gün 02:00'de sıradakine geçer, aynı gün tüm haberlerde aynı),
+     video çerçevesi, 1. başlık (0–9 sn), iki slogan, 2. başlık (13. sn'den sona), 16. sn civarında logo kutusu.
+   - Başlıkları buradan düzeltebilirsin; satırı istediğin yerden bölmek için Enter'a bas. Arka planı elle de seçebilirsin.
+   - Sağdaki önizlemede videoyu oynatıp ileri geri sarabilirsin (başlık ve sloganlar önizlemede sabit görünür,
+     animasyonları son videoda).
+   - **Blur (plaka, yüz):** **+ Blur ekle** → kutu o anda belirir. Şekil (dikdörtgen, yuvarlak köşeli, elips), güç ve
+     opaklığı ayarla. Videoyu plakanın göründüğü ana getir, kutuyu plakanın üstüne sürükle (köşedeki yuvarlakla
+     boyutlandır). Plaka hareket ediyorsa başka bir ana geç ve kutuyu yeniden sürükle: her sürükleme o anda bir
+     anahtar kare olur, kutu aralarda kendiliğinden kayar. **Başlangıç: şu an** / **Bitiş: şu an** ile blurun
+     görüneceği aralığı belirle. **Canlı takip** işaretliyken kutuya basılı tut: video yavaş oynar, sen fareyle
+     plakayı takip ettikçe yol kaydedilir. Blurlar projeye kendiliğinden kaydedilir.
+   - **Son videoyu oluştur** → 1080×1920 MP4 (sesiyle). **Son videoyu indir** ile al; paylaşım metni altında hazır.
+     Başlık, arka plan veya blurda değişiklik yaparsan uyarı çıkar; videoyu yeniden oluştur.
 
 Videolar başka bir klasördeyse Video Stüdyosu'nda **⚙️ Ayarlar**'daki klasör kutusuna o klasörün yolunu yazman yeterli.
 Telefondan/tabletten çalışırken dosyayı **Tarayıcıdan yükle** seçeneğiyle de gönderebilirsin.

@@ -220,14 +220,47 @@ def test_video_studio_shows_no_shot_table_outside_developer_info(local_env):
     assert any(e.label == "✅ 2. Görüntüler — dha.mp4" for e in at.expander)
 
 
-def test_design_studio_shows_video_and_headlines(local_env):
+def test_design_studio_fills_template_and_renders_final_video(local_env, monkeypatch):
+    import json
+
     project = saved_project(media_library())
     (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    calls = []
+
+    def fake_render(rough, headline_1, headline_2, background, fps, seconds, output, blurs):
+        calls.append((headline_1, headline_2, background, blurs))
+        output.write_bytes(b"final")
+        return "x264"
+
+    monkeypatch.setattr("apps.design_studio.render.render_final", fake_render)
     at = open_page(project, DESIGN_PAGE, "design_project_id")
     assert not at.exception
     assert title(at) == ["Tasarım Stüdyosu"]
-    assert [c.value for c in at.code][:2] == ["KAZA", "B"]
-    assert any(b.label == "MP4'ü indir" for b in at.get("download_button"))
+    # Başlıklar haberden gelir ve düzeltilebilir; paylaşım metni kopyalanmaya hazır.
+    assert [t.value for t in at.text_area] == ["KAZA", "B"]
+    assert [c.value for c in at.code] == ["Haber"]
+    assert at.selectbox(key=f"tasarim_arka_plan_{project.id}").value == 0  # günün arka planı
+
+    at.text_area(key=f"tasarim_b1_{project.id}").set_value("KAZA\nYERİ").run()
+    saved = json.loads((project.folder / store.DESIGN_FILENAME).read_text(encoding="utf-8"))
+    assert saved["headline_1"] == "KAZA\nYERİ"
+
+    button(at, "🎬 Son videoyu oluştur").click().run()
+    assert not at.exception
+    assert calls and calls[0][0] == "KAZA\nYERİ" and calls[0][3] == []
+    assert any(b.label == "Son videoyu indir" for b in at.get("download_button"))
+    assert not at.warning
+
+    at.text_area(key=f"tasarim_b2_{project.id}").set_value("YENİ").run()
+    assert at.warning  # değişiklik son videoya işlenmedi
+    assert any(b.label == "🎬 Son videoyu yeniden oluştur" for b in at.button)
+
+
+def test_design_studio_waits_for_rough_cut(local_env):
+    project = saved_project(media_library())
+    at = open_page(project, DESIGN_PAGE, "design_project_id")
+    assert not at.exception
+    assert any("Videoyu oluştur" in i.value for i in at.info)
 
 
 def test_soundbites_are_listed_used_in_cut_and_removable(local_env):
