@@ -1,6 +1,6 @@
 # Axion Local — Windows Kurulum ve Kullanım
 
-Axion Local, Haber Stüdyosu ile Video Studio'yu evdeki bilgisayarda **tek uygulama, tek şifreyle** çalıştırır.
+Axion Local, Haber Stüdyosu ile Video Studio'yu evdeki bilgisayarda tek uygulama olarak çalıştırır.
 Videolar internete yüklenmez, doğrudan diskten okunur; projeler ve ayarlar kalıcıdır.
 
 ## 1. Bir kerelik kurulum (yaklaşık 15 dakika)
@@ -24,26 +24,39 @@ Videolar internete yüklenmez, doğrudan diskten okunur; projeler ve ayarlar kal
 2. **`kurulum.bat`** dosyasına çift tıkla. Kurulum dosyası şunları yapar:
    - Python ve FFmpeg yoksa kurar. Kurduktan sonra "pencereyi kapat ve tekrar çalıştır" der; öyle yap.
    - Gerekli paketleri kurar.
-   - Not Defteri'nde `secrets.toml` dosyasını açar. Şifreni ve API anahtarlarını tırnak içine yaz, kaydet, kapat:
-     ```toml
-     APP_PASSWORD = "seçtiğin şifre"
-     OPENAI_API_KEY = "sk-..."
-     ANTHROPIC_API_KEY = "sk-ant-..."
-     ELEVENLABS_API_KEY = "..."
-     ```
-   - Masaüstüne **Axion Local** kısayolu koyar.
+   - Not Defteri'nde **API anahtarları dosyasını** açar (aşağıda).
+   - Masaüstüne **Axion Local** ikonunu koyar.
+   - Axion'u Windows açılışına ekler; bilgisayar açıldığında arka planda kendiliğinden başlar.
 
-### 1.3 Bilgisayarın uyumasını kapat (tabletten erişim için)
+### 1.3 API anahtarları
+
+Anahtarlar şu dosyada durur: `C:\Axion\.streamlit\secrets.toml`
+Kurulum bu dosyayı Not Defteri'nde açar. Anahtarları tırnak içine yapıştır, kaydet, kapat:
+
+```toml
+APP_PASSWORD = ""
+OPENAI_API_KEY = "sk-..."
+ANTHROPIC_API_KEY = "sk-ant-..."
+ELEVENLABS_API_KEY = "..."
+```
+
+- `APP_PASSWORD` boş kalırsa **şifre sorulmaz**. İstersen bir şifre yazabilirsin; o zaman hem bilgisayarda hem tablette sorulur.
+- Anahtarları sonradan değiştirmek için: `C:\Axion\windows\anahtarlar.bat`. Değişiklikten sonra Axion'u kapatıp yeniden aç.
+
+Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da `http://BILGISAYAR-ADI:8501` adresinden Axion'u açabilir. Evde başka kullanıcı yoksa sorun değil; varsa bir şifre belirle.
+
+### 1.4 Bilgisayarın uyumasını kapat (tabletten erişim için)
 
 Ayarlar → Sistem → Güç → **Ekran ve uyku** → "Prize takılıyken cihazı uyku moduna geçir": **Hiçbir zaman**.
 Ekranın kapanması sorun değil; uyku modu sorun.
 
 ## 2. Günlük kullanım
 
-1. Masaüstündeki **Axion Local** kısayoluna çift tıkla. Siyah bir pencere açılır ve tarayıcıda uygulama başlar.
-   - Siyah pencereyi **kapatma**; kapatırsan sistem durur. Küçültebilirsin.
+1. Masaüstündeki **Axion Local** ikonuna çift tıkla. Siyah pencere açılmaz; birkaç saniye içinde tarayıcıda Axion açılır.
+   - Axion zaten arka planda çalışıyorsa ikon sadece tarayıcıyı açar.
    - İlk açılışta Windows Güvenlik Duvarı izin sorarsa **İzin ver** de (tabletten erişim için gerekli).
-2. Şifreni gir. Soldaki menüden iki sayfa arasında geçersin: **Haber Stüdyosu** ve **Video Studio**.
+2. Soldaki menüden iki sayfa arasında geçersin: **Haber Stüdyosu** ve **Video Studio**. Bir sayfadaki işin öbürüne geçince kaybolmaz.
+3. Tarayıcı sekmesini kapatmak Axion'u kapatmaz; arka planda çalışmaya devam eder. Tamamen kapatmak istersen sol menünün altındaki **Axion'u kapat** düğmesini kullan. Bu düğme sadece evdeki bilgisayardan açıldığında görünür; tabletten yanlışlıkla kapatamazsın.
 
 ### Haberden videoya akış
 
@@ -65,21 +78,25 @@ Tailscale, bilgisayarınla tabletin arasında sadece senin cihazlarının görd�
 2. Tablete de Tailscale uygulamasını kur (App Store / Google Play) ve **aynı hesapla** giriş yap.
 3. Tailscale uygulamasında evdeki bilgisayarın adını ve `100.` ile başlayan adresini görürsün.
 4. Tabletin tarayıcısında şunu aç: `http://BILGISAYAR-ADI:8501` (olmazsa `http://100.x.x.x:8501`).
-5. Axion şifresini gir. Tablet sadece ekrandır; işi evdeki bilgisayar yapar.
+5. Tablet sadece ekrandır; işi evdeki bilgisayar yapar.
 
 Tablet bağlanamıyorsa:
-- Evdeki bilgisayar açık mı, **Axion Local** penceresi çalışıyor mu?
+- Evdeki bilgisayar açık mı? Bilgisayar yeniden başladıysa oturum açılmış olmalı; Axion oturum açılınca kendiliğinden başlar.
 - Tablette Tailscale "Connected" durumda mı?
 - Windows Güvenlik Duvarı izni: Ayarlar → Gizlilik ve güvenlik → Windows Güvenliği → Güvenlik duvarı → "Güvenlik duvarından uygulamaya izin ver" → **python** için Özel ve Genel kutucuklarını işaretle.
 
 ## 4. Güncelleme
 
-Yeni bir sürüm çıktığında:
-1. Axion Local penceresini kapat.
-2. `C:\Axion\windows\guncelle.bat` dosyasına çift tıkla.
-3. Axion Local'i yeniden başlat.
+Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çift tıkla.
+Çalışan Axion'u durdurur, yeni sürümü indirir ve Axion'u yeniden başlatır.
 
-## 5. Verilerin yeri
+## 5. Sorun giderme
+
+- Axion açılmazsa bir uyarı çıkar ve hata kaydı (`C:\Axion\data\axion.log`) Not Defteri'nde açılır. İçeriğini Claude'a gönder.
+- Hataları canlı görmek için: önce Axion'u kapat, sonra `C:\Axion\windows\sorun_giderme.bat` ile görünür pencerede başlat.
+- Axion'un Windows açılışında başlamasını istemiyorsan: Windows+R → `shell:startup` → "Axion Local" kısayolunu sil.
+
+## 6. Verilerin yeri
 
 - Haber projeleri (haber paketi ve TTS sesi): `C:\Axion\data\projects\`
 - TTS kalibrasyonu ve üretim geçmişi: `C:\Axion\data\`

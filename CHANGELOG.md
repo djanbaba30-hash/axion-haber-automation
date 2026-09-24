@@ -1,3 +1,18 @@
+# v1.3.1 — Axion Local polish — 2026-09-24
+
+## Changed
+- Password is optional in local mode: an empty `APP_PASSWORD` opens Axion directly. The apps no longer require `APP_PASSWORD` in local mode. Streamlit Cloud still requires it.
+- Windows launcher `windows/axion_baslat.vbs` replaces the console `.bat`:
+  - no console window; the log goes to `data/axion.log`;
+  - if Axion is already running, it only opens the browser;
+  - it waits up to 60 s and opens the log if startup fails.
+- `kurulum.bat` creates a desktop shortcut with the Axion icon and a Startup shortcut that launches Axion in the background at login (`windows/kisayol.ps1`). The Streamlit "Deploy" toolbar is hidden.
+- "Axion'u kapat" button in the sidebar, shown only when Axion is opened on the home PC itself (Host header is localhost), so it cannot be closed from the tablet by mistake.
+- `windows/anahtarlar.bat` opens the API key file. `windows/sorun_giderme.bat` runs Axion in a visible console for troubleshooting. `guncelle.bat` stops, updates and restarts Axion.
+
+## Fixed
+- Video Studio's news text box no longer empties when switching between pages.
+
 # v1.3.0 — Axion Local (Faz 0) — 2026-09-24
 
 ## Added

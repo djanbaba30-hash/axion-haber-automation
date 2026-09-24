@@ -77,7 +77,8 @@ def secret(name: str) -> str | None:
 
 
 def require_secrets() -> None:
-    missing = [name for name in ("APP_PASSWORD", "OPENAI_API_KEY") if not secret(name)]
+    required = ("OPENAI_API_KEY",) if is_local_mode() else ("APP_PASSWORD", "OPENAI_API_KEY")
+    missing = [name for name in required if not secret(name)]
     if missing:
         st.error("Eksik Streamlit secret: " + ", ".join(missing))
         st.code('APP_PASSWORD = "..."\nOPENAI_API_KEY = "..."')
@@ -128,7 +129,7 @@ st.set_page_config(
 )
 
 require_secrets()
-if not check_password():
+if not is_local_mode() and not check_password():
     st.stop()
 
 

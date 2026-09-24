@@ -40,7 +40,8 @@ def secret(name: str) -> str | None:
 
 
 def require_secrets():
-    missing=[x for x in ("APP_PASSWORD","OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY") if not secret(x)]
+    required=("OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY") if is_local_mode() else ("APP_PASSWORD","OPENAI_API_KEY","ANTHROPIC_API_KEY","ELEVENLABS_API_KEY")
+    missing=[x for x in required if not secret(x)]
     if missing:
         st.error("Eksik Streamlit secret: " + ", ".join(missing))
         st.code("APP_PASSWORD = \"...\"\nOPENAI_API_KEY = \"...\"\nANTHROPIC_API_KEY = \"...\"\nELEVENLABS_API_KEY = \"...\"")
@@ -107,7 +108,7 @@ def reset_state():
 
 
 require_secrets(); init_state()
-if not check_password(): st.stop()
+if not is_local_mode() and not check_password(): st.stop()
 
 st.title("Axion Haber İçerik Stüdyosu")
 

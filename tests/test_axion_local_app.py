@@ -4,8 +4,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 ROOT = Path(__file__).resolve().parents[1]
-SECRETS = {
-    "APP_PASSWORD": "Gizli-Şifre1",
+KEYS = {
     "OPENAI_API_KEY": "sk-test",
     "ANTHROPIC_API_KEY": "sk-ant-test",
     "ELEVENLABS_API_KEY": "el-test",
@@ -23,34 +22,60 @@ def local_env(tmp_path, monkeypatch):
     return tmp_path
 
 
-def login():
+def start(password=""):
     at = AppTest.from_file(str(ROOT / "axion_local.py"), default_timeout=120)
-    for key, value in SECRETS.items():
+    for key, value in {**KEYS, "APP_PASSWORD": password}.items():
         at.secrets[key] = value
     at.run()
     return at
+
+
+def login():
+    return start()
 
 
 def button(at, label):
     return next(b for b in at.button if b.label == label)
 
 
-def test_single_password_opens_both_pages(local_env):
-    at = login()
-    assert [t.label for t in at.text_input] == ["Şifre"]
-    at.text_input[0].input("yanlis").run()
-    assert [e.value for e in at.error] == ["Şifre yanlış."]
-    at.text_input[0].input("Gizli-Şifre1").run()
+def test_no_password_opens_directly(local_env):
+    at = start()
     assert not at.exception
+    assert not at.text_input or at.text_input[0].label != "Şifre"
     assert [t.value for t in at.title] == ["Axion Haber İçerik Stüdyosu"]
     at.switch_page("apps/video_studio/app.py").run()
     assert not at.exception
     assert [t.value for t in at.title] == ["Axion Video Studio"]
 
 
+def test_optional_password_still_protects(local_env):
+    at = start("Gizli-Şifre1")
+    assert [t.label for t in at.text_input] == ["Şifre"]
+    at.text_input[0].input("yanlis").run()
+    assert [e.value for e in at.error] == ["Şifre yanlış."]
+    at.text_input[0].input("Gizli-Şifre1").run()
+    assert not at.exception
+    assert [t.value for t in at.title] == ["Axion Haber İçerik Stüdyosu"]
+
+
+def test_shutdown_button_hidden_for_remote_access(local_env):
+    at = start()
+    assert not any(b.label == "Axion'u kapat" for b in at.button)
+
+
+def test_video_news_text_survives_page_switch(local_env):
+    at = start()
+    at.switch_page("apps/video_studio/app.py").run()
+    at.session_state["media_library"] = {"assets": [{"asset_id": "video_001"}]}
+    at.run()
+    at.text_area(key="project_news_text").input("Kalıcı haber metni").run()
+    at.switch_page("apps/news_studio/app.py").run()
+    at.switch_page("apps/video_studio/app.py").run()
+    assert at.session_state["project_news_text"] == "Kalıcı haber metni"
+
+
 def test_news_project_flows_to_video_studio(local_env):
     at = login()
-    at.text_input[0].input("Gizli-Şifre1").run()
 
     at.session_state["baslik1"] = "SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI"
     at.session_state["baslik2"] = "5 KİŞİ YARALANDI"
@@ -72,7 +97,6 @@ def test_news_project_flows_to_video_studio(local_env):
 
 def test_stale_audio_blocks_project_save(local_env):
     at = login()
-    at.text_input[0].input("Gizli-Şifre1").run()
     at.session_state["icerik"] = "Caption"
     at.session_state["tts_metni"] = "Düzenlenmiş TTS"
     at.session_state["last_audio_bytes"] = b"mp3"

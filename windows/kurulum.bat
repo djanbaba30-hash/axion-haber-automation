@@ -42,13 +42,16 @@ if errorlevel 1 (
 if not exist ".streamlit\secrets.toml" (
   copy ".streamlit\secrets.toml.example" ".streamlit\secrets.toml" >nul
   echo.
-  echo Sifreni ve API anahtarlarini girmen icin secrets.toml aciliyor.
-  echo Degerleri tirnak icine yaz, kaydet ve Not Defteri'ni kapat.
+  echo API anahtarlarini girmen icin secrets.toml aciliyor.
+  echo Anahtarlari tirnak icine yapistir, kaydet ve Not Defteri'ni kapat.
   notepad ".streamlit\secrets.toml"
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\Axion Local.lnk'); $s.TargetPath='%CD%\windows\axion_baslat.bat'; $s.WorkingDirectory='%CD%'; $s.Save()"
+echo Kisayollar olusturuluyor...
+powershell -NoProfile -ExecutionPolicy Bypass -File "windows\kisayol.ps1"
 
 echo.
-echo Kurulum tamam. Masaustundeki "Axion Local" kisayoluyla baslatabilirsin.
+echo Kurulum tamam.
+echo  - Masaustundeki "Axion Local" ikonuyla acabilirsin.
+echo  - Bilgisayar acildiginda Axion arka planda kendiliginden baslar.
 pause
