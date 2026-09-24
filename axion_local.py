@@ -24,6 +24,12 @@ PERSISTENT_WIDGET_KEYS = ("project_news_text",)
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
 
 st.set_page_config(page_title="Axion Local", page_icon="🗞️", layout="wide")
+st.markdown(
+    """<style>
+    [data-testid="stMainBlockContainer"], .block-container {padding-top: 2rem; max-width: 1100px;}
+    </style>""",
+    unsafe_allow_html=True,
+)
 
 
 def authenticated() -> bool:
@@ -89,5 +95,5 @@ page = st.navigation(
         st.Page(ROOT / "apps" / "video_studio" / "page.py", title="Video Studio", icon="🎬", url_path="video"),
     ]
 )
-sidebar_footer()
 page.run()
+sidebar_footer()

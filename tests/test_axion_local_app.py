@@ -61,10 +61,10 @@ def title(at):
 def test_no_password_opens_directly(local_env):
     at = start()
     assert not at.exception
-    assert title(at) == ["Axion Haber İçerik Stüdyosu"]
+    assert title(at) == ["📰 Haber Stüdyosu"]
     at.switch_page(VIDEO_PAGE).run()
     assert not at.exception
-    assert title(at) == ["Axion Video Studio"]
+    assert title(at) == ["🎬 Video Studio"]
 
 
 def test_optional_password_still_protects(local_env):
@@ -74,7 +74,7 @@ def test_optional_password_still_protects(local_env):
     assert [e.value for e in at.error] == ["Şifre yanlış."]
     at.text_input[0].input("Gizli-Şifre1").run()
     assert not at.exception
-    assert title(at) == ["Axion Haber İçerik Stüdyosu"]
+    assert title(at) == ["📰 Haber Stüdyosu"]
 
 
 def test_shutdown_button_hidden_for_remote_access(local_env):
@@ -86,7 +86,7 @@ def test_save_and_continue_opens_project_in_video_studio(local_env):
     at = with_generated_news(start())
     button(at, "Kaydet ve Video Studio'ya geç").click().run()
     assert not at.exception
-    assert title(at) == ["Axion Video Studio"]
+    assert title(at) == ["🎬 Video Studio"]
     projects = store.list_news_projects()
     assert len(projects) == 1
     assert at.session_state["loaded_news_project"] == projects[0].id
@@ -103,7 +103,7 @@ def test_saving_same_news_again_updates_project(local_env):
 
 def test_stale_audio_blocks_saving(local_env):
     at = with_generated_news(start(), tts="Düzenlenmiş TTS", audio_text="Eski TTS")
-    assert any("sesi yeniden üret" in w.value for w in at.warning)
+    assert any("ses üretildikten sonra değişti" in w.value for w in at.warning)
     assert not any(b.label == "Sadece kaydet" for b in at.button)
 
 
@@ -125,7 +125,9 @@ def test_saved_media_analysis_is_restored(local_env):
     assert not at.exception
     assert at.session_state["media_library"] == library
     assert at.dataframe[0].value["Görüntü"].tolist() == ["olay yeri"]
-    assert any(b.label == "Projeyi hazırla" for b in at.button)
+    assert at.session_state["edit_project"]["audio"]["duration_seconds"] == 24.2
+    assert store.load_project_json(project, store.EDIT_PROJECT_FILENAME) is not None
+    assert any("Proje hazır" in s.value for s in at.success)
 
 
 def test_video_news_text_survives_page_switch(local_env):

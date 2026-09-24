@@ -9,3 +9,10 @@ gatherUsageStats = false
 
 [client]
 toolbarMode = "minimal"
+
+# Açık/karanlık tema bilgisayarın ayarını izler; ikisinde de Axion kırmızısı.
+[theme.light]
+primaryColor = "#BE1824"
+
+[theme.dark]
+primaryColor = "#E0343F"

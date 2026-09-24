@@ -1,3 +1,21 @@
+# v1.5.0 — Timed TTS (Faz 1) and a simpler interface — 2026-09-24
+
+## Added
+- Faz 1: ElevenLabs `convert_with_timestamps` returns the audio and per-character timings in one call, at no extra cost. The timings are stored as `TTSAlignment` in `news_package.json`. An alignment that does not match the text exactly is dropped; the audio is still used. TTS text is trimmed before synthesis.
+
+## Changed
+- Haber Stüdyosu:
+  - the sidebar shows only style, duration and voice; AI engine, reasoning level and voice sliders moved under "Gelişmiş ayarlar";
+  - headlines sit side by side; validation notes are grouped in one "Kontrol et" box;
+  - token usage moved to a collapsed "Geliştirici bilgileri" section;
+  - "Sistemi Sıfırla" became "Yeni haber" and keeps the voice and engine choices.
+- Video Studio:
+  - the steps are "1. Haber" and "2. Görüntüler"; the news text sits in a collapsed section;
+  - folder and analysis density moved under "Gelişmiş";
+  - the EditProject is built and saved automatically when news, audio and media are ready (no button);
+  - cost and the project folder moved to developer info.
+- Axion red is the primary colour in both light and dark themes (the system theme is followed). Page top padding is tighter. "Axion'u kapat" sits at the bottom of the sidebar.
+
 # v1.4.0 — Fully local, single linked app — 2026-09-24
 
 ## Changed

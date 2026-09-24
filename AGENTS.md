@@ -79,22 +79,28 @@ Video Studio   ──analiz────►   media_library.json (Luna sonucu; te
 ## Nerede kaldık (2026-09-24)
 
 Tamamlanan:
-- Faz 0: yerel tek uygulama, proje klasörü, Windows kurulum/başlatıcı. Windows betikleri **gerçek Windows'ta henüz denenmedi**;
-  editörün ilk kurulumundan gelecek hata mesajlarına göre düzeltilecek.
+- Faz 0: yerel tek uygulama, proje klasörü, Windows kurulum/başlatıcı. Editör gerçek Windows'ta kurdu ve
+  Bayrampaşa haberiyle baştan sona (haber → ses → video analizi → proje) hatasız çalıştırdı.
+- Faz 1: zaman bilgili TTS. `tts/service.py` ElevenLabs `convert_with_timestamps` kullanır (tek çağrı, ek maliyet yok);
+  karakter zamanları `TTSAlignment` olarak `news_package.json`'a kaydedilir. Metinle birebir eşleşmezse alignment
+  kaydedilmez, ses yine kullanılır.
+- Arayüz sadeleştirildi: kullanıcıya gerekmeyen ayarlar "Gelişmiş" altında, token/maliyet "Geliştirici bilgileri"
+  altında. Video Studio'da EditProject otomatik oluşur (düğme yok).
 - Haber Stüdyosu viral TTS kuralları (v1.2.0): tekrar yasağı, süre hedefi üst sınır, plaka temizleme.
-- Sözleşmeler (shared/) v1.1/2.1 ve negatif testleri.
 
-**Sıradaki iş — Faz 1 (zaman bilgili TTS):**
-1. `apps/news_studio/tts/service.py`: ElevenLabs `text_to_speech.convert_with_timestamps` kullan; sesi (base64) ve
-   karakter zamanlarını döndür. Ek API maliyeti yok (aynı çağrı).
-2. Karakter zamanlarını `shared.news_package.TTSAlignment`'a dönüştür (characters/start_seconds/end_seconds;
-   `"".join(characters) == tts_text` doğrulaması modelde var).
-3. `apps/news_studio/page.py`: alignment'ı oturumda sesle birlikte tut, `NewsPackage(tts_alignment=...)` ile kaydet.
-   Metin değişince ses ve alignment birlikte geçersiz sayılmalı (mevcut `last_audio_text` kontrolü genişletilir).
-4. Test: sahte ElevenLabs yanıtıyla alignment dönüşümü ve NewsPackage doğrulaması.
+**Sıradaki iş — Faz 2 (Video Studio'yu shared/ 2.1 modellerine taşıma), ardından Faz 3 (kaba kurgu MP4):**
+1. `media_pipeline.py` çıktısını `shared.media_models.MediaLibrary` (VideoAsset/Shot) olarak üret; Luna yanıtını
+   `VisualType`/`EditorialRole` enum'larına eşle (`visual_analysis.py` şemasını enum'lu yap). Eski `media_library.py`,
+   `video_asset.py`, `edit_plan.py` kaldırılır; `media_library.json` eski formattaysa yeniden analiz iste.
+2. `shared.edit_models.EditProject` üret: `NewsReference` (tts_alignment dahil), `AudioReference`, `NewsSegment`ler
+   (TTS cümleleri; `char_start/char_end`, zamanlar alignment'tan).
+3. Faz 3: kural tabanlı eşleştirme (API çağrısı yok) — her TTS cümlesine sırayla uygun shot; FFmpeg ile orijinal
+   videodan kesip TTS ile birleştir, 1080×1440 MP4'ü proje klasörüne yaz. AMD donanım kodlayıcı (`h264_amf`) varsa kullan.
 
-Sonrası (ROADMAP): Faz 2 Video Studio'yu `shared/` 2.1 modellerine taşıma → Faz 3 kural tabanlı kaba kurgu + FFmpeg render
-(1080×1440) → Faz 4 Edit Planner (Luna, tek metin çağrısı) → Faz 5 Axion şablonu (1080×1920) → Faz 6 blur önerisi.
+Sonrası (ROADMAP): Faz 4 Edit Planner (Luna, tek metin çağrısı) → Faz 5 Axion şablonu (1080×1920) → Faz 6 blur önerisi.
+
+Maliyet notu: OpenAI Batch API (%50 indirim) etkileşimli akışa uygun değil (sonuç 24 saate kadar gecikir).
+Tasarruf; prompt önbelleği, ekonomik Luna modu (shot başına 1 kare) ve API'siz kural tabanlı adımlarla sağlanır.
 
 ## Bilinen borçlar
 
