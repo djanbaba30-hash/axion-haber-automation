@@ -82,45 +82,31 @@ Video Studio   ──analiz────►   media_library.json (Luna sonucu; te
 - Ses üretildikten sonra TTS metni değişirse kaydetme engellenir.
 - Videolar kopyalanmadan diskten okunur (`LocalMediaFile`); proxy ve kareler analizden sonra silinir.
 
+
 ## Nerede kaldık (2026-09-24)
 
-Tamamlanan:
-- Faz 0: yerel tek uygulama, proje klasörü, Windows kurulum/başlatıcı. Editör gerçek Windows'ta kurdu ve
-  Bayrampaşa haberiyle baştan sona (haber → ses → video analizi → proje) hatasız çalıştırdı.
-- Faz 1: zaman bilgili TTS. `tts/service.py` ElevenLabs `convert_with_timestamps` kullanır (tek çağrı, ek maliyet yok);
-  karakter zamanları `TTSAlignment` olarak `news_package.json`'a kaydedilir. Metinle birebir eşleşmezse alignment
-  kaydedilmez, ses yine kullanılır.
-- Arayüz sadeleştirildi: kullanıcıya gerekmeyen ayarlar "Gelişmiş" altında, token/maliyet "Geliştirici bilgileri"
-  altında. Video Studio'da EditProject otomatik oluşur (düğme yok).
-- Haber Stüdyosu viral TTS kuralları (v1.2.0): tekrar yasağı, süre hedefi üst sınır, plaka temizleme.
-- Arayüz (v1.6.x): beyaz Axion teması, uygulama içinde logo yok; kenar çubuğu ayarları `data/ayarlar.json`'da hatırlanır;
-  Video Studio'da sahne tablosu yalnızca geliştirici bölümünde. Editör bu sürümleri henüz Windows'ta güncellemedi
-  (`guncelle.bat`); ilk güncellemede masaüstü ikonu Axion X işaretine dönmeli.
+### Tamamlanan
+- Faz 0: yerel tek uygulama ve Windows çalışma zinciri gerçek Windows kurulumunda doğrulandı.
+- Faz 1: zaman bilgili TTS ve TTSAlignment tamamlandı.
+- v1.6.x arayüz sadeleştirmeleri tamamlandı.
+- Faz 2 medya sözleşmesi: media_pipeline artık shared.media_models MediaLibrary 2.1 üretir; kaynak SHA-256, VideoGeometry, AudioTechnicalInfo, Shot → AnalysisWindow → AnalysisFrame ve enum tabanlı VisualType/EditorialRole kullanır.
+- Faz 2 EditProject: edit_plan artık shared.edit_models EditProject 2.1 üretir; TTS metni NewsSegment'lere ayrılır, alignment doğrulanır ve TTS sesi ortak timeline sözleşmesine bağlanır.
+- Eski 1.1 edit_project.json dosyaları kullanılmaz; 2.1 değilse yeniden oluşturulur.
+- Browser upload medya kaynakları aktif proje altında media/ klasöründe saklanır; local inbox dosyaları yerinde okunur.
+- TTS audio metadata'sına gerçek SHA-256 eklendi.
+- Faz 2 için ortak sözleşme regresyon testi eklendi.
 
-**Sıradaki iş — Faz 2 (Video Studio'yu shared/ 2.1 modellerine taşıma), ardından Faz 3 (kaba kurgu MP4):**
-1. `media_pipeline.py` çıktısını `shared.media_models.MediaLibrary` (VideoAsset/Shot) olarak üret; Luna yanıtını
-   `VisualType`/`EditorialRole` enum'larına eşle (`visual_analysis.py` şemasını enum'lu yap). Eski `media_library.py`,
-   `video_asset.py`, `edit_plan.py` kaldırılır; `media_library.json` eski formattaysa yeniden analiz iste.
-2. `shared.edit_models.EditProject` üret: `NewsReference` (tts_alignment dahil), `AudioReference`, `NewsSegment`ler
-   (TTS cümleleri; `char_start/char_end`, zamanlar alignment'tan).
-3. Faz 3: kural tabanlı eşleştirme (API çağrısı yok) — her TTS cümlesine sırayla uygun shot; FFmpeg ile orijinal
-   videodan kesip TTS ile birleştir, 1080×1440 MP4'ü proje klasörüne yaz. AMD donanım kodlayıcı (`h264_amf`) varsa kullan.
+### Şu anki durum / sonraki adım
+- Faz 2 ana sözleşme geçişi kodlanmış durumda.
+- Windows üzerinde make test ve gerçek bir haber/video ile uçtan uca test bu oturumda çalıştırılmadı; Windows doğrulaması yapılmış kabul edilmemeli.
+- Sıradaki teknik iş: uzun shot'ları AnalysisWindow'lara deterministik bölmek ve bunu tek Luna çağrısı içinde yapmak.
+- Ardından Faz 3: API çağrısı olmadan TTS segmentlerini shot'larla eşleştirip FFmpeg ile 1080x1440 kaba kurgu MP4 üretmek.
+- AMD h264_amf mevcutsa render adımında tercih edilecek.
 
-Sonrası (ROADMAP): Faz 4 Edit Planner (Luna, tek metin çağrısı) → Faz 5 Axion şablonu (1080×1920) → Faz 6 blur önerisi.
-
-Maliyet notu: OpenAI Batch API (%50 indirim) etkileşimli akışa uygun değil (sonuç 24 saate kadar gecikir).
-Tasarruf; prompt önbelleği, ekonomik Luna modu (shot başına 1 kare) ve API'siz kural tabanlı adımlarla sağlanır.
-
-## Bilinen borçlar
-
-- Video Studio hâlâ eski formatları üretiyor: EditProject 1.1 (`modules/edit_plan.py`), Media Library 1.0
-  (`media_library.py`, `video_asset.py`; `*_formatted` alanları, serbest metin `visual_type`/`editorial_role`).
-  Faz 2'de `shared/media_models.py` ve `shared/edit_models.py`'ye taşınacak.
-- Luna shot başına en fazla 4 kare görüyor; 70 sn'lik röportaj gibi uzun shot'lar pencerelere bölünmüyor.
-- Tanık sesi (başta/sonda/yok) ve klip kaynak sesi alanları sözleşmede yok; `EditProject` "timeline ≤ TTS süresi"
-  kuralı tanık sesi gelince "TTS + tanık sesi" olarak güncellenmeli.
-- ElevenLabs çağrısı retry edilmez (bilinçli: tekrar karakter kotası harcayabilir).
-- Tarayıcıdan yüklenen videolar geçici klasörde kalır (yerel klasörden seçilenler kopyalanmaz).
+### Bilinen borçlar
+- Uzun shot windowing henüz pipeline'da uygulanmadı.
+- Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı.
+- ElevenLabs çağrısı retry edilmez; karakter kotası iki kez tüketilmesin diye bilinçli.
 
 ## Komutlar
 
