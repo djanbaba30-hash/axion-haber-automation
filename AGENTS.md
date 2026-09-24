@@ -57,6 +57,8 @@ apps/video_studio/             VIDEO STUDIO
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
+  modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS cümlesi → ≤3 sn kesitler → sahne penceresi (API yok)
+  modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
@@ -76,7 +78,8 @@ Haber Stüdyosu ──"Kaydet"──► data/projects/<zaman>_<başlık>/
                                tts.mp3
 Video Studio   ──analiz────►   media_library.json (shared MediaLibrary; tekrar açınca yeniden analiz yok)
                                browser upload ise proje içindeki media/ kaynakları kullanır
-               ──hazırla───►   edit_project.json (shared EditProject 2.1)
+               ──hazırla───►   edit_project.json (shared EditProject 2.1; video izi rough_cut ile dolu)
+               ──oluştur───►   kaba_kurgu.mp4 (1080x1440, TTS sesiyle)
 ```
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
@@ -111,11 +114,19 @@ Video Studio   ──analiz────►   media_library.json (shared MediaLib
 - Faz 2 Windows'ta doğrulandı (v1.7.1, Bayrampaşa videosu): 15 shot'ın hepsinde visual_type/editorial_role/açıklama
   dolu ve doğru; 71,6 sn röportaj 8 pencereye bölündü (hepsi person/portrait). 22 kare, tek çağrı, $0.0057.
   Not: Luna plakayı `visible_text`'te okuyor ("34 FPR 116"); Faz 6 blur önerisi bu alanı kullanabilir.
-- **Sıradaki iş Faz 3:** API çağrısı olmadan TTS segmentlerini shot pencereleriyle eşleştirip FFmpeg ile 1080x1440 kaba kurgu MP4
-  üretmek. AMD `h264_amf` mevcutsa render adımında tercih edilecek.
+- Faz 3 (v1.8.0, Claude) kodda tamam, **editörün Windows'ta denemesi bekleniyor**:
+  - `rough_cut.plan_rough_cut`: segment zamanları alignment'tan (yoksa karakter oranı); her segment ≤3 sn kesitlere bölünür.
+    Puan: açıklama/konum kelime eşleşmesi + kavram grupları (yaralı→ambulans, gözaltı→polis, yangın→itfaiye, kaza→hasar)
+    + açılışta establishing/action/event + güven. Cezalar: röportaj (portrait) sessiz dolgu olarak, plaka görünen kare,
+    aynı shot'ı tekrar veya art arda kullanma. Aynı shot'tan ikinci kesit kaldığı yerden devam eder. Boşluk bırakmaz.
+  - Klipler `origin="rule"` (sözleşmeye eklendi). Kadraj (Doldur=fill_crop / Bulanık kenar=fit_blur) editör seçer, hatırlanır.
+  - `render.render_rough_cut`: her klip ayrı `-ss/-t` girdisi, filtrede tam kare sayısına kırpılır (ses senkronu), concat + TTS.
+    Önce `h264_amf` (AMD), hata verirse x264. Dosya önce `.yaziliyor.mp4` adına yazılır.
+- Sıradaki: editör geri bildirimiyle kural ayarı → Faz 4 (Luna Edit Planner: tek metin çağrısı, rough_cut yedek kalır).
 
 ### Bilinen borçlar
-- Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı.
+- Tanık sesi ve klip kaynak sesi için çalışma zamanı modeli henüz tamamlanmadı (kaba kurguda kaynak ses kullanılmıyor).
+- Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
 - ElevenLabs çağrısı retry edilmez; karakter kotası iki kez tüketilmesin diye bilinçli.
 - `make test` çalıştırmadan push etme: v1.7.0 3 kırık testle push edilmişti (eski formatta kayıtlı analiz sayfayı
   çökertiyordu, tarayıcıdan yüklenen görsel analiz sonrası silinip okunmaya çalışılıyordu). v1.7.1'de düzeltildi.

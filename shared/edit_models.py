@@ -29,6 +29,7 @@ class FramingMode(str, Enum):
 
 class ClipOrigin(str, Enum):
     LLM = "llm"
+    RULE = "rule"  # Kural tabanlı kaba kurgu (API'siz)
     USER = "user"
 
 

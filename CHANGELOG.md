@@ -1,3 +1,21 @@
+# v1.8.0 — Faz 3: ilk otomatik kaba kurgu — 2026-09-24
+
+## Added
+- Video Studio "3. Video": TTS cümlelerine sahneleri kurallarla eşleştiren kaba kurgu (API çağrısı yok, ek maliyet yok).
+  Kesitler en fazla 3 sn; röportaj görüntüsü sessiz dolgu olarak kullanılmaz, aynı sahne art arda gelmez.
+- "Videoyu oluştur": FFmpeg ile 1080×1440 MP4 (`kaba_kurgu.mp4`, proje klasöründe), sayfada önizleme ve indirme.
+  AMD donanım kodlayıcı (h264_amf) varsa kullanılır, yoksa x264.
+- Kadraj seçimi: Doldur (kırp) / Bulanık kenar; son seçim hatırlanır.
+- Geliştirici bilgilerinde kurgu tablosu (hangi cümleye hangi sahne kesiti).
+
+## Changed
+- `ClipOrigin` sözleşmesine `rule` eklendi.
+- FFmpeg çıktısı UTF-8 okunuyor (Windows'ta Türkçe dosya adlarında çözme hatası riskine karşı).
+
+## Verification
+- `make test` geçti (Linux, gerçek FFmpeg ile iki kadraj modunda 1080×1440 render testi dahil).
+- AMD kodlayıcı ve gerçek DHA videosuyla render editörün Windows testinde doğrulanacak.
+
 # v1.7.1 — Luna sınıflandırma düzeltmesi ve uzun shot pencereleri — 2026-09-24
 
 ## Fixed

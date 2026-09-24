@@ -6,6 +6,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from apps.axion_local.preferences import persist, remember
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
@@ -20,10 +21,12 @@ from apps.axion_local.store import (
     save_project_json,
 )
 from apps.video_studio.modules.audio_ingestion import probe_audio
-from apps.video_studio.modules.edit_plan import build_edit_project, validate_edit_project
+from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
 from apps.video_studio.modules.news_package import news_package_to_state
+from apps.video_studio.modules.render import ROUGH_CUT_FILENAME, render_rough_cut
+from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, plan_rough_cut, set_framing
 
 ANALYSIS_OPTIONS = {
     "Ekonomik — 1 kare / shot": 1,
@@ -31,6 +34,7 @@ ANALYSIS_OPTIONS = {
     "Ayrıntılı — 3 kare / shot": 3,
     "Maksimum — 4 kare / shot": 4,
 }
+FRAMING_OPTIONS = {"Doldur": "fill_crop", "Bulanık kenar": "fit_blur"}
 UPLOAD_TYPES = ["mp4", "mov", "mkv", "avi", "webm", "m4v", "jpg", "jpeg", "png", "webp"]
 
 ss = st.session_state
@@ -38,6 +42,7 @@ ss = st.session_state
 st.set_page_config(page_title="Video Studio · Axion", page_icon="🎬", layout="wide")
 require_secrets("OPENAI_API_KEY")
 st.title("Video Studio")
+remember(ss, {"framing": "Doldur"}, {"framing": list(FRAMING_OPTIONS)})
 
 
 def load_project(project: NewsProject) -> None:
@@ -59,10 +64,10 @@ def load_project(project: NewsProject) -> None:
         ss.pop("media_library", None)
         ss.pop("analysis_usage", None)
     edit_project = load_project_json(project, EDIT_PROJECT_FILENAME)
-    if edit_project and edit_project.get("project_version") == "2.1":
+    if edit_project and edit_project.get("project_version") == "2.1" and has_rough_cut(edit_project):
         ss.edit_project = edit_project
     else:
-        # 1.1 veya bozuk eski projeyi sessizce kullanma; 2.1 yeniden üretilsin.
+        # 1.1, bozuk veya kurgusuz eski projeyi kullanma; yeniden üretilsin.
         ss.pop("edit_project", None)
 
 
@@ -148,6 +153,7 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
         if project:
             save_project_json(project, MEDIA_LIBRARY_FILENAME, media_library)
             (project.folder / EDIT_PROJECT_FILENAME).unlink(missing_ok=True)
+            (project.folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
     except Exception as error:
         st.error("Görüntüler analiz edilemedi.")
         with st.expander("Hata ayrıntısı"):
@@ -170,24 +176,60 @@ audio_metadata = ss.get("project_audio_metadata")
 ready = bool(project and news_text and audio_metadata and media_library)
 
 if ready and not ss.get("edit_project"):
-    edit_project = build_edit_project(
-        media_library=media_library,
-        news_text=news_text,
-        audio_path=ss.project_audio_path,
-        audio_duration_seconds=float(audio_metadata.get("duration_seconds", 0) or 0),
-        news_package=ss.get("news_package"),
-        audio_metadata={**audio_metadata, "mime_type": "audio/mpeg", "size_bytes": audio_metadata.get("file_size_bytes")},
-    )
-    errors = validate_edit_project(edit_project)
-    if errors:
-        st.error("Proje oluşturulamadı:\n\n" + "\n".join(f"- {e}" for e in errors))
+    try:
+        edit_project = plan_rough_cut(
+            build_edit_project(
+                media_library=media_library,
+                news_text=news_text,
+                audio_path=ss.project_audio_path,
+                audio_duration_seconds=float(audio_metadata.get("duration_seconds", 0) or 0),
+                news_package=ss.get("news_package"),
+                audio_metadata={**audio_metadata, "mime_type": "audio/mpeg", "size_bytes": audio_metadata.get("file_size_bytes")},
+            ),
+            media_library,
+            FRAMING_OPTIONS[ss.framing],
+        )
+    except ValueError as error:
+        st.error(f"Kurgu planı oluşturulamadı: {error}")
     else:
         ss.edit_project = edit_project
         save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
+        (project.folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
 
 st.divider()
-if ss.get("edit_project"):
-    st.success("Proje hazır. Otomatik kurgu (MP4) bir sonraki sürümde bu adımdan devam edecek.")
+edit_project = ss.get("edit_project")
+if edit_project and project:
+    st.subheader("3. Video")
+    output = project.folder / ROUGH_CUT_FILENAME
+    framing_col, button_col = st.columns([2, 1], vertical_alignment="bottom")
+    framing_col.segmented_control(
+        "Kadraj",
+        list(FRAMING_OPTIONS),
+        key="framing",
+        help="Doldur: yatay görüntü dikey kadraja yakınlaştırılır, kenarlar kırpılır. "
+        "Bulanık kenar: görüntünün tamamı görünür, boşluklar bulanık arka planla dolar.",
+    )
+    persist(ss, ["framing"])
+    label = "Videoyu yeniden oluştur" if output.exists() else "🎬 Videoyu oluştur"
+    if button_col.button(label, type="primary", use_container_width=True):
+        edit_project = set_framing(edit_project, FRAMING_OPTIONS[ss.framing or "Doldur"])
+        try:
+            with st.spinner("Video oluşturuluyor... (birkaç dakika sürebilir)"):
+                encoder = render_rough_cut(edit_project, media_library, output)
+        except (RuntimeError, ValueError, FileNotFoundError) as error:
+            st.error("Video oluşturulamadı.")
+            with st.expander("Hata ayrıntısı"):
+                st.code(str(error))
+        else:
+            ss.edit_project = edit_project
+            ss.render_encoder = encoder
+            save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
+            st.rerun()
+    if output.exists():
+        st.video(str(output))
+        st.download_button("MP4'ü indir", output.read_bytes(), file_name=f"{project.id}.mp4", mime="video/mp4", use_container_width=True)
+    else:
+        st.caption("Sahneler seslendirmeye göre seçildi. Videoyu oluşturup kontrol et.")
 else:
     checks = [("Haber", bool(project and news_text)), ("Ses", bool(audio_metadata)), ("Görüntüler", bool(media_library))]
     st.caption("Hazırlık: " + "  ·  ".join(f"{'✅' if ok else '⬜'} {label}" for label, ok in checks))
@@ -217,4 +259,7 @@ if media_library:
             st.dataframe(rows, use_container_width=True, hide_index=True)
         st.json(media_library, expanded=False)
         if edit_project:
+            if ss.get("render_encoder"):
+                st.caption(f"Son video kodlayıcısı: {ss.render_encoder}")
+            st.dataframe(clip_rows(edit_project), use_container_width=True, hide_index=True)
             st.json(edit_project, expanded=False)

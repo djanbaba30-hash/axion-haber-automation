@@ -144,7 +144,34 @@ def test_saved_media_analysis_is_restored(local_env):
     assert at.dataframe[0].value["Görüntü"].tolist() == ["people"]
     assert at.session_state["edit_project"]["audio"]["duration_seconds"] == 24.2
     assert store.load_project_json(project, store.EDIT_PROJECT_FILENAME) is not None
-    assert any("Proje hazır" in s.value for s in at.success)
+    assert "3. Video" in [h.value for h in at.subheader]
+    assert any(b.label == "🎬 Videoyu oluştur" for b in at.button)
+
+
+def test_render_button_creates_video_with_chosen_framing(local_env, monkeypatch):
+    rendered = []
+
+    def fake_render(edit_project, media_library, output):
+        rendered.append({c["framing"]["mode"] for t in edit_project["edit_plan"]["timeline"]["tracks"] for c in t["clips"] if t["kind"] == "video"})
+        output.write_bytes(b"mp4")
+        return "x264 (işlemci)"
+
+    monkeypatch.setattr("apps.video_studio.modules.render.render_rough_cut", fake_render)
+    project = saved_project(media_library([{
+        "shot_id": "video_001_shot_001", "asset_id": "video_001", "shot_number": 1,
+        "start_seconds": 0.0, "end_seconds": 30.0, "duration_seconds": 30.0,
+        "visual": {"description": "Kaza", "visual_type": "event", "editorial_role": "establishing"},
+    }]))
+    at = start()
+    at.switch_page(VIDEO_PAGE).run()
+    at.segmented_control(key="framing").set_value("Bulanık kenar").run()
+    button(at, "🎬 Videoyu oluştur").click().run()
+    assert not at.exception
+    assert rendered == [{"fit_blur"}]
+    assert (project.folder / store.ROUGH_CUT_FILENAME).exists()
+    assert any(b.label == "Videoyu yeniden oluştur" for b in at.button)
+    from apps.axion_local.preferences import load_preferences
+    assert load_preferences()["framing"] == "Bulanık kenar"
 
 
 def test_outdated_media_analysis_asks_for_reanalysis(local_env):
@@ -154,7 +181,7 @@ def test_outdated_media_analysis_asks_for_reanalysis(local_env):
     assert not at.exception
     assert "media_library" not in at.session_state
     assert any("yeniden analiz" in i.value for i in at.info)
-    assert not at.success
+    assert "3. Video" not in [h.value for h in at.subheader]
 
 
 def test_settings_are_remembered_between_sessions(local_env):

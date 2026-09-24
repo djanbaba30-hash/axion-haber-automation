@@ -61,12 +61,14 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    - TTS metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
    - Aynı haberi düzeltip yeniden kaydedersen aynı proje güncellenir; yapılmış video analizi kaybolmaz.
 3. **DHA videosunu** her zamanki gibi panelden bilgisayarına indir (İndirilenler klasörüne).
-4. **Video Studio → 2. Medya:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Medyayı analiz et**.
+4. **Video Studio → 2. Görüntüler:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Görüntüleri analiz et**.
    - Video kopyalanmaz, yerinden okunur; büyük dosyalar sorun değil.
-   - Sonuçta her sahnenin başlangıç/bitiş zamanını ve Luna'nın açıklamasını gösteren bir **shot tablosu** çıkar.
-     CapCut'ta kesim yaparken bu zamanları kullanabilirsin.
    - Analiz projeye kaydedilir; projeyi sonra tekrar açtığında yeniden analiz (ve ücret) gerekmez.
-5. **3. Proje → Projeyi hazırla.**
+5. **3. Video:** Axion her seslendirme cümlesine uygun sahneleri kendisi seçer (ek ücret yok).
+   **Kadraj**'ı seç → **Videoyu oluştur**. 1080×1440 MP4 birkaç dakikada hazırlanır; sayfada izleyip **MP4'ü indir**ebilirsin.
+   - **Doldur:** yatay görüntü yakınlaştırılır, kenarlar kırpılır. **Bulanık kenar:** görüntünün tamamı görünür.
+   - Video proje klasörüne de `kaba_kurgu.mp4` adıyla kaydedilir. Haberi veya görüntüleri değiştirirsen yeniden oluştur.
+   - Bu ilk sürüm kaba kurgudur: sahne seçimini kurallar yapar. Beğenmediğin yerleri şimdilik CapCut'ta düzeltebilirsin.
 
 Videolar başka bir klasördeyse Video Studio'daki klasör kutusuna o klasörün yolunu yazman yeterli.
 Telefondan/tabletten çalışırken dosyayı **Tarayıcıdan yükle** seçeneğiyle de gönderebilirsin.

@@ -34,6 +34,8 @@ def run_ffmpeg(
             command,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",  # Windows'ta Türkçe dosya adları konsol kod sayfasında çözülemeyebilir.
             check=False,
             timeout=timeout_seconds,
         )

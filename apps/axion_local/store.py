@@ -31,6 +31,7 @@ PACKAGE_FILENAME = "news_package.json"
 AUDIO_FILENAME = "tts.mp3"
 MEDIA_LIBRARY_FILENAME = "media_library.json"
 EDIT_PROJECT_FILENAME = "edit_project.json"
+ROUGH_CUT_FILENAME = "kaba_kurgu.mp4"
 
 
 def data_dir() -> Path:
@@ -125,6 +126,7 @@ def save_news_project(
     else:
         audio_path.unlink(missing_ok=True)
     (folder / EDIT_PROJECT_FILENAME).unlink(missing_ok=True)
+    (folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
     stored = package.model_copy(update={"metadata": metadata})
     (folder / PACKAGE_FILENAME).write_text(stored.model_dump_json(indent=2), encoding="utf-8")
     return folder
