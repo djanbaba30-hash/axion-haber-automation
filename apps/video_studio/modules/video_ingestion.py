@@ -6,6 +6,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+FFMPEG_TIMEOUT_SECONDS = 120
+
 
 ALLOWED_VIDEO_EXTENSIONS = {
     ".mp4",
@@ -65,6 +67,7 @@ def probe_video(video_path: Path) -> dict[str, Any]:
         capture_output=True,
         text=True,
         check=False,
+        timeout=FFMPEG_TIMEOUT_SECONDS,
     )
 
     if result.returncode != 0:
