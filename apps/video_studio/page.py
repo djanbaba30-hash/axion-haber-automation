@@ -132,7 +132,13 @@ if media_files and st.button("Görüntüleri analiz et", type="primary", use_con
     try:
         with st.status("Görüntüler analiz ediliyor...", expanded=True) as status:
             media_library, usage = prepare_media_library(
-                media_files, frame_count, analysis_mode, secret("OPENAI_API_KEY"), progress=status.write,\n                storage_dir=(project.folder / "media") if project else None\n            )
+                media_files,
+                frame_count,
+                analysis_mode,
+                secret("OPENAI_API_KEY"),
+                progress=status.write,
+                storage_dir=(project.folder / "media") if project else None,
+            )
             status.update(label="Analiz tamamlandı.", state="complete", expanded=False)
         ss.media_library = media_library
         ss.analysis_usage = usage
