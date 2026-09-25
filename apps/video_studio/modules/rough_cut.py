@@ -79,12 +79,19 @@ class Candidate:
     focus: FocusPoint | None = None
     subject: Region | None = None
     frame_aspect: float = 16 / 9  # kaynak genişlik / yükseklik (ekranda görünen)
+    # Dikey (yanları dolgulu) çekimde tüm video boyunca sabit kadraj yüksekliği (özne merkezlerinin ortalaması).
+    anchor_y: float | None = None
+    seen: float | None = None  # Luna'nın bu pencerede gördüğü karelerin ortalama zamanı (açıklama o an için doğru)
+    shot_count: int = 1  # aynı videodaki çekim sayısı (tek uzun çekimde anlatım sırası)
 
 
 @dataclass
 class _Usage:
-    cursor: dict[str, float] = field(default_factory=dict)
+    # Çekim başına kullanılan kaynak aralıkları: aynı an iki kez gösterilmez; bir pencere seçilince görüntü o
+    # pencereden gelir (v3.4: çekim başına tek imleç, geç bir pencereden sonra öncekileri "tekrar" sayıyordu).
+    used: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
     count: dict[str, int] = field(default_factory=dict)
+    window_count: dict[tuple[str, float], int] = field(default_factory=dict)
     # Kaynak sesli kesit olarak kullanılan aralıklar (asset_id, başlangıç, bitiş): dolgu görüntüsünde tekrar etmesin.
     blocked: list[tuple[str, float, float]] = field(default_factory=list)
 
@@ -96,10 +103,11 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
             continue  # Tekil görseller (hareketsiz kare) sonraki fazda.
         for shot in asset.shots:
             windows = shot.analysis_windows or []
-            spans = [(w.start_seconds, w.end_seconds, w.visual or shot.visual) for w in windows]
+            spans = [(w.start_seconds, w.end_seconds, w.visual or shot.visual,
+                      [f.timestamp_seconds for f in w.frames]) for w in windows]
             if not spans:
-                spans = [(shot.start_seconds, shot.end_seconds, shot.visual)]
-            for start, end, visual in spans:
+                spans = [(shot.start_seconds, shot.end_seconds, shot.visual, [])]
+            for start, end, visual, seen in spans:
                 description = visual.description if visual else ""
                 items.append(
                     Candidate(
@@ -120,37 +128,68 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
                         focus=visual.focus_point if visual else None,
                         subject=visual.subject_region if visual else None,
                         frame_aspect=asset.geometry.display.width / asset.geometry.display.height,
+                        shot_count=len(asset.shots),
+                        seen=sum(seen) / len(seen) if seen else None,
                     )
                 )
+    for asset_id in {c.asset_id for c in items}:
+        own = [c for c in items if c.asset_id == asset_id]
+        centers = [c.subject.y + c.subject.height / 2 for c in own if c.subject and not _generic(c)]
+        anchor = sum(centers) / len(centers) if centers else 0.5
+        for c in own:
+            if c.content_region is not None:
+                c.anchor_y = anchor
     return items
 
 
+def _generic(candidate: Candidate) -> bool:
+    """Luna belirli bir özne göstermemiş (kutu asıl görüntünün neredeyse tamamı: ağaçlık, boş yol, genel trafik)."""
+    s = candidate.subject
+    if s is None:
+        return True
+    c = candidate.content_region or Region(x=0, y=0, width=1, height=1)
+    overlap_w = max(0.0, min(s.x + s.width, c.x + c.width) - max(s.x, c.x))
+    overlap_h = max(0.0, min(s.y + s.height, c.y + c.height) - max(s.y, c.y))
+    return overlap_w * overlap_h >= 0.7 * c.width * c.height
+
+
 def _source_range(candidate: Candidate, usage: _Usage, need: float) -> tuple[float, float, bool]:
-    """Pencereden kullanılabilir kaynak aralığı: (başlangıç, kullanılabilir süre, tekrar mı)."""
+    """Pencereden kullanılabilir kaynak aralığı: (başlangıç, kullanılabilir süre, tekrar mı). Başlangıç her zaman
+    pencerenin içindedir (görüntü seçilen pencereden gelir; klip sonraki pencereye taşabilir)."""
     lead = EDGE_SECONDS if candidate.start <= candidate.shot_start else 0.0
     shot_limit = candidate.shot_end - EDGE_SECONDS
-
     blocked = [(start, end) for asset, start, end in usage.blocked if asset == candidate.asset_id]
+    taken = sorted(blocked + usage.used.get(candidate.shot_id, []))
 
-    def skip_blocked(begin: float) -> float:
-        # Kaynak sesli kesit olarak ayrılan aralığın içinden başlama: aralığın sonuna atla.
-        for start, end in sorted(blocked):
-            if start <= begin < end:
-                begin = end
+    def first_free(begin: float, intervals: list[tuple[float, float]]) -> float:
+        moved = True
+        while moved:
+            moved = False
+            for start, end in intervals:
+                if start - 1e-6 <= begin < end:
+                    begin, moved = end, True
         return begin
 
-    def limit_from(begin: float) -> float:
-        # Ayrılan aralığa taşma (aynı sahnenin komşu penceresinden uzayan klip dahil).
-        return min([shot_limit, *(start for start, _ in blocked if begin < start < shot_limit)])
+    def limit_from(begin: float, intervals: list[tuple[float, float]]) -> float:
+        return min([shot_limit, *(start for start, _ in intervals if begin < start < shot_limit)])
 
-    fresh = skip_blocked(max(candidate.start + lead, usage.cursor.get(candidate.shot_id, 0.0)))
-    if limit_from(fresh) - fresh >= min(need, MIN_CLIP_SECONDS):
-        return fresh, limit_from(fresh) - fresh, False
-    again = skip_blocked(candidate.start + lead)
-    return again, max(0.0, limit_from(again) - again), True
+    begin = candidate.start + lead
+    window_end = min(candidate.end, shot_limit)
+    # Önce Luna'nın gördüğü karenin çevresi: elde çekimde kamera pencere içinde başka yere dönebilir (editörün
+    # midibüs videosu); açıklama yalnız o an için kesin.
+    starts = [begin]
+    if candidate.seen is not None:
+        starts.insert(0, min(max(begin, candidate.seen - min(need, MAX_CLIP_SECONDS) / 2), window_end - 0.5))
+    for start in starts:
+        fresh = first_free(start, taken)
+        if fresh < window_end - 0.5 and limit_from(fresh, taken) - fresh >= min(need, MIN_CLIP_SECONDS):
+            return fresh, limit_from(fresh, taken) - fresh, False
+    again = first_free(begin, blocked)
+    return again, max(0.0, limit_from(again, blocked) - again), True
 
 
-def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previous_shot: str | None, usage: _Usage, need: float) -> float:
+def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previous_shot: str | None, usage: _Usage,
+           need: float, story: float | None = None) -> float:
     words = {t[:5] for t in segment_tokens if len(t) >= 5 and t not in STOPWORDS}
     score = 2.0 * sum(1 for stem in words if _has(candidate.tokens, {stem}))
     for news_stems, visual_stems in CONCEPTS:
@@ -169,9 +208,19 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     if candidate.plate:
         score -= 1.0
     score += candidate.confidence * 0.5
-    score -= 3.0 * usage.count.get(candidate.shot_id, 0)
-    if candidate.shot_id == previous_shot:
-        score -= 8.0
+    if candidate.shot_count > 1:  # birden çok çekim varsa çeşitlilik (tek çekimde hepsi aynı çekim)
+        score -= 3.0 * usage.count.get(candidate.shot_id, 0)
+        if candidate.shot_id == previous_shot:
+            score -= 8.0
+    score -= 2.0 * usage.window_count.get((candidate.shot_id, candidate.start), 0)
+    if _generic(candidate):
+        score -= 5.0  # belirli bir özne yok (ağaçlık, boş yol): haberi anlatmaz
+    if story is not None and candidate.shot_count <= 2:
+        # Tek uzun çekim (cep telefonu): olay kaynakta akışıyla anlatılır; seslendirmenin başı çekimin başına,
+        # sonu sonuna yakın pencereden (editör: "olay örgüsü orada yazıyor").
+        length = max(1e-6, candidate.shot_end - candidate.shot_start)
+        position = ((candidate.start + candidate.end) / 2 - candidate.shot_start) / length
+        score -= 4.0 * abs(position - story)
     _, available, repeated = _source_range(candidate, usage, need)
     if repeated:
         score -= 2.0
@@ -186,8 +235,9 @@ def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, dire
     """Kaynakta gösterilecek alan (0–1) ve varsa kaydırma sonu. Hesap piksel oranında (yükseklik = 1 birim).
 
     Video alanı HER ZAMAN tam dolar (bulanık dolgu yok, editör kararı): alan, asıl görüntünün (bulanık/siyah kenar
-    hariç) içindeki en büyük video-alanı oranlı dikdörtgendir ve öznenin ortasına kaydırılır. Özne bu alandan
-    belirgin genişse (ör. yandan otobüs) kadraj klip boyunca öznenin üzerinde yavaşça kayar.
+    hariç) içindeki en büyük video-alanı oranlı dikdörtgendir; hiçbir zaman bundan fazla yakınlaştırılmaz. Dikey
+    (yanları dolgulu) çekimde sabittir; tam karede öznenin ortasına gelir, özne bu alandan belirgin genişse (ör.
+    yandan otobüs) klip boyunca öznenin üzerinde yavaşça kayar.
     """
     a = candidate.frame_aspect
     c = candidate.content_region or Region(x=0, y=0, width=1, height=1)
@@ -203,9 +253,15 @@ def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, dire
         sy0 = sy1 = focus.y
     center_x, center_y = (sx0 + sx1) / 2, (sy0 + sy1) / 2
     distance = PAN_SPEED * a * seconds  # kaynak piksel oranında, her iki eksende aynı hız
-    # Editör kuralı: yanları dolgulu dikey çekimde yalnızca yukarı/aşağı; tam 16:9'da her yön (yatay, dikey, çapraz).
-    pan_x = min(sx1 - sx0 - view_w, distance) if candidate.content_region is None and sx1 - sx0 > view_w * PAN_MIN_RATIO else 0.0
-    pan_y = min(sy1 - sy0 - view_h, distance) if sy1 - sy0 > view_h * PAN_MIN_RATIO else 0.0
+    if candidate.content_region is not None:
+        # Editör kuralı (v3.4): yanları dolgulu dikey çekimde hiç kaydırma yok; ne klip içinde ne klipten klibe.
+        # Net şeridin tam genişliği, tüm video boyunca aynı yükseklikte (özne merkezlerinin ortalaması).
+        center_x = cx + cw / 2
+        center_y = candidate.anchor_y if candidate.anchor_y is not None else cy + ch / 2
+        pan_x = pan_y = 0.0
+    else:  # tam kare (yatay) çekim: alana sığan en geniş alan; özne alandan genişse yavaşça kayar
+        pan_x = min(sx1 - sx0 - view_w, distance) if sx1 - sx0 > view_w * PAN_MIN_RATIO else 0.0
+        pan_y = min(sy1 - sy0 - view_h, distance) if sy1 - sy0 > view_h * PAN_MIN_RATIO else 0.0
     floor = lambda v: math.floor(v * 10_000) / 10_000  # noqa: E731 — x + width 1'i aşmasın
 
     def region(mid_x: float, mid_y: float) -> Region:
@@ -409,7 +465,9 @@ def plan_rough_cut(
             need = (end_f - cursor_f) / fps
             opening = cursor_f == 0
             wanted = tokens + headline_tokens if opening else tokens  # kapak: haberin bütününü (başlıkları) anlatsın
-            best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need), -c.order))
+            # Anlatımdaki yer (bu parçanın ortası, 0–1): tek uzun çekimde kaynaktaki yere eşlenir.
+            story = (cursor_f + min(end_f - cursor_f, IDEAL_CLIP_SECONDS * fps) / 2 - intro_end_f) / max(1, broll_end_f - intro_end_f)
+            best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need, story), -c.order))
             source_in, available, _ = _source_range(best, usage, need)
             # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur.
             duration_f = max(1, min(end_f - cursor_f, math.floor(available * fps)))
@@ -429,7 +487,8 @@ def plan_rough_cut(
                     reason=best.description,
                 )
             )
-            usage.cursor[best.shot_id] = source_out
+            usage.used.setdefault(best.shot_id, []).append((source_in, source_out))
+            usage.window_count[(best.shot_id, best.start)] = usage.window_count.get((best.shot_id, best.start), 0) + 1
             usage.count[best.shot_id] = usage.count.get(best.shot_id, 0) + 1
             previous_shot = best.shot_id
             cursor_f += duration_f

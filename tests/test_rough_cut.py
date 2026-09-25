@@ -273,3 +273,48 @@ def test_one_long_shot_plays_in_source_order():
     assert len(clips) >= 3 and starts == sorted(starts)
     for before, after in zip(clips, clips[1:]):
         assert after["source_in_s"] >= before["source_out_s"] - 1e-6  # aynı an iki kez gösterilmez
+
+
+# Editörün "kadın polis midibüsü itti" projesi (v3.3.2, Windows): Luna'nın 6 penceresi (ekonomik, pencere başına 1 kare).
+MIDIBUS_WINDOWS = [
+    (0.0, 9.267, "vehicle", "action", "Gece yolda ilerleyen beyaz büyük araç", (0.3, 0.08, 0.26, 0.38)),
+    (9.267, 18.533, "vehicle", "action", "Bariyer yanında duran beyaz büyük araç", (0.3, 0.2, 0.26, 0.36)),
+    (18.533, 27.8, "event", "action", "Yol kenarında duran beyaz araç ve kişi", (0.29, 0.2, 0.28, 0.45)),
+    (27.8, 37.067, "event", "action", "Flaş ışığı altında yol kenarındaki araç", (0.3, 0.2, 0.35, 0.5)),
+    (37.067, 46.333, "landscape", "context", "Otoyolu örten yoğun ağaç dalları", (0.29, 0.0, 0.42, 1.0)),
+    (46.333, 55.6, "place", "establishing", "Gece şehir otoyolunda yoğun araç trafiği", (0.29, 0.0, 0.42, 0.83)),
+]
+MIDIBUS_TTS = ("İstanbul Sultangazi’de TEM Otoyolu’nda arızalanan midibüsü, kadın trafik polisi tek başına itmeye "
+               "başladı. Trafiğin aksamasını önlemek isteyen polise, yoldan geçen sürücüler de araçlarından inerek "
+               "yardım etti. Midibüs emniyet şeridine alındı ve trafik yeniden açıldı. O anlar cep telefonu "
+               "kamerasına yansıdı.")
+
+
+def test_long_phone_shot_follows_the_story_with_fixed_full_strip_framing():
+    """Editör (v3.4): kurgu yalnız son pencereyi (boş yol, 46–55 sn) kullanıyor, 46. sn'yi iki kez gösteriyor, ilk
+    pencerenin açıklamasıyla 52. sn'yi veriyordu; kadraj %27,7 genişlikte (net şerit %41) ve yukarı-aşağı kayıyordu."""
+    data = library([(0.0, 55.6, "event", "action", "x", "")])
+    shot = data["assets"][0]["shots"][0]
+    shot["content_region"] = {"x": 0.2954, "y": 0.0, "width": 0.4092, "height": 1.0}
+    shot["analysis_windows"] = [
+        {"window_id": f"{shot['shot_id']}_w{i + 1:02d}", "shot_id": shot["shot_id"], "start_seconds": start,
+         "end_seconds": end, "visual": {**visual(kind, role, text, "DHA"), "side_bars": True, "subject_region": {
+             "x": box[0], "y": box[1], "width": box[2], "height": box[3]}}}
+        for i, (start, end, kind, role, text, box) in enumerate(MIDIBUS_WINDOWS)]
+    clips = video_clips(plan_rough_cut(edit_project(MIDIBUS_TTS, 18.344), data))
+    windows = {text: (start, end) for start, end, _, _, text, _ in MIDIBUS_WINDOWS}
+    starts = [c["source_in_s"] for c in clips]
+    assert starts == sorted(starts)  # olay sırasıyla
+    for before, after in zip(clips, clips[1:]):
+        assert after["source_in_s"] >= before["source_out_s"] - 1e-6  # aynı an iki kez yok
+    for clip in clips:  # görüntü, açıklaması seçilen pencereden gelir
+        start, end = windows[clip["reason"]]
+        assert start - 1e-6 <= clip["source_in_s"] < end
+    reasons = [c["reason"] for c in clips]
+    assert reasons[0] == MIDIBUS_WINDOWS[0][4]  # olayın başı
+    assert {w[4] for w in MIDIBUS_WINDOWS[:4]} <= set(reasons)  # midibüs, itme, yardım: hepsi görünür
+    assert "Otoyolu örten yoğun ağaç dalları" not in reasons  # öznesi olmayan pencere
+    views = [c["framing"]["view_region"] for c in clips]
+    assert all(c["framing"]["view_region_end"] is None for c in clips)  # kaydırma yok
+    assert len({(v["x"], v["y"], v["width"], v["height"]) for v in views}) == 1  # tüm video boyunca aynı kadraj
+    assert views[0]["x"] == 0.2954 and abs(views[0]["width"] - 0.4092) < 1e-3  # net şeridin tamamı

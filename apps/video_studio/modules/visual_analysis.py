@@ -97,10 +97,14 @@ def _unit(value: float) -> float:
     return min(1.0, max(0.0, float(value)))
 
 
-def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
-    """Luna sonucunu ortak VisualMetadata sözleşmesine dönüştürür."""
+def _visual_metadata(item: LunaVisual, crop: dict[str, float] | None = None) -> dict[str, Any]:
+    """Luna sonucunu ortak VisualMetadata sözleşmesine dönüştürür. `crop`: Luna'ya yalnız net şerit gittiyse onun
+    kaynak karedeki yeri; kutu tam kare koordinatına çevrilir."""
     left, right = sorted((_unit(item.subject_left), _unit(item.subject_right)))
     top, bottom = sorted((_unit(item.subject_top), _unit(item.subject_bottom)))
+    if crop:
+        left, right = crop["x"] + left * crop["width"], crop["x"] + right * crop["width"]
+        top, bottom = crop["y"] + top * crop["height"], crop["y"] + bottom * crop["height"]
     return VisualMetadata(
         description=item.description.strip(),
         visual_type=item.visual_type,
@@ -110,7 +114,7 @@ def _visual_metadata(item: LunaVisual) -> dict[str, Any]:
         text_visible=item.text_visible,
         visible_text=item.visible_text.strip(),
         focus_point=FocusPoint(x=(left + right) / 2, y=(top + bottom) / 2),
-        side_bars=item.side_bars,
+        side_bars=item.side_bars or bool(crop),
         subject_region=Region(x=left, y=top, width=right - left, height=bottom - top) if right > left and bottom > top else None,
         confidence=_unit(item.confidence),
     ).model_dump(mode="json")
@@ -124,16 +128,23 @@ def image_mime_type(image_path: Path) -> str:
     return mime
 
 
-def image_data_url(image_path: Path, max_side: int | None = None) -> str:
+def image_data_url(image_path: Path, max_side: int | None = None, crop: dict[str, float] | None = None) -> str:
+    """Görsel (data URL). `crop` (0–1): yalnız bu bölge gider (yanları bulanık videoda net şerit: özne daha büyük
+    görünür, token daha az)."""
     if not image_path.exists():
         raise FileNotFoundError(f"Görüntü bulunamadı: {image_path}")
     mime = image_mime_type(image_path)
     data = image_path.read_bytes()
-    if max_side:
+    if max_side or crop:
         with Image.open(image_path) as image:
-            if max(image.size) > max_side:
+            if crop:
+                w, h = image.size
+                image = image.crop((round(crop["x"] * w), round(crop["y"] * h),
+                                    round((crop["x"] + crop["width"]) * w), round((crop["y"] + crop["height"]) * h)))
+            if crop or (max_side and max(image.size) > max_side):
                 image = image.convert("RGB")
-                image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                if max_side:
+                    image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
                 buffer = io.BytesIO()
                 image.save(buffer, "JPEG", quality=85)
                 data, mime = buffer.getvalue(), "image/jpeg"
@@ -157,9 +168,10 @@ def same_frame(a: np.ndarray, b: np.ndarray) -> bool:
     return float(diff.mean()) < SAME_FRAME_MEAN and float(diff.reshape(8, 8, 8, 8).mean((1, 3)).max()) < SAME_FRAME_BLOCK
 
 
-def frames_to_send(shots: list[dict[str, Any]]) -> tuple[list[tuple[dict[str, Any], list[dict[str, Any]]]], dict[str, str]]:
+def frames_to_send(shots: list[dict[str, Any]]) -> tuple[list[tuple[dict[str, Any], list[dict[str, Any]], Any]], dict[str, str]]:
     """Luna'ya gidecek pencereler ve kareleri; aynı sahnede öncekiyle aynı görünen kareler elenir. Tüm kareleri elenen
-    pencere gönderilmez, sonucu aynı sahnenin son gönderilen penceresinden kopyalanır (window_id → kaynak window_id)."""
+    pencere gönderilmez, sonucu aynı sahnenin son gönderilen penceresinden kopyalanır (window_id → kaynak window_id).
+    Her pencereyle çekimin net görüntü alanı (`content_region`, yoksa None) da döner: Luna'ya yalnız o gider."""
     send, copies = [], {}
     for shot in shots:
         last, last_window = None, None
@@ -177,7 +189,7 @@ def frames_to_send(shots: list[dict[str, Any]]) -> tuple[list[tuple[dict[str, An
             if not kept and last_window is not None:
                 copies[window["window_id"]] = last_window
                 continue
-            send.append((window, kept or window.get("frames", [])[:1]))
+            send.append((window, kept or window.get("frames", [])[:1], shot.get("content_region")))
             last_window = window["window_id"]
     return send, copies
 
@@ -229,7 +241,8 @@ def analyze_media_with_luna(
 
     content: list[dict[str, Any]] = []
     frame_total = 0
-    for window, frames in windows:
+    crops = {window["window_id"]: crop for window, _, crop in windows}
+    for window, frames, crop in windows:
         content.append(
             {
                 "type": "input_text",
@@ -237,7 +250,7 @@ def analyze_media_with_luna(
             }
         )
         for frame in frames:
-            content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"]), LUNA_IMAGE_MAX_SIDE),
+            content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"]), LUNA_IMAGE_MAX_SIDE, crop),
                             "detail": "auto"})
             frame_total += 1
     for image in images:
@@ -273,7 +286,7 @@ def analyze_media_with_luna(
         )
     usage_data.update(api_calls=1, frame_count=frame_total)
 
-    window_visuals = {item.window_id: _visual_metadata(item) for item in parsed.windows}
+    window_visuals = {item.window_id: _visual_metadata(item, crops.get(item.window_id)) for item in parsed.windows}
     for window_id, source in copies.items():  # gönderilmeyen (aynı görünen) pencereler
         if source in window_visuals:
             window_visuals[window_id] = window_visuals[source]

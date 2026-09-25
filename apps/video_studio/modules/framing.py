@@ -25,6 +25,10 @@ SAFETY_INSET = 0.02     # Yumuşak geçişteki son bulanık/siyah çizgi büyüt
 VERTICAL_ASPECTS = (9 / 16, 1.0, 4 / 3)  # Yanları bulanık verilen çekimler: telefon dikey, kare, eski 4:3.
 SNAP_TOLERANCE = 0.02
 CENTER_TOLERANCE = 0.06
+# DHA net görüntüyü bulanık kopyasının üstüne yapıştırır: sınırda her karede aynı yerde, iki yanda simetrik keskin bir
+# dikey çizgi olur. Çizgi sıradan sütunlardan bu kat güçlüyse sınır odur (en-boy tahmini gerekmez; v3.4).
+PAIR_RATIO = 8.0
+PAIR_SLACK = 2  # piksel: iki çizginin ortaya göre simetri payı
 
 
 def _profiles(path: Path) -> tuple[np.ndarray, np.ndarray, float]:
@@ -99,8 +103,48 @@ def standard_vertical_region(frame_aspect: float) -> Region:
     return Region(x=math.ceil((1 - width) / 2 * 10_000) / 10_000, y=0.0, width=math.floor(width * 10_000) / 10_000, height=1.0)
 
 
+def _edge_pair(frame_paths: list[Path]) -> tuple[float, float] | None:
+    """Yanları bulanık/siyah dolgunun net görüntüyle sınırı (x başlangıç, x bitiş; 0–1) ya da None.
+
+    Editör (v3.4): "blurun bittiği yere kadar kırpsın, daha fazla yakınlaştırmasın". Eski tahmin (en yakın standart
+    orana daraltma) 3:4 dikey çekimi 9:16'ya indirip net görüntünün üçte birini kesiyordu.
+    """
+    grays = []
+    for path in frame_paths:
+        try:
+            with Image.open(path) as image:
+                grays.append(np.asarray(image.convert("L"), dtype=np.float32))
+        except OSError:
+            continue
+    if not grays or any(g.shape != grays[0].shape for g in grays):
+        return None
+    width = grays[0].shape[1]
+    profile = np.median([np.abs(np.diff(g, axis=1)).mean(axis=0) for g in grays], axis=0)  # i: i ile i+1 arası
+    typical = float(np.median(profile)) or 1e-6
+    best = None
+    for left in range(max(2, int(width * MIN_MARGIN) - 1), int(width * 0.45)):
+        mirror = width - 2 - left
+        for right in range(mirror - PAIR_SLACK, mirror + PAIR_SLACK + 1):
+            strength = min(profile[left], profile[right])
+            if best is None or strength > best[0]:
+                best = (strength, left, right)
+    if best is None or best[0] < PAIR_RATIO * typical:
+        return None
+    _, left, right = best
+    inside = float(profile[left + 3:right - 2].mean())
+    outside = float(np.concatenate([profile[:max(0, left - 2)], profile[right + 3:]]).mean())
+    if outside >= 0.5 * inside:  # kenarlar içeriden belirgin daha düz olmalı (bulanık/siyah)
+        return None
+    return (left + 2) / width, right / width  # 1 piksel içeride: JPEG'in sınırdaki halkası görünmesin
+
+
 def detect_content_region(frame_paths: list[Path]) -> Region | None:
     """Karelerdeki asıl görüntü alanı (0–1). Tüm kare doluysa None."""
+    pair = _edge_pair([Path(path) for path in frame_paths if Path(path).exists()])
+    if pair is not None:
+        x0, x1 = pair
+        x = math.ceil(x0 * 10_000) / 10_000
+        return Region(x=x, y=0.0, width=math.floor((x1 - x) * 10_000) / 10_000, height=1.0)
     profiles = [_profiles(Path(path)) for path in frame_paths if Path(path).exists()]
     if not profiles:
         return None

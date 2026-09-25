@@ -42,6 +42,18 @@ def test_dha_blurred_sides_are_detected(tmp_path):
     assert 0.6283 <= region.x + region.width <= 0.6583
 
 
+def test_three_by_four_phone_strip_is_kept_whole(tmp_path):
+    """Editör (v3.4, "kadın polis midibüs"): 3:4 dikey çekim (1920x1080'de 791 px şerit) 9:16'ya daraltılıp net
+    görüntünün üçte biri kesiliyordu. Sınır çizgisi bulunur: bulanığın bittiği yer, fazlası kırpılmaz."""
+    path = frame(
+        tmp_path / "f.jpg", GRAINY.format(size="792x1080"),
+        "[0]split[a][b];[a]scale=1920:2618,crop=1920:1080,boxblur=20:2[bg];[bg][b]overlay=564:0",
+    )
+    region = detect_content_region([path])
+    assert region is not None and region.y == 0.0 and region.height == 1.0
+    assert 0.2938 <= region.x <= 0.2990 and 0.7010 <= region.x + region.width <= 0.7063
+
+
 def test_black_bars_are_detected(tmp_path):
     region = detect_content_region([frame(tmp_path / "f.jpg", GRAINY.format(size="1920x800"), "pad=1920:1080:0:140")])
     assert region is not None and region.x == 0.0
@@ -224,15 +236,19 @@ def test_narrow_subject_fills_the_frame(tmp_path, monkeypatch):
 
 
 
-def test_vertical_footage_pans_only_up_or_down_and_full_frame_may_pan_any_way():
-    """Editör kuralı: yanları dolgulu dikey çekimde kaydırma yalnızca dikey; tam 16:9'da yatay/dikey/çapraz."""
+def test_vertical_footage_never_moves_and_full_frame_may_pan_any_way():
+    """Editör kuralı (v3.4): yanları dolgulu dikey çekimde hiç kaydırma yok (ne klip içinde ne klipten klibe); net
+    şeridin tam genişliği, sabit yükseklik. Tam 16:9'da yatay/dikey/çapraz kaydırma serbest."""
     from apps.video_studio.modules.rough_cut import _view_regions
 
     vertical = candidate(None, Region(x=0.36, y=0, width=0.28, height=1))
     vertical.subject = Region(x=0.0, y=0.0, width=1.0, height=1.0)  # Luna tüm kareyi özne demiş olsa bile
+    vertical.anchor_y = 0.4
     start, end = _view_regions(vertical, 960 / 1226, seconds=4.0, direction=1)
-    assert end is not None and start.x == end.x and start.y != end.y  # yatay kayma yok, dikey var
-    assert start.x >= 0.36 and start.x + start.width <= 0.64 + 1e-9  # bulanık kenara hiç girmez
+    assert end is None  # kaydırma yok
+    assert start.x == 0.36 and abs(start.width - 0.28) < 1e-3  # net şeridin tamamı, fazla yakınlaştırma yok
+    vertical.subject = Region(x=0.5, y=0.7, width=0.05, height=0.1)  # özne başka yerde: kadraj yine aynı
+    assert _view_regions(vertical, 960 / 1226, seconds=2.0, direction=-1) == (start, None)
 
     full = candidate(None)
     full.subject = Region(x=0.0, y=0.0, width=1.0, height=1.0)

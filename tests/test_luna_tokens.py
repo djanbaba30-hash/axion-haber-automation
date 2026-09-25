@@ -43,7 +43,7 @@ def test_same_looking_frames_are_not_sent_but_small_events_are(tmp_path):
     ]}
     other = {"analysis_windows": [{"window_id": "s2_w01", "frames": [frame(tmp_path / "6.jpg")]}]}
     send, copies = va.frames_to_send([shot, other])
-    sent = {window["window_id"]: [f["path"][-5:] for f in frames] for window, frames in send}
+    sent = {window["window_id"]: [f["path"][-5:] for f in frames] for window, frames, _ in send}
     # 2 ve 3 = 1'in aynısı; 4'teki küçük olay gönderilir; 5 = 4'ün aynısı → pencere gönderilmez, sonucu kopyalanır.
     assert sent == {"s1_w01": ["1.jpg"], "s1_w02": ["4.jpg"], "s2_w01": ["6.jpg"]}  # başka sahne hep gönderilir
     assert copies == {"s1_w03": "s1_w02"}
@@ -72,3 +72,34 @@ def test_copied_window_gets_the_result_of_its_source(tmp_path, monkeypatch):
     windows, _, usage = va.analyze_media_with_luna([shot], [], "anahtar")
     assert windows["w2"] == windows["w1"] and usage["skipped_windows"] == 1 and usage["frame_count"] == 1
     assert sum(part["type"] == "input_image" for part in calls[0]["input"][1]["content"]) == 1
+
+
+def test_luna_sees_only_the_sharp_strip_and_boxes_come_back_in_frame_coordinates(tmp_path, monkeypatch):
+    """v3.4: yanları bulanık videoda Luna'ya yalnız net şerit gider (özne daha büyük, token daha az); Luna'nın kutusu
+    şerit içinde olduğundan tam kare koordinatına çevrilir."""
+    Image.new("RGB", (640, 360), (40, 40, 40)).save(tmp_path / "k.jpg")
+    region = {"x": 0.2954, "y": 0.0, "width": 0.4092, "height": 1.0}
+    shot = {"content_region": region, "analysis_windows": [
+        {"window_id": "w1", "start_seconds": 0, "end_seconds": 9, "frames": [{"path": str(tmp_path / "k.jpg")}]}]}
+    item = va.WindowVisualAnalysis(
+        window_id="w1", description="Midibüsü iten polis", visual_type="event", editorial_role="action",
+        visible_people=True, location="otoyol", text_visible=False, visible_text="", subject_left=0.0,
+        subject_right=0.5, subject_top=0.2, subject_bottom=0.6, side_bars=False, confidence=0.9)
+    calls = []
+
+    class Fake:
+        def __init__(self, **kwargs):
+            self.responses = self
+
+        def parse(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(output_parsed=va.VisualAnalysisResponse(windows=[item], images=[]), usage=None)
+
+    monkeypatch.setattr(va, "OpenAI", Fake)
+    windows, _, _ = va.analyze_media_with_luna([shot], [], "anahtar")
+    url = next(p["image_url"] for p in calls[0]["input"][1]["content"] if p["type"] == "input_image")
+    sent = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
+    assert sent.size == (262, 360)  # yalnız net şerit (640 x 0,4092)
+    box = windows["w1"]["subject_region"]
+    assert abs(box["x"] - 0.2954) < 1e-6 and abs(box["width"] - 0.2046) < 1e-6 and box["y"] == 0.2
+    assert windows["w1"]["side_bars"] is True
