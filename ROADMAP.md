@@ -100,6 +100,11 @@ kontrolü kaldırmak değil, hızlandırmak.
 5. Tablette Tasarım Stüdyosu ve Tarayıcı denemesi (editör yapacak); aynı haberin iki cihazda açılması uyarısı (v3.2.0 ✅).
    Tarayıcı akıcılığı: doğrudan akış kanalı (v3.2.0), editörün Tailscale üzerinden denemesi bekleniyor.
 
+6. **v3.3.0 planı** (2026-09-25, editörle konuşuldu): GPT bulguları, kesitin kaza anından başlaması (API'siz),
+   Haber/Video Stüdyosu token tasarrufu (başlık önizlemesi kalkar, başlık hatasında küçük çağrı, uzun önbellek +
+   önbellek sayacı + haber başına maliyet, benzer kare eleme + düşük ayrıntı), komut kısaltma. Ayrıntı: AGENTS.md →
+   "Sıradaki: v3.3.0 planı".
+
 Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
 gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)
 

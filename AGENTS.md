@@ -258,10 +258,57 @@ Brave (editör Edge sevmiyor; Firefox Playwright ile sürülemiyor), Axion'un ke
 hâlâ çalışır). Gerçek DHA paneliyle henüz denenmedi (sandbox'ta yerel test siteleriyle denendi). Video üretimi arka
 planda (tablet kapansa da sürer).
 
-### Sıradaki: editörün 3.2.0 denemesi
-Editör Windows'ta ve tablette dener: Tarayıcı'nın akıcılığı (Tailscale), yeni kalite kontrol araçları, bekçi (çökme
-sonrası yeniden başlama), ses dengesi, istem. `data/olcumler.jsonl` birkaç günlük kullanımdan sonra okunup en yavaş
-adım optimize edilir. Windows açılışında otomatik başlatma istenmiyor.
+### Sıradaki: v3.3.0 planı (editörle konuşuldu, 2026-09-25; henüz başlanmadı)
+Editör 3.2.0'ı denedi (Antalya "otomobil yayaya çarpıp durağa daldı" haberi; güvenlik kamerası görüntüsü). GPT
+incelemesi `reviews/gpt-v3.2.md` (281 geçti, 1 atlandı: Node yok). Sırayla, her adım ayrı küçük commit:
+
+1. **GPT'nin 3 bulgusu** (`reviews/gpt-v3.2.md`):
+   - Bekçi güncelleme sırasında Axion'u yeniden açabilir (şüpheli): `axion_calistir.ps1` yeniden başlatmadan önce
+     komut satırında `guncelle.bat` geçen süreç var mı bakar, varsa çıkar. `guncelle.bat`'ın `git pull` öncesine dokunma.
+   - Akış durumu süreç genelinde (`stream._last_stream`): bir tabletin akışı diğerinin yedek görüntüsünü keser. Oturum
+     başına tut (jeton/istemci kimliği oturuma bağlı; `page.py` yalnız kendi akışı varsa `img=None`). Test.
+   - `stream.py` alıcı görevi: `WebSocketDisconnect`'i normal kapanış say; `finally`'de görevi bekle, istisnayı tüket. Test.
+   - Kararları `reviews/claude-v3.md` sonundaki tabloya (G6–G8) ekle.
+2. **Kesit otomatik aralığı kazanın olduğu yer olsun** (API yok; Faz 4 gerekmez): kesit penceresi açılınca 360p
+   önizlemede en yüksek ses (çarpma) ve en büyük görüntü değişimi (FFmpeg: ses yüksekliği + sahne/kare farkı) bulunur;
+   varsayılan aralık tepe −2 sn … +3 sn. Analiz varsa Luna'nın `action` rolündeki pencereler de hesaba katılır.
+   Şu an varsayılan 00:00–00:05 (videonun başı) — editörün şikâyeti bu. Editörün videosu: sandbox'ta
+   `/root/.claude/uploads/91458b90-39fe-546e-bfea-282ace035c7b/ed6d2609-OTOMOB_L_YAYAYA__ARPIP_DURA_A_DALDI.mp4` (test için).
+3. **Haber Stüdyosu token/maliyet** (editör israf istemiyor; genelde Luna kullanıyor, Claude seçenek olarak kalır):
+   - **Başlık önizlemesini kaldır** (`design_studio/preview.py` + Haber Stüdyosu'ndaki expander): editöre yalnız
+     "✅/⚠️ 2 satıra sığıyor mu + satır bölünmesi" yazısı yeter, gerekirse elle düzeltir.
+   - Şüpheli ana neden: kalın font (v3.1, ~%2,5 geniş) → "başlık sığmıyor" hatası sıklaştı → **tam düzeltme çağrısı**
+     (sistem + ham haber + tüm çıktı yeniden) token'ı ~2 katına çıkarıyor. Hata yalnız başlıksa tam düzeltme yerine
+     küçük `regenerate_headlines` çağrısı; başlık küçültülmüş yazıyla (42 px'e kadar) sığıyorsa hata değil uyarı.
+   - Önce ölç: `data/history.sqlite3` + `data/olcumler.jsonl` (çağrı sayısı, `duzeltme`) — editör ya da GPT (izinle)
+     okuyup özetler; ya da editör "Geliştirici bilgileri" sayılarını gönderir. "16k" içinde önbellekten gelen (%10
+     fiyat) token da var; asıl ölçü maliyet.
+   - **Uzun önbellek:** varsayılan önbellek birkaç dk (OpenAI "5–10 dk, en fazla 1 saat"), haberler arası 10–20 dk
+     olunca her haberde sistem komutu tam fiyat. OpenAI uzun saklama (`prompt_cache_retention`, bazı modellerde 24 saat)
+     ve Claude 1 saatlik `cache_control` ttl — Luna'nın desteği, ek ücreti ve en az önbelleklenebilir uzunluk
+     (sistem komutu bunun üstünde mi) **belgelerden doğrulanacak** (ezberden değil; claude-api/OpenAI dokümanı).
+   - **Önbellek sayacı** (kenar çubuğunda model seçiminin altında, dakikada bir kendini yeniler, API yok):
+     "⚪ Önbellek soğuk" / "🟢 Önbellek sıcak, ~47 dk" (her kullanımda süre baştan) + gerçek ölçüm "🟢 Son haberde
+     önbellek tuttu: girdinin %70'i". Varsayılan önbellekte süre belirsiz → sayaç tahmin; uzun önbellekle anlamlı.
+     "Sıcak tutmak için boş istek" önerilmedi (boşa para).
+   - **Haber başına tahmini maliyet** ($; önbellekli/önbelleksiz girdi, çıktı, düşünme ayrı fiyatla) sayacın yanında;
+     fiyatlar güncel listeden doğrulanacak. Luna/Claude farkı gerçek haberlerde görünsün.
+   - Çıktı (paylaşım metni ≤2200 karakter) en pahalı kısım; kısaltmak ürün kararı → editöre sormadan dokunma.
+4. **Video Stüdyosu görüntü analizi token'ı** (Luna; v3.1–3.2'de analize dokunulmadı, artış muhtemelen sahne sayısı):
+   önce editörün videosuyla API'siz ölç (kaç kare, tahmini görüntü token'ı), sonra önce/sonra göster.
+   a) Birbirine çok benzeyen kareleri gönderme (yerel karşılaştırma; sabit kamerada pencerelerin çoğu aynı).
+   d) Görselleri **düşük ayrıntı** (`detail: "low"`) ile gönder: kare başı sabit, küçük ücret; kareler zaten 640 px,
+      512'ye inmek az ayrıntı kaybettirir (desteği ve fiyat formülü Luna için doğrulanacak).
+   Açıklamaya "en fazla 8 kelime" sınırı (çıktı pahalı). c) Çözünürlük alt sınırı: sahne türü için 384–512 px yeter,
+   özne kutusu (kadraj) için ~512 güvenli; 384 altı kadraj isabetini düşürür. b) Kontak sayfası (kareler tek görselde)
+   yalnız uzun, çok sahneli videolarda hâlâ pahalıysa. Faz 4 (Luna Edit Planner) token azaltmaz, ek çağrıdır.
+5. **Sistem komutunu kısaltmak** (~%25–30, kural atmadan; tekrarları birleştir): önbellek çalışırsa kazanç küçük;
+   gerçek haberle önce/sonra karşılaştırmayı editör yapar (AGENTS kural 5). En sona.
+6. Belgeler, v3.3.0.
+
+Editörün bilgisayar ayarı (yapıldı/önerildi): uyku kapalı (`powercfg /change standby-timeout-ac 0`,
+`hibernate-timeout-ac 0`), ekran 30 dk (`monitor-timeout-ac 30`). `guncelle.bat` artık Axion'u açmaz (masaüstü simgesi).
+Windows açılışında otomatik başlatma istenmiyor.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
