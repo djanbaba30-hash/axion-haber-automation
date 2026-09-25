@@ -32,6 +32,7 @@ from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_library import detect_media_type
 from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
+from apps.video_studio.modules.moment import action_windows, suggested_range
 from apps.video_studio.modules.news_package import news_package_to_state
 from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut
 from apps.video_studio.modules.soundbites import (
@@ -269,10 +270,20 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
             seconds_of = {mmss(i * step): round(i * step, 1) for i in range(int(duration / step) + 1)}
             if ss.get("kesit_source") != source_key or any(label not in seconds_of for label in ss.get("kesit_range", ())):
                 ss.kesit_source = source_key
-                ss.pop("kesit_range", None)  # yeni video: varsayılan aralık (ilk 5 sn)
-            default_end = min(seconds_of, key=lambda label: abs(seconds_of[label] - min(5.0, duration)))
+                ss.pop("kesit_range", None)  # yeni video: varsayılan aralık (olay anı)
+            # Varsayılan aralık olay anı (ani hareket/ses, Luna'nın "olay" sahneleri; API yok). Yoksa ilk 5 sn.
+            suggested = suggested_range(preview, duration, action_windows(media_library, source.name))
+
+            def nearest(seconds: float) -> str:
+                return min(seconds_of, key=lambda label: abs(seconds_of[label] - seconds))
+
+            default = (nearest(suggested[0]), nearest(suggested[1])) if suggested else (mmss(0), nearest(min(5.0, duration)))
             start_label, end_label = st.select_slider("Kesit aralığı (dakika:saniye)", list(seconds_of), key="kesit_range",
-                                                      value=(mmss(0), default_end))
+                                                      value=default)
+            if suggested:
+                st.caption(f"📍 Aralık olayın olduğu yerden seçildi ({default[0]}–{default[1]}); gerekirse değiştir.")
+            else:
+                st.caption("Videoda belirgin bir olay anı bulunamadı; aralığı videoyu izleyerek seç.")
             start_s, end_s = seconds_of[start_label], seconds_of[end_label]
             st.video(str(preview), start_time=int(start_s), end_time=max(int(start_s) + 1, int(end_s + 0.999)))
             placement_col, add_col = st.columns([2, 1], vertical_alignment="bottom")
