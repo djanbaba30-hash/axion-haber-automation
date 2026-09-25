@@ -17,3 +17,12 @@ def local_env(tmp_path, monkeypatch):
         lambda path: {"filename": Path(path).name, "duration_seconds": 24.2, "duration_formatted": "00:24", "file_size_bytes": 3},
     )
     return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def no_update_check(monkeypatch):
+    """Testlerde repodaki sürüm sorulmaz (ağ yok, sonuç değişken); güncelleme göstergesi kendi testinde."""
+    from apps.axion_local import update_check
+
+    monkeypatch.setattr(update_check, "status", lambda now=None: None)
+

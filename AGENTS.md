@@ -53,6 +53,7 @@ apps/axion_local/
   copy_button.py               📋 Paylaşım metnini kopyala (components v2; http'de pano API'si yoksa execCommand yedeği)
   presence.py                  Aynı haber iki cihazda açık mı (oturum → haber; bağlı mı: Streamlit oturum yöneticisi)
   metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
+  update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 30 dk'da bir)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
                                İndirilenler'deki TXT'ler (DHA "TXT indir" → Haber Stüdyosu)
@@ -185,7 +186,9 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.4.0
+## Nerede kaldık (2026-09-25) — Sürüm 3.4.1
+
+**3.4.1:** kenar çubuğunda güncelleme göstergesi (editör isteği; `apps/axion_local/update_check.py`).
 
 **3.4.0:** "Sıradaki: v3.4.0" planı yapıldı (aşağıdaki bölüm; ayrıntı CHANGELOG). Kurgu olay örgüsü (aralık bazlı
 kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır

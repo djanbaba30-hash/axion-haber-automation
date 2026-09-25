@@ -206,6 +206,8 @@ Tailscale'deki `100.x.x.x`); Windows Home ise **Chrome Uzaktan Masaüstü** ya d
 ## 5. Güncelleme
 
 Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çift tıkla.
+Yeni sürüm olduğunu Axion kendisi gösterir: kenar çubuğunun altında **🔴 Güncelleme var** yazar (güncelse
+**🟢 Axion güncel**; yarım saatte bir kontrol edilir, tabletten de görünür).
 Çalışan Axion'u durdurur ve yeni sürümü indirir. Axion'u kendisi açmaz: bitince masaüstündeki **Axion** simgesiyle aç.
 
 Güncelleme bilgisayardaki kodu repodakinin aynısı yapar (`git pull`): repoda silinen dosyalar bilgisayardan da silinir,

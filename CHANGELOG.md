@@ -1,3 +1,11 @@
+# v3.4.1 — Güncelleme göstergesi — 2026-09-25
+
+## Added
+- **Kenar çubuğunda güncelleme göstergesi** (editör: "PC'de güncellemeyi unutursam görünsün"): "🟢 Axion güncel" ya da
+  "🔴 Güncelleme var: bilgisayarda `windows\guncelle.bat`". Bilgisayardaki sürüm repodaki `main` ile karşılaştırılır
+  (`git ls-remote`: yalnız son commit numarası, indirme yok); arka planda, yarım saatte bir, sayfa beklemez. Git ya da
+  internet yoksa hiçbir şey gösterilmez. Tabletten de görünür.
+
 # v3.4.0 — Kurgu olay örgüsünü izler, kadraj bulanığın bittiği yerden, indirmeler Brave'siz — 2026-09-25
 
 Editörün "kadın polis arızalı midibüsü itti" denemesi (tam çözünürlüklü DHA videosu, oluşan video, `axion.log`,

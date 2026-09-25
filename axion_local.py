@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from apps.axion_local import update_check  # noqa: E402
 from apps.axion_local.settings import secret  # noqa: E402
 from apps.axion_local.store import KEEP_DAYS, delete_old_projects, get_news_project, work_day_start  # noqa: E402
 from apps.news_studio.config import HISTORY_DB_PATH  # noqa: E402
@@ -121,6 +122,10 @@ def notify_finished_jobs() -> None:
 
 def sidebar_footer() -> None:
     with st.sidebar:
+        update = update_check.label(update_check.status())
+        if update:
+            st.caption(update, help="Bilgisayardaki Axion repodaki son sürümle karşılaştırılır (yarım saatte bir). "
+                                    "Güncellemek için bilgisayarda `C:\\Axion\\windows\\guncelle.bat`.")
         active_id = st.session_state.get("active_news_project")
         project = get_news_project(active_id) if active_id else None
         local = opened_on_this_computer()

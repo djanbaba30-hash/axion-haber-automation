@@ -712,3 +712,48 @@ def test_browser_txt_download_opens_in_news_studio(local_env):
     at.run()
     assert not at.exception
     assert at.session_state["raw_text"] == "Ham DHA metni" and "haber_aktar" not in at.session_state
+
+
+def test_update_indicator_in_sidebar(local_env, monkeypatch):
+    """Editör: "PC'de güncellemeyi unutursam görünsün" — kenar çubuğunda yeşil/kırmızı tek satır."""
+    from apps.axion_local import update_check
+
+    monkeypatch.setattr(update_check, "status", lambda now=None: "var")
+    at = start()
+    assert any("🔴 Güncelleme var" in c.value for c in at.sidebar.caption)
+    monkeypatch.setattr(update_check, "status", lambda now=None: "guncel")
+    at.run()
+    assert any("🟢 Axion güncel" in c.value for c in at.sidebar.caption)
+
+
+def test_update_check_compares_local_and_remote_and_runs_in_background(monkeypatch):
+    import time
+
+    from apps.axion_local import update_check
+
+    answers = {("rev-parse", "HEAD"): "abc", ("ls-remote", "origin", "refs/heads/main"): "abc\trefs/heads/main"}
+    monkeypatch.setattr(update_check, "_git", lambda *args: answers[args])
+    assert update_check.check() == "guncel"
+    answers[("ls-remote", "origin", "refs/heads/main")] = "def\trefs/heads/main"
+    assert update_check.check() == "var"
+
+    def offline(*args):
+        raise RuntimeError("internet yok")
+
+    monkeypatch.setattr(update_check, "_git", offline)
+    assert update_check.check() is None  # gösterilmez
+
+    # Arka planda: ilk çağrı beklemeden None döner, kontrol bitince sonuç görünür; 30 dk dolmadan yeniden sorulmaz.
+    calls = []
+    monkeypatch.setattr(update_check, "_state", {"checked": 0.0, "status": None, "running": False})
+    monkeypatch.setattr(update_check, "check", lambda: calls.append(1) or "var")
+    assert update_check._status(now=1000.0) is None
+    deadline = time.monotonic() + 3
+    while update_check._state["running"] and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert update_check._status(now=1000.0 + 60) == "var" and len(calls) == 1
+    update_check._status(now=1000.0 + update_check.INTERVAL_SECONDS + 1)
+    deadline = time.monotonic() + 3
+    while update_check._state["running"] and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert len(calls) == 2
