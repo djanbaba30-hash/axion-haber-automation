@@ -191,8 +191,10 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır
 çizgisi çiftiyle (`framing._edge_pair`), dikeyde sabit kadraj, Luna'ya net şerit, indirmeler sayfa betiğiyle
 (`service.DOWNLOAD_HOOK` + `axionIndir` bağlaması; Brave'in indirme yöneticisi kullanılmaz). Editörün denemesi
-bekleniyor: aynı haberi yeniden analiz et + oluştur; "Tüm Materyali İndir" (Downloads'taki eski GUID .tmp dosyaları
-Brave çökmesinden kalma, silinebilir).
+**Editör doğruladı (Windows, 2026-09-25):** "Tüm Materyali İndir" tek seferde sorunsuz; midibüs videosu "çok daha
+başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber Stüdyosu 2 çağrı (haber + elle başlık yenileme)
+2.688 girdi (%66'sı önbellekten) / 482 çıktı ≈ $0.0008; görüntü analizi 6 kare (net şerit) 1.995 girdi / 754 çıktı
+≈ $0.0013. Haber başına toplam ~$0.002.
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
 httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Kurgu: aynı çekimin parçaları kaynak sırasıyla
