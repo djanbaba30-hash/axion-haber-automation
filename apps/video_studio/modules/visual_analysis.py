@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import base64
+import io
+import math
 from pathlib import Path
 from typing import Any, Literal
 
+import numpy as np
 from openai import OpenAI
+from PIL import Image
 from pydantic import BaseModel
 
 from shared.media_models import EditorialRole, FocusPoint, Region, VisualMetadata, VisualType
@@ -15,7 +19,14 @@ LUNA_MODEL = "gpt-5.6-luna"
 LUNA_INPUT_PRICE_PER_MILLION = 0.20
 LUNA_OUTPUT_PRICE_PER_MILLION = 1.20
 LUNA_REASONING_EFFORT = "low"
-LUNA_TIMEOUT_SECONDS = 180  # SDK'nın kendi 2 yeniden denemesi geçici ağ hatalarını karşılar.
+LUNA_TIMEOUT_SECONDS = 180
+# GPT-5.6 görseli 32 px'lik parçalarla sayar (parça başı 1,2 token; "auto" ayrıntıda sınır yok). Kareler yerelde 640 px
+# (kadraj tespiti); Luna'ya uzun kenarı 512 px gider: dikey 640x1138 kare ~864 yerine ~173 token. Sahne türü ve özne
+# kutusu için 512 yeter (384 altı kadraj isabetini düşürür).
+LUNA_IMAGE_MAX_SIDE = 512
+# Aynı sahnede öncekinin neredeyse aynısı olan kare gönderilmez (sabit kamera). Küçük bir bölgedeki olay (yayanın
+# savrulması) blok farkını yükseltir, elenmez.
+SAME_FRAME_MEAN, SAME_FRAME_BLOCK = 3.0, 12.0  # SDK'nın kendi 2 yeniden denemesi geçici ağ hatalarını karşılar.
 
 
 # Luna sabit kategorilerden seçmek zorunda (structured output enum); "unknown" seçeneği yok.
@@ -65,8 +76,8 @@ SYSTEM_PROMPT = """Haber videosu kurgu sistemi için görsel indeksleme yapıyor
 Her WINDOW ve IMAGE için, verilen id ile tam bir sonuç döndür. Yalnızca karede görüneni yaz;
 kimlik, okunamayan yazı veya haber metni tahmini yapma.
 
-description: Türkçe, tek kısa cümle; kurgucunun sahneyi seçebileceği somut içerik
-  (ör. "Ön kısmı hasar görmüş beyaz otomobil ve etrafında toplanan kalabalık").
+description: Türkçe, en fazla 8 kelime; kurgucunun sahneyi seçebileceği somut içerik
+  (ör. "Ön kısmı hasarlı beyaz otomobil, etrafında toplanan kalabalık").
 visual_type — karedeki ana özne:
   person=tek kişi, people=kalabalık/grup, place=mekân/bina/sokak, event=olay anı (kaza, yangın, kavga, müdahale),
   vehicle=araç, document=belge/kâğıt, screen=ekran/monitör, product=nesne/ürün, landscape=doğa/manzara,
@@ -113,11 +124,62 @@ def image_mime_type(image_path: Path) -> str:
     return mime
 
 
-def image_data_url(image_path: Path) -> str:
+def image_data_url(image_path: Path, max_side: int | None = None) -> str:
     if not image_path.exists():
         raise FileNotFoundError(f"Görüntü bulunamadı: {image_path}")
-    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
-    return f"data:{image_mime_type(image_path)};base64,{encoded}"
+    mime = image_mime_type(image_path)
+    data = image_path.read_bytes()
+    if max_side:
+        with Image.open(image_path) as image:
+            if max(image.size) > max_side:
+                image = image.convert("RGB")
+                image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                buffer = io.BytesIO()
+                image.save(buffer, "JPEG", quality=85)
+                data, mime = buffer.getvalue(), "image/jpeg"
+    return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def image_tokens(width: int, height: int, max_side: int = LUNA_IMAGE_MAX_SIDE) -> int:
+    """GPT-5.6'nın görsel token hesabı (32 px parça × 1,2), Luna'ya giden boyutla."""
+    scale = min(1.0, max_side / max(width, height))
+    w, h = round(width * scale), round(height * scale)
+    return math.ceil(math.ceil(w / 32) * math.ceil(h / 32) * 1.2)
+
+
+def _thumb(path: Path) -> np.ndarray:
+    with Image.open(path) as image:
+        return np.asarray(image.convert("L").resize((64, 64)), dtype=np.float32)
+
+
+def same_frame(a: np.ndarray, b: np.ndarray) -> bool:
+    diff = np.abs(a - b)
+    return float(diff.mean()) < SAME_FRAME_MEAN and float(diff.reshape(8, 8, 8, 8).mean((1, 3)).max()) < SAME_FRAME_BLOCK
+
+
+def frames_to_send(shots: list[dict[str, Any]]) -> tuple[list[tuple[dict[str, Any], list[dict[str, Any]]]], dict[str, str]]:
+    """Luna'ya gidecek pencereler ve kareleri; aynı sahnede öncekiyle aynı görünen kareler elenir. Tüm kareleri elenen
+    pencere gönderilmez, sonucu aynı sahnenin son gönderilen penceresinden kopyalanır (window_id → kaynak window_id)."""
+    send, copies = [], {}
+    for shot in shots:
+        last, last_window = None, None
+        for window in shot.get("analysis_windows", []):
+            kept = []
+            for frame in window.get("frames", []):
+                try:
+                    thumb = _thumb(Path(frame["path"]))
+                except OSError:
+                    kept.append(frame)
+                    continue
+                if last is None or not same_frame(thumb, last):
+                    kept.append(frame)
+                    last = thumb
+            if not kept and last_window is not None:
+                copies[window["window_id"]] = last_window
+                continue
+            send.append((window, kept or window.get("frames", [])[:1]))
+            last_window = window["window_id"]
+    return send, copies
 
 
 def get_usage_value(usage: Any, attribute: str, default: int = 0) -> int:
@@ -149,7 +211,7 @@ def analyze_media_with_luna(
 
     Döndürür: (window_id → VisualMetadata, image asset_id → VisualMetadata, kullanım).
     """
-    windows = [window for shot in shots for window in shot.get("analysis_windows", [])]
+    windows, copies = frames_to_send(shots)
     usage_data = {
         "model": LUNA_MODEL,
         "input_tokens": 0,
@@ -167,8 +229,7 @@ def analyze_media_with_luna(
 
     content: list[dict[str, Any]] = []
     frame_total = 0
-    for window in windows:
-        frames = window.get("frames", [])
+    for window, frames in windows:
         content.append(
             {
                 "type": "input_text",
@@ -176,11 +237,13 @@ def analyze_media_with_luna(
             }
         )
         for frame in frames:
-            content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"])), "detail": "auto"})
+            content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"]), LUNA_IMAGE_MAX_SIDE),
+                            "detail": "auto"})
             frame_total += 1
     for image in images:
         content.append({"type": "input_text", "text": f"IMAGE {image['asset_id']}"})
-        content.append({"type": "input_image", "image_url": image_data_url(Path(image["path"])), "detail": "auto"})
+        content.append({"type": "input_image", "image_url": image_data_url(Path(image["path"]), LUNA_IMAGE_MAX_SIDE),
+                        "detail": "auto"})
         frame_total += 1
 
     response = OpenAI(api_key=api_key, timeout=LUNA_TIMEOUT_SECONDS).responses.parse(
@@ -211,5 +274,9 @@ def analyze_media_with_luna(
     usage_data.update(api_calls=1, frame_count=frame_total)
 
     window_visuals = {item.window_id: _visual_metadata(item) for item in parsed.windows}
+    for window_id, source in copies.items():  # gönderilmeyen (aynı görünen) pencereler
+        if source in window_visuals:
+            window_visuals[window_id] = window_visuals[source]
+    usage_data["skipped_windows"] = len(copies)
     image_visuals = {item.asset_id: _visual_metadata(item) for item in parsed.images}
     return window_visuals, image_visuals, usage_data
