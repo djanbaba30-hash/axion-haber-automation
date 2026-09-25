@@ -23,7 +23,7 @@ HEADLINE_CACHE_KEY = "axion-haber-headline-v7"
 NEWS_MAX_TOKENS = 2600
 HEADLINE_MAX_TOKENS = {"OpenAI": 450, "Claude": 500}
 HEADLINE_REQUEST = (
-    "<HABER_ICERIGI>\n{content}\n</HABER_ICERIGI>\nİki YENİ başlık üret. Yeni bilgi ekleme. baslik1 olayın nasıl/nerede "
+    "<HABER_ICERIGI>\n{content}\n</HABER_ICERIGI>\nİki YENİ başlık üret. Yeni bilgi ekleme. baslik1 olayın nasıl "
     "yaşandığını; baslik2 sonucu veya en önemli gelişmeyi anlatsın. İkisi de tamamen büyük harf ve en fazla 9 kelime olsun."
 )
 

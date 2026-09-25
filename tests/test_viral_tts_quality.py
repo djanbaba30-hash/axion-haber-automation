@@ -104,6 +104,18 @@ def test_prompt_contains_viral_tts_rules():
         assert rule in SYSTEM_PROMPT
 
 
+def test_prompt_editor_rules_2026_09():
+    """Editör (Windows denemesi): başlıkta yer adı yok (afet hariç), spiker gibi doğal TTS, röportajda isim açık."""
+    from apps.news_studio.prompts.news import HEADLINE_SYSTEM_PROMPT
+
+    assert "nerede" not in SYSTEM_PROMPT.split("BAŞLIKLAR")[1].split("CAPTION")[0]
+    for prompt in (SYSTEM_PROMPT, HEADLINE_SYSTEM_PROMPT):
+        assert "İl/ilçe" in prompt or "il/ilçe" in prompt
+        assert "deprem" in prompt
+    assert "haber spikerinin" in SYSTEM_PROMPT
+    assert "Röportaj veren" in SYSTEM_PROMPT and "baş harfe çevirme" in SYSTEM_PROMPT
+
+
 def test_user_prompts_no_longer_push_to_fill_length():
     prompt = build_news_prompt("Standart", "25–26 saniye", (25, 26), 381, 389, 396, "ham", 1.11, {})
     assert "hemen bitirme" not in prompt
