@@ -22,12 +22,13 @@ HTML = """
       placeholder="Adres veya arama"><button type="submit">Git</button></form>
     <span class="tabs"></span>
   </div>
-  <div class="screen-wrap"><img class="screen" alt="Tarayıcı" tabindex="0" draggable="false"><span class="wait"></span></div>
+  <div class="screen-wrap"><img class="screen" alt="Tarayıcı" tabindex="0" draggable="false"><span class="wait"></span>
+    <div class="login"></div></div>
   <form class="typebar">
     <input class="text" type="text" autocomplete="off" placeholder="Seçili kutuya yazılacak metin (önce ekranda kutuya dokun)">
     <button type="submit">Yaz</button><button type="button" data-k="Enter" title="Enter">↵</button>
     <button type="button" data-k="Backspace" title="Sil">⌫</button><button type="button" data-k="Tab" title="Sonraki kutu">⇥</button>
-    <button type="button" class="pw" data-t="password" title="Kayıtlı DHA şifresini seçili kutuya yazar">🔑 Şifre</button>
+    <button type="button" class="pw" data-t="password" title="Bu sitenin kayıtlı kullanıcı adı ve şifresini giriş kutularına yazar">🔑 Girişi doldur</button>
   </form>
   <div class="downloads"></div>
 </div>
@@ -55,7 +56,16 @@ CSS = """
   background: rgba(18, 50, 73, .25); pointer-events: none; animation: rip .45s ease-out forwards; }
 @keyframes rip { to { transform: scale(1.8); opacity: 0; } }
 .downloads { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-.downloads div { padding: 6px 10px; border-radius: 8px; background: #f3f7fa; }
+.downloads div { padding: 6px 10px; border-radius: 8px; background: #f3f7fa; display: flex; align-items: center; gap: 8px; }
+.downloads div span { flex: 1; }
+.downloads button, .login button { min-height: 34px; font-size: 14px; }
+.login:empty { display: none; }
+/* Görüntünün üstüne biner (alt kenar): belirince tarayıcı görüntüsü kaymaz, dokunuşlar yanlış yere gitmez. */
+.login { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: #fdf1dc; font-size: 15px;
+  box-shadow: 0 2px 10px rgba(18, 50, 73, .25); }
+.login.filled { background: #e6f4ec; }
+.login span { flex: 1; min-width: 200px; }
 .downloads .bitti { background: #e6f4ec; } .downloads .hata { background: #fdecea; }
 """
 
@@ -110,8 +120,12 @@ def apply_events(browser: RemoteBrowser, events: Any, password: str | None, home
             browser.run("key", value)
         elif kind in ("back", "forward", "reload", "close_tab"):
             browser.run(kind)
-        elif kind == "password" and password:
-            browser.run("type", password)
+        elif kind == "password":
+            # Kayıtlı giriş varsa kutular doldurulur; yoksa (eski ayar) DHA_SIFRE seçili kutuya yazılır.
+            if not browser.fill_login() and password:
+                browser.run("type", password)
+        elif kind in ("save_login", "dismiss_login"):
+            browser.answer_login_offer(kind == "save_login")
         else:
             continue
         applied += 1

@@ -82,6 +82,10 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
      - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
      - Kurgu bitince Axion şablonu (arka plan, başlıklar, sloganlar, logo) hemen uygulanır: **Son videoyu indir**.
+     - Üretim arka planda, bilgisayarda sürer (geçen süre görünür): sayfadan ayrılabilir, tableti kapatabilirsin;
+       dönünce video hazırdır.
+     - Haber Stüdyosu'nda başlıkları değiştirip projeyi yeniden kaydedersen Tasarım Stüdyosu da yeni başlıkları alır
+       (videoyu yeniden oluştur).
 5. **Tasarım Stüdyosu** (4. adımdaki **Tasarım Stüdyosu'nda düzenle** veya sol menü): Canva'nın yerini alır.
    **Videoyu oluştur** dediğinde son video (1080×1920, şablonlu) zaten hazırlanır; bir şey değiştirmeyeceksen
    Video Stüdyosu'ndan **Son videoyu indir** yeterli. Tasarım Stüdyosu Canva gibi düzenlenmiştir:
@@ -152,12 +156,17 @@ getirir. Bilgisayarın ekranına, iki monitöre ya da görev çubuğuna dokunmaz
 
 - **Dokun** = tıkla. **Parmakla sürükle** = sayfayı kaydır. Üstte ◀ ▶ ⟳ ⌂ ve adres çubuğu.
 - **Yazmak için:** önce ekranda kutuya dokun, sonra alttaki metin kutusuna yaz ve **Yaz**'a bas. ↵ Enter, ⌫ sil, ⇥ sonraki
-  kutu. İstersen DHA şifreni `windows\anahtarlar.bat` ile `DHA_SIFRE`'ye yaz: **🔑 Şifre** düğmesi onu seçili kutuya yazar.
+  kutu.
+- **Giriş bilgileri bir kez kaydedilir:** DHA'ya ilk kez giriş yaparken **Giriş**'e bastığında üstte "girişi kaydedilsin
+  mi?" çıkar → **Kaydet**. Sonraki girişlerde kullanıcı adı ve şifre kutuları kendiliğinden dolar ("Giriş bilgileri
+  dolduruldu") → yalnızca **Giriş**'e dokun. Dolmazsa alttaki **🔑 Girişi doldur**. Şifre değişirse yeniden sorar.
+  Şifre bilgisayarda Windows hesabına bağlı şifrelenmiş olarak durur, tablete gönderilmez. Kayıtlı girişler kenar
+  çubuğunda (**🔑 Kayıtlı girişler** → Sil).
 - **Ana sayfa (⌂):** kenar çubuğundan DHA panelinin adresini bir kez yaz; hatırlanır.
-- DHA'ya bu tarayıcıda **bir kez** giriş yap; oturum bilgisayarda kalır (arada bir yeniden şifre isteyebilir). Bu, Axion'un
-  kendi Brave profilidir: normal Brave'ine, sekmelerine ve kayıtlı şifrelerine dokunmaz.
+- Oturum bilgisayarda kalır. Bu, Axion'un kendi Brave profilidir: normal Brave'ine, sekmelerine ve kayıtlı şifrelerine
+  dokunmaz.
 - **İndir**'e bastığında video bilgisayarın **İndirilenler** klasörüne iner; sayfanın altında "✅ … bilgisayara indi" yazar.
-  Sonra **🎬 Video Stüdyosu'na geç** → video listede.
+  Yanındaki **🎬 Video Stüdyosu'nda kullan** seni Video Stüdyosu'na götürür, video 2. adımda seçili gelir.
 - Dükkân internetinden yalnızca sayfanın görüntüsü geçer (saniyede birkaç küçük resim). Video oynatmak için değil, haber
   bulup indirmek için tasarlandı.
 - Brave bulunamazsa sayfa söyler: Brave'i kur ya da `anahtarlar.bat` ile `TARAYICI_YOLU`'na `brave.exe`'nin yolunu yaz.
@@ -183,6 +192,8 @@ Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çif
 ## 7. Verilerin yeri
 
 - Projeler (haber, seslendirme, görüntü analizi, kesitler, kurgu ve video): `C:\Axion\data\projects\` — 3 günden eski projeler otomatik silinir.
-- Seslendirme hız ayarı (kalibrasyon) ve üretim geçmişi: `C:\Axion\data\`
+- Seslendirme hız ayarı (kalibrasyon), üretim geçmişi ve ayarlar (üslup örnekleri dahil): `C:\Axion\data\`
+- Tarayıcı sayfasının profili (DHA oturumu): `C:\Axion\data\tarayici\`; kayıtlı girişler (şifreli):
+  `C:\Axion\data\tarayici_girisler.json`. Silersen DHA'ya yeniden giriş yaparsın.
 
 Bu klasörü ara sıra yedeklemen yeterli.

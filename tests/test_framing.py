@@ -1,6 +1,5 @@
 """Akıllı kadraj: bulanık/siyah kenar tespiti, odak noktası ve render."""
 
-import json
 import shutil
 import subprocess
 

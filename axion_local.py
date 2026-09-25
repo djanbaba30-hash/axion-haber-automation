@@ -68,6 +68,19 @@ def opened_on_this_computer() -> bool:
     return host.startswith("[::1]") or host.split(":")[0] in LOCAL_HOSTS
 
 
+def shut_down() -> None:
+    """Tarayıcı sayfasının görünmez Brave'ini düzgün kapatır (arkada süreç kalmasın), sonra Axion'u sonlandırır."""
+    def stop() -> None:
+        try:
+            from apps.remote_browser.service import close_shared
+
+            close_shared()
+        finally:
+            os._exit(0)
+
+    threading.Timer(1.0, stop).start()
+
+
 def sidebar_footer() -> None:
     with st.sidebar:
         active_id = st.session_state.get("active_news_project")
@@ -82,13 +95,13 @@ def sidebar_footer() -> None:
         if st.session_state.get("axion_confirm_shutdown"):
             st.warning("Axion kapatılsın mı? Telefon/tabletten erişim de kapanır.")
             yes, no = st.columns(2)
-            if yes.button("Evet, kapat", type="primary", use_container_width=True):
+            if yes.button("Evet, kapat", type="primary", width="stretch"):
                 st.info("Axion kapatıldı. Bu sekmeyi kapatabilirsin.")
-                threading.Timer(1.0, os._exit, args=(0,)).start()
-            if no.button("Vazgeç", use_container_width=True):
+                shut_down()
+            if no.button("Vazgeç", width="stretch"):
                 st.session_state.axion_confirm_shutdown = False
                 st.rerun()
-        elif st.button("Axion'u kapat", use_container_width=True):
+        elif st.button("Axion'u kapat", width="stretch"):
             st.session_state.axion_confirm_shutdown = True
             st.rerun()
 

@@ -85,8 +85,10 @@ editor_key = key("editor")
 editor_state = ss.get(editor_key)
 edits = editor_state.get("edits") if hasattr(editor_state, "get") else None
 h1_key, h2_key = key("h1_text"), key("h2_text")
-ss.setdefault(h1_key, design.headline_1.text)
-ss.setdefault(h2_key, design.headline_2.text)
+if ss.get(key("news")) != design.news_headlines or h1_key not in ss:
+    # İlk açılış ya da haber başlıkları Haber Stüdyosu'nda değişti: kenar çubuğundaki metinler tasarımdan gelir.
+    ss[key("news")] = design.news_headlines
+    ss[h1_key], ss[h2_key] = design.headline_1.text, design.headline_2.text
 if isinstance(edits, dict) and edits.get("v") != ss.get(key("edits_v")):
     ss[key("edits_v")] = edits.get("v")
     design = apply_editor_patch(design, edits.get("design"), seconds)

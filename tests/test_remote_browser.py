@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from apps.remote_browser import service
+from apps.remote_browser.logins import Logins, site_of
 from apps.remote_browser.service import RemoteBrowser, find_browser, normalize_url, unique_path
 
 PAGE = b"""<!doctype html><html><body style="margin:0">
@@ -18,12 +19,21 @@ PAGE = b"""<!doctype html><html><body style="margin:0">
 <a id="sekme" href="/ikinci" target="_blank" style="position:absolute;left:100px;top:300px">yeni sekme</a>
 <div style="height:3000px"></div></body></html>"""
 VIDEO = b"\x00\x00\x00\x18ftypmp42" + b"x" * 200_000
+LOGIN = b"""<!doctype html><html><body style="margin:0"><form action="/panel" method="get">
+<input name="k" style="position:absolute;left:100px;top:100px;width:200px;height:30px">
+<input name="s" type="password" style="position:absolute;left:100px;top:150px;width:200px;height:30px">
+<button type="submit" style="position:absolute;left:100px;top:200px;width:100px;height:30px">Giris</button>
+</form><div style="position:absolute;left:400px;top:400px;width:50px;height:50px">bos</div></body></html>"""
 
 
 class _Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         if self.path == "/video.mp4":
             body, kind = VIDEO, "video/mp4"
+        elif self.path == "/giris":
+            body, kind = LOGIN, "text/html"
+        elif self.path.startswith("/panel"):
+            body, kind = b"<title>Panel</title><h1>panel</h1>", "text/html"
         elif self.path == "/ikinci":
             body, kind = b"<title>Ikinci</title><h1>ikinci</h1>", "text/html"
         else:
@@ -134,3 +144,71 @@ def test_shared_browser_restarts_after_close(tmp_path):
         assert second is not first and not second.closed
     finally:
         service.shared(_chromium(), tmp_path / "p", tmp_path / "i").close()
+
+
+def test_logins_are_sealed_and_listed_without_passwords(tmp_path):
+    logins = Logins(tmp_path / "girisler.json")
+    assert logins.get("dha.com.tr") is None
+    logins.save("dha.com.tr", "editor", "Çok gizli şifre")
+    assert logins.get("dha.com.tr") == ("editor", "Çok gizli şifre")
+    raw = (tmp_path / "girisler.json").read_text(encoding="utf-8")
+    assert "gizli" not in raw and "editor" in raw
+    assert logins.sites() == [("dha.com.tr", "editor")]
+    logins.delete("dha.com.tr")
+    assert logins.get("dha.com.tr") is None and logins.sites() == []
+    assert site_of("https://www.panel.dha.com.tr/giris?x=1") == "panel.dha.com.tr"
+    (tmp_path / "girisler.json").write_text("bozuk", encoding="utf-8")
+    assert logins.sites() == []
+
+
+@pytest.mark.skipif(_chromium() is None, reason="Chromium/Brave yok")
+def test_login_is_offered_on_submit_then_autofilled(tmp_path, site):
+    logins = Logins(tmp_path / "girisler.json")
+    browser = RemoteBrowser(_chromium(), tmp_path / "profil", tmp_path / "indirilenler", logins)
+
+    def value(name):
+        try:
+            return browser._call(browser._page.evaluate(f"document.querySelector('[name={name}]').value"))
+        except Exception:  # noqa: BLE001 — sayfa o an yükleniyor
+            return None
+
+    try:
+        browser.run("goto", f"{site}/giris")
+        assert _wait(lambda: browser.screen().url.endswith("/giris"))
+        browser.run("click", (150, 115))
+        browser.run("type", "editor")
+        browser.run("click", (150, 165))
+        browser.run("type", "gizli")
+        browser.run("click", (420, 420))  # şifre yazılıyken boş yere dokunmak: kayıt sorulmaz
+        assert browser.login_state()["offer"] is None
+        browser.run("click", (150, 215))  # Giriş düğmesi
+        assert browser.login_state()["offer"] == {"site": "127.0.0.1", "username": "editor"}
+        assert "gizli" not in str(browser.login_state())  # şifre tablete gitmez
+        browser.answer_login_offer(True)
+        assert logins.get("127.0.0.1") == ("editor", "gizli") and browser.login_state()["offer"] is None
+        assert _wait(lambda: "/panel" in browser.screen().url)  # form gönderimi bitsin
+
+        browser.run("goto", f"{site}/giris")  # yeni giriş sayfası: kutular kendiliğinden dolar
+        assert _wait(lambda: browser.login_state()["filled"] == "127.0.0.1")
+        assert value("k") == "editor" and value("s") == "gizli"
+        browser.run("click", (150, 215))  # Giriş; kayıtlıyla aynı: yeniden sorulmaz
+        assert browser.login_state()["offer"] is None
+        assert _wait(lambda: "/panel" in browser.screen().url)
+
+        browser.run("goto", f"{site}/giris")
+        assert _wait(lambda: browser.login_state()["filled"] == "127.0.0.1")
+        browser.run("click", (150, 165))
+        browser._call(browser._page.fill("[name=s]", ""))
+        assert browser.fill_login() and value("s") == "gizli"  # 🔑 düğmesi
+        browser._call(browser._page.fill("[name=s]", "yeni"))
+        browser.run("key", "Enter")
+        assert browser.login_state()["offer"]["username"] == "editor"  # şifre değişti: güncelleme sorulur
+        browser.answer_login_offer(False)
+        assert _wait(lambda: "/panel" in browser.screen().url)
+        browser.run("goto", f"{site}/giris")
+        assert _wait(lambda: value("s") == "gizli")
+        browser._call(browser._page.fill("[name=s]", "yeni"))
+        browser.run("key", "Enter")
+        assert browser.login_state()["offer"] is None  # "Hayır" denen aynı giriş yeniden sorulmaz
+    finally:
+        browser.close()

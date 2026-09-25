@@ -537,3 +537,18 @@ def test_skipped_final_check_is_logged(tmp_path, monkeypatch, caplog):
     with caplog.at_level("WARNING"):
         assert render.check_final(tmp_path / "son.mp4", 20.0, tmp_path / "kaba.mp4") is None
     assert "Son video kontrolü atlandı" in caplog.text
+
+
+def test_design_follows_news_headlines_but_keeps_own_edits():
+    design = load_design({}, "KAZA", "YARALI VAR", 20.0)
+    design.headline_1.text = "KAZA\\n~~YERİ~~"  # Tasarım Stüdyosu'nda satır kırıldı, sansürlendi
+    stored = dump_design(design)
+    assert load_design(stored, "KAZA", "YARALI VAR", 20.0).headline_1.text == "KAZA\\n~~YERİ~~"  # haber aynı: korunur
+    changed = load_design(stored, "YENİ BAŞLIK", "İKİNCİ", 20.0)  # Haber Stüdyosu'nda değişti
+    assert (changed.headline_1.text, changed.headline_2.text) == ("YENİ BAŞLIK", "İKİNCİ")
+    assert changed.news_headlines == ["YENİ BAŞLIK", "İKİNCİ"]
+    legacy = {k: v for k, v in stored.items() if k != "news_headlines"}  # v2.9 ve öncesi belge
+    assert load_design(legacy, "BAŞKA", "X", 20.0).headline_1.text == "KAZA\\n~~YERİ~~"
+    from apps.design_studio.design import signature_payload
+
+    assert "news_headlines" not in signature_payload(changed)

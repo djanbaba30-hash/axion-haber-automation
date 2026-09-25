@@ -446,16 +446,3 @@ def write_layers(folder: Path, design: Design, background: Path, fps: int, secon
 
     graphics = write_sequence(folder, "grafik", fps, total, graphics_key, lambda key: scene.render(*first_time[key]))
     return Layers(base, frame, graphics)
-
-
-def preview_image(design: Design, background: Path, seconds: float, t: float = 4.0,
-                  video_frame: Image.Image | None = None, width: int = 360) -> Image.Image:
-    """Şablonun t anındaki hâli (küçük önizleme; testler ve kontrol için)."""
-    canvas = background_image(background).convert("RGBA")
-    if video_frame is not None:
-        x, y, w, h = VIDEO_SLOT["x"], VIDEO_SLOT["y"], VIDEO_SLOT["width"], VIDEO_SLOT["height"]
-        canvas.alpha_composite(video_frame.convert("RGBA").resize((w, h)), (x, y))
-    frame = design.frame
-    canvas.alpha_composite(frame_overlay(background, frame.style, frame.color, frame.accent, t, frame.speed), frame_origin())
-    canvas.alpha_composite(build_scene(design, seconds).render(t, round(t * 30)))
-    return canvas.convert("RGB").resize((width, round(width * CANVAS_HEIGHT / CANVAS_WIDTH)), Image.LANCZOS)

@@ -68,6 +68,8 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (analiz karelerinden, numpy/Pillow, API yok)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264)
+  jobs.py                      Videoyu arka planda üretme: kaba kurgu → son video (aynı haberin tasarım üretimi önce
+                               durdurulur); sayfa saniyede bir durumu yeniler, tablet kapansa da sürer
 
 apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
   page.py                      Sayfa: kenar çubuğunda durum, Yeniden oluştur/İndir, başlık metinleri, varlık ekleme;
@@ -93,9 +95,12 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
 
 apps/remote_browser/           TARAYICI (Faz 6; API yok): tabletten evdeki bilgisayarın görünmez tarayıcısını kullanma
   service.py                   Playwright (async, kendi iş parçacığında) ile Brave/Chrome'u sürer (Edge kasıtlı yok);
-                               Axion'un kendi profili data/tarayici; indirmeler İndirilenler'e (.iniyor → ad); 20 dk boşta kapanır
+                               Axion'un kendi profili data/tarayici; indirmeler İndirilenler'e (.iniyor → ad); 20 dk boşta kapanır;
+                               giriş formu gönderilirken bilgileri okur ("kaydedilsin mi?"), kayıtlı sitede kutuları doldurur;
+                               profil kilitliyse (Axion zorla kapatılmış) artık süreci kapatıp yeniden dener
+  logins.py                    Kayıtlı girişler data/tarayici_girisler.json (şifre Windows DPAPI ile; tablete gitmez)
   viewer.py, viewer.js         Tabletteki görünüm (components v2): ekran görüntüsü, dokun=tıkla, sürükle=kaydır, yazı kutusu,
-                               🔑 DHA_SIFRE; `apply_events` olayları doğrular
+                               giriş kaydı çubuğu, 🔑 Girişi doldur, "Video Stüdyosu'nda kullan"; `apply_events` olayları doğrular
   page.py                      Sayfa: ana sayfa (hatırlanır), 0,5 sn'lik fragment (olay uygula → ekran görüntüsü)
 
 shared/                        Modüller arası sözleşmeler (Pydantic)
@@ -127,10 +132,13 @@ Tasarım Stüdyosu ──düzenle──►   tasarim.json v2 (başlıklar, stil,
                                  + onizleme/tasarim_onizleme.mp4 (tuval için hafif kopya)
                  ──oluştur───►   son_video.mp4 (1080x1920, sesiyle); imza tasarim.json'da ("güncel mi")
 Varlıklar ──────────────────►   data/varliklar/{fontlar,arka_planlar} (+ GITHUB_TOKEN varsa repoya assets/sablon/)
-Tarayıcı ──indir────────────►   İndirilenler/<dosya> (Video Stüdyosu'nun gelen kutusu); oturum data/tarayici'da
+Tarayıcı ──indir────────────►   İndirilenler/<dosya> (Video Stüdyosu'nun gelen kutusu; "kullan" ile 2. adımda seçili)
+         ──giriş────────────►   data/tarayici (oturum, çerezler), data/tarayici_girisler.json (kayıtlı girişler, şifreli)
 ```
 
-- Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
+- Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project, kurgu ve son
+  video silinir). Başlıklar değiştiyse tasarım yeni başlıkları alır (`tasarim.json` `news_headlines`); yalnız Tasarım
+  Stüdyosu'nda yapılmış başlık düzenlemeleri haber değişmedikçe korunur.
 - Ses üretildikten sonra TTS metni değişirse kaydetme engellenir.
 
 ### Dosya yaşam döngüsü
@@ -146,18 +154,21 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 | Tarayıcı profili (DHA oturumu, çerezler) | `data/tarayici/` | Silinmez (silinirse DHA'ya yeniden giriş) |
+| Kayıtlı girişler (şifre DPAPI ile şifreli) | `data/tarayici_girisler.json` | Kenar çubuğundan "Sil" ile |
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Faz 5 çalışıyor (v2.9.x hız/güvenilirlik); Faz 6 başladı: Tarayıcı sayfası (v2.10.0)
+## Nerede kaldık (2026-09-25) — Sürüm 3.0.0
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
-Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. Editör v2.6.0'ı Windows'ta açtı ("her şey çalışıyor
-gibi") ve düzen istedi; v2.7.0 Canva düzenini denedi ("sorunsuz çalıştı"). v2.8.0 (geri al/yinele, kısayollar,
-arka planda render, zaman çizelgesi mıknatısı) ve v2.9.0 (~3 kat hızlı son video, FFprobe kontrolü, yeniden başlatma)
-henüz denenmedi. v2.9.0 için GPT ve Claude önerileri karşılaştırıldı (`reviews/gpt-faz5.md`, `reviews/claude-faz5.md`);
-ertelenen ve reddedilen öneriler oradaki tabloda. GPT v2.9.0'ı inceledi, itiraz etmedi; v2.9.1 doğrulama testleri ve
-`tasarim.json` yazma yarışı düzeltmesi. Editör için Windows deneme listesi `reviews/claude-faz5.md` sonunda. Editörün isteği: arayüz, kullanım kolaylığı ve optimizasyon.
+Kayseri, İnegöl, Kars). Faz 5 (Tasarım Stüdyosu) v2.5–v2.9'da yapıldı; editör v2.7.0'ı denedi ("sorunsuz çalıştı").
+Faz 6'nın temel akışı (tabletten DHA → video) v2.10–v3.0'da hazır. Faz 4 ertelendi (aşağıda). Sürüm ayrıntıları
+`CHANGELOG.md`'de.
+
+3.0.0 öncesi Claude tüm repoyu inceledi (`reviews/claude-v3.md`: bulgular ve yapılanlar). GPT'nin 3.0.0 incelemesi
+bekleniyor (aynı dosyadaki tabloya kararlar eklenir). Windows'ta henüz denenmeyenler: v2.8–v3.0 (geri al/yinele,
+~3 kat hızlı son video, FFprobe kontrolü, yeniden başlatma, Tarayıcı + gerçek DHA, giriş kaydı, arka planda video).
+Editör için deneme listesi `reviews/claude-v3.md` sonunda. Editörün isteği: arayüz, kullanım kolaylığı, optimizasyon.
 
 ### Şu an çalışan akış
 1. **Haber Stüdyosu:** ham haber → GPT/Claude (tek çağrı + gerekirse tek düzeltme çağrısı) → başlıklar, paylaşım
@@ -171,7 +182,8 @@ ertelenen ve reddedilen öneriler oradaki tabloda. GPT v2.9.0'ı inceledi, itira
    - Kurgu (API yok, `rough_cut.py`): kesmeler seslendirme duraklamalarında, sahneler 2–5 sn; sahne seçimi kelime
      eşleşmesi + kavram grupları + rol; kadraj hep tam dolu (bulanık dolgu yok), özneye göre; özne büyükse yavaş
      kaydırma (dikey çekimde yalnız yukarı/aşağı). Video en az 20 sn.
-   - Render: tek FFmpeg komutu, 960x1226 (Canva şablonundaki video alanı), önce AMD `h264_amf`, olmazsa x264.
+   - Render: tek FFmpeg komutu, 960x1226 (Canva şablonundaki video alanı), önce AMD `h264_amf`, olmazsa x264; ardından
+     son video. İkisi de arka planda (`jobs.py`): sayfa beklemez, tablet kapansa da sürer.
 3. **Tasarım Stüdyosu (v2.7.0, sade Canva):** Video Stüdyosu kurguyla birlikte standart şablonlu `son_video.mp4`'ü de
    üretir. Editör isterse değiştirir: başlık metni/stili/animasyonu, ~~sansür~~, eklenen yazılar (sürükleyerek konum),
    slogan/logo efektleri (kapatılabilir), çerçeve (sabit, kovalayan ışıklar, nefes, renk akışı, yok), arka plan,
@@ -187,25 +199,27 @@ seslendirmede saat/sayı okunuşuyla; şablon zamanları sabit (9/13/16. sn), vi
 GPT (`reviews/gpt-faz3.md`) ve Claude (`reviews/claude-faz3.md`) ayrı ayrı inceledi; kararlar ve yapılan düzeltmeler
 Claude raporundaki tablolarda. Luna görsel analizi artık `reasoning.effort="low"`.
 
-### Faz 4 ertelendi (editör kararı, token tasarrufu)
-Luna Edit Planner şimdilik yok. Sahne seçimi şikâyetleri önce `rough_cut` kurallarıyla (API'siz) çözülür; gerekirse
-yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çalışır (her haberde otomatik değil).
+### Faz 4 ertelendi (editör kararı, token tasarrufu; ihtiyaç halinde geri dönülecek)
+Luna Edit Planner 3.0'da da yok. Sahne seçimi şikâyetleri önce `rough_cut` kurallarıyla (API'siz) çözülür; kurallar
+yetmezse yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle, haber başına tek metin çağrısı olarak
+yapılır (her haberde otomatik değil). Plan ROADMAP'teki Faz 4 satırında.
 
 ### Başlık 2 satır kuralı (v2.6.0, editörün temel kuralı)
 `shared/text_layout.check_headline` başlığı videodaki yazıyla ölçer. Prompt'lar "EN FAZLA 44 KARAKTER" der;
 doğrulama sığmayan başlığı hata sayar (mevcut tek düzeltme çağrısı somut "x karakter kısalt" hedefiyle gider).
 Gerçek model çağrısıyla editörün denemesi bekleniyor (AGENTS kural 5).
 
-### Faz 6 başladı: Tarayıcı sayfası (v2.10.0)
+### Faz 6: tabletten kullanım (v2.10.0–v3.0.0)
 Editörün durumu: dükkân başka ilçede, interneti yavaş (45/13 Mbps), tablet orada; bilgisayarı uzak masaüstüyle
 kullanmak (iki monitör, gizli görev çubuğu) pratik değil; tabletten yükleme olmaz. Çözüm: Axion içinde uzak tarayıcı.
 Brave (editör Edge sevmiyor; Firefox Playwright ile sürülemiyor), Axion'un kendi profili, DHA'da captcha yok, arada
-şifre istiyor (isteğe bağlı `DHA_SIFRE`). Gerçek DHA paneliyle henüz denenmedi (sandbox'ta yerel test sitesiyle
-denendi: giriş formu, indirme, kaydırma, yeni sekme).
+şifre istiyor → giriş bilgileri bir kez kaydedilir, sonra kutular kendiliğinden dolar (v3.0.0; `DHA_SIFRE` eski yol,
+hâlâ çalışır). Gerçek DHA paneliyle henüz denenmedi (sandbox'ta yerel test siteleriyle denendi). Video üretimi arka
+planda (tablet kapansa da sürer).
 
-### Sıradaki: editörün Windows testi
-Editör Windows'ta dener: Tarayıcı sayfası + gerçek DHA, animasyonların Canva'ya benzerliği, Google Sans, arayüz,
-blur/mozaik, render süresi (AMF). Faz 6'nın kalanı ROADMAP'te.
+### Sıradaki: editörün Windows testi, GPT incelemesi
+Editör Windows'ta dener (liste: `reviews/claude-v3.md`). Faz 6'nın kalanı ROADMAP'te (tablet dokunmatiğinde Tasarım
+Stüdyosu, aynı haberin iki cihazda açılması uyarısı).
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
@@ -217,8 +231,10 @@ blur/mozaik, render süresi (AMF). Faz 6'nın kalanı ROADMAP'te.
   ötekini de değiştirmeli, `tests/test_effects_parity.py` farkı yakalar (Node gerekir; çerçeve çizimi kapsamda değil).
 - Editör tasarımı tarayıcıda tutar (başlık metinleri hariç: kenar çubuğu); Python yalnızca haber değişince yükler.
   Yazı stili/metni değişince atlas PNG'leri Python'da yeniden çizilir (tek yeniden çalıştırma gecikmesi).
-- Tasarım önizlemesi videoyu Streamlit'in medya sunucusuyla verir (`runtime.media_file_mgr`, iç API; streamlit sürümü
-  sabit). Olmazsa gömülü veriye (data URL) düşer.
+- Tasarım önizlemesi ve Tarayıcı ekranı Streamlit'in medya sunucusuyla verilir (`runtime.media_file_mgr`, iç API;
+  streamlit sürümü sabit; `apps/axion_local/media.py`). Olmazsa gömülü veriye (data URL) düşer.
+- Arka plan işleri (tasarım ve video üretimi) Streamlit sürecinin iş parçacıklarıdır: Axion kapanırsa yarıda kalır
+  (yarım dosya `.yaziliyor.mp4` adıyla yazılır, yerine konmaz). Tarayıcı sayfası 0,5 sn'de bir yenilenir (fragment).
 
 ## Komutlar
 

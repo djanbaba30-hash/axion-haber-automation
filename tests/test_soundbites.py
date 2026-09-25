@@ -8,7 +8,7 @@ import pytest
 
 from apps.video_studio.modules.soundbites import Soundbite, parse_soundbites, total_seconds
 from shared.edit_models import EditProject
-from tests.test_rough_cut import SHOTS, TTS, edit_project, library, plan_rough_cut, video_clips
+from tests.test_rough_cut import SHOTS, edit_project, library, plan_rough_cut, video_clips
 
 
 def bite(start, end, placement, path="C:/dha.mp4"):

@@ -78,6 +78,15 @@ def start(project: NewsProject, design: Design, restart: bool = False) -> bool:
         return True
 
 
+def cancel(project: NewsProject, timeout: float = 60.0) -> None:
+    """Çalışan işi durdurur ve bitmesini bekler (Video Stüdyosu kurguyu yeniden üretirken: aynı dosyaya iki üretim yazmasın)."""
+    job = get(project)
+    if job and job.running:
+        job.cancel.set()
+        if job.thread:
+            job.thread.join(timeout)
+
+
 def get(project: NewsProject) -> Job | None:
     return _JOBS.get(str(project.folder))
 

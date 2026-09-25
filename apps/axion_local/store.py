@@ -136,6 +136,7 @@ def save_news_project(
         audio_path.unlink(missing_ok=True)
     (folder / EDIT_PROJECT_FILENAME).unlink(missing_ok=True)
     (folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
+    (folder / FINAL_VIDEO_FILENAME).unlink(missing_ok=True)  # eski başlık/sesle üretilmişti
     stored = package.model_copy(update={"metadata": metadata})
     (folder / PACKAGE_FILENAME).write_text(stored.model_dump_json(indent=2), encoding="utf-8")
     return folder

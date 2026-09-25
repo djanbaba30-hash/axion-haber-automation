@@ -101,6 +101,9 @@ class Design(BaseModel):
     texts: list[TextLayer] = Field(default_factory=list)
     blurs: list[dict[str, Any]] = Field(default_factory=list)
     rendered: str | None = None  # son videoyu üreten ayarların imzası
+    # Tasarımın dayandığı haber başlıkları: Haber Stüdyosu'nda başlıklar değişip proje yeniden kaydedilince tasarımdaki
+    # başlık metinleri yenilenir; yalnız burada yapılan düzenlemeler (satır kırma, sansür) haber değişmedikçe korunur.
+    news_headlines: list[str] | None = None
 
     @field_validator("slogans", mode="after")
     @classmethod
@@ -131,8 +134,12 @@ def load_design(raw: Any, headline_1: str, headline_2: str, duration: float) -> 
         design = Design.model_validate(data)
     except ValueError:
         design = Design()
+    news = [headline_1, headline_2]
+    if design.news_headlines is not None and design.news_headlines != news:
+        design.headline_1.text, design.headline_2.text = headline_1, headline_2
     design.headline_1.text = design.headline_1.text or headline_1
     design.headline_2.text = design.headline_2.text or headline_2
+    design.news_headlines = news
     design.blurs = clean_blurs(design.blurs, duration)
     for layer in design.texts:
         layer.end = min(max(layer.end, layer.start + 0.2), duration)
@@ -145,9 +152,10 @@ def dump_design(design: Design) -> dict[str, Any]:
 
 
 def signature_payload(design: Design) -> dict[str, Any]:
-    """Son videoyu etkileyen her şey (imza için); `rendered` hariç."""
+    """Son videoyu etkileyen her şey (imza için); `rendered` ve kaynak başlıklar hariç (görünen metin zaten içinde)."""
     payload = dump_design(design)
     payload.pop("rendered", None)
+    payload.pop("news_headlines", None)
     return payload
 
 

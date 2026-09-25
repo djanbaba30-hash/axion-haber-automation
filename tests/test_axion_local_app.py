@@ -102,6 +102,32 @@ def test_saving_same_news_again_updates_project(local_env):
     assert len(store.list_news_projects()) == 1
 
 
+def test_headline_regeneration_cost_is_counted(local_env, monkeypatch):
+    from types import SimpleNamespace
+
+    usage = {"input_tokens": 50, "output_tokens": 10, "requests": 1, "provider": "OpenAI", "model": "gpt-5.6-luna"}
+    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines",
+                        lambda *args: (SimpleNamespace(baslik1="YENİ 1", baslik2="YENİ 2"), usage))
+    at = with_generated_news(start())
+    at.session_state["last_usage"] = {"input_tokens": 1000, "output_tokens": 300, "requests": 1}
+    at.run()
+    button(at, "↻ Başlıkları yeniden üret").click().run()
+    assert not at.exception
+    assert (at.session_state["baslik1"], at.session_state["baslik2"]) == ("YENİ 1", "YENİ 2")
+    total = at.session_state["last_usage"]
+    assert (total["input_tokens"], total["output_tokens"], total["requests"]) == (1050, 310, 2)
+
+
+def test_style_examples_are_remembered(local_env):
+    from apps.axion_local.preferences import load_preferences
+
+    at = start()
+    at.text_area(key="ex_Mizahi Haber Dili").set_value("Örnek mizahi haber").run()
+    assert load_preferences()["news_examples"]["Mizahi Haber Dili"] == "Örnek mizahi haber"
+    fresh = start()  # yeni oturum
+    assert fresh.session_state["examples"]["Mizahi Haber Dili"] == "Örnek mizahi haber"
+
+
 def test_stale_audio_blocks_saving(local_env):
     at = with_generated_news(start(), tts="Düzenlenmiş TTS", audio_text="Eski TTS")
     assert any("ses üretildikten sonra değişti" in w.value for w in at.warning)
@@ -181,6 +207,12 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert not at.segmented_control  # kadraj seçimi yok: hep tam dolu
     button(at, "🎬 Videoyu oluştur").click().run()
     assert not at.exception
+    # Üretim arka planda: sayfa beklemez (tablet kapansa da sürer), bitince video görünür.
+    from apps.video_studio import jobs as video_jobs
+
+    video_jobs.wait(project)
+    at.run()
+    assert not at.exception
     assert rendered and all(view is not None for view in rendered[0])
     assert (project.folder / store.ROUGH_CUT_FILENAME).exists()
     assert any(b.label == "Videoyu yeniden oluştur" for b in at.button)
@@ -189,6 +221,28 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert (project.folder / store.FINAL_VIDEO_FILENAME).exists()
     assert any(b.label == "⬇️ Son videoyu indir" for b in at.get("download_button"))
     assert any(b.label == "🎨 Tasarım Stüdyosu'nda düzenle →" for b in at.button)
+
+
+def test_video_render_failure_is_shown_and_can_be_retried(local_env, monkeypatch):
+    from apps.video_studio import jobs as video_jobs
+
+    def broken(edit_project, media_library, output):
+        raise RuntimeError("FFmpeg videoyu oluşturamadı.\n\nh264 hatası")
+
+    monkeypatch.setattr("apps.video_studio.modules.render.render_rough_cut", broken)
+    project = saved_project(media_library([{
+        "shot_id": "video_001_shot_001", "asset_id": "video_001", "shot_number": 1,
+        "start_seconds": 0.0, "end_seconds": 30.0, "duration_seconds": 30.0,
+        "visual": {"description": "Kaza", "visual_type": "event", "editorial_role": "establishing"},
+    }]))
+    at = open_page(project)
+    button(at, "🎬 Videoyu oluştur").click().run()
+    video_jobs.wait(project)
+    at.run()
+    assert not at.exception
+    assert any("Video oluşturulamadı" in e.value for e in at.error)
+    assert any("h264 hatası" in c.value for c in at.code)
+    assert any(b.label == "🎬 Videoyu oluştur" and not b.disabled for b in at.button)  # yeniden denenebilir
 
 def test_outdated_media_analysis_asks_for_reanalysis(local_env):
     project = saved_project({"assets": [{"asset_type": "video", "source": {"filename": "dha.mp4"}, "shots": []}]})
@@ -390,7 +444,7 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
 
 
 def test_fresh_start_selects_nothing_and_hides_previous_days(local_env):
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     old = store.save_news_project(
         NewsPackage(headline_1="DÜNKÜ HABER", headline_2="B", caption="c", tts_text="t"), b"mp3",
@@ -446,7 +500,20 @@ class FakeBrowser:
         return self.screen_value
 
     def download_rows(self):
-        return [{"name": "kaza.mp4", "state": "bitti", "mb": 12.5, "error": None, "seconds": 4}]
+        return [{"name": "kaza.mp4", "state": "bitti", "mb": 12.5, "error": None, "seconds": 4, "video": True}]
+
+    def login_state(self):
+        return {"offer": None, "filled": None}
+
+    def fill_login(self):
+        self.calls.append(("fill_login", None))
+        return False
+
+    def answer_login_offer(self, save):
+        self.calls.append(("answer", save))
+
+    def downloaded(self, name):
+        return None
 
 
 def test_browser_page_explains_missing_brave(local_env, monkeypatch):
@@ -457,12 +524,27 @@ def test_browser_page_explains_missing_brave(local_env, monkeypatch):
     assert any("Brave" in e.value for e in at.error)
 
 
+def test_browser_page_lists_and_deletes_saved_logins(local_env, monkeypatch):
+    from apps.remote_browser.logins import FILENAME, Logins
+
+    logins = Logins(store.data_dir() / FILENAME)
+    logins.save("panel.dha.com.tr", "editor", "gizli")
+    monkeypatch.setattr("apps.remote_browser.service.find_browser", lambda configured=None: Path("/brave"))
+    monkeypatch.setattr("apps.remote_browser.service.shared", lambda executable, profile, inbox, logins=None: FakeBrowser())
+    at = start()
+    at.switch_page(BROWSER_PAGE).run()
+    assert not at.exception
+    assert any("panel.dha.com.tr" in m.value and "gizli" not in m.value for m in at.sidebar.markdown)
+    at.sidebar.button(key="giris_sil_panel.dha.com.tr").click().run()
+    assert logins.sites() == []
+
+
 def test_browser_page_opens_home_page_and_remembers_it(local_env, monkeypatch):
     from apps.axion_local.preferences import load_preferences
 
     fake = FakeBrowser()
     monkeypatch.setattr("apps.remote_browser.service.find_browser", lambda configured=None: Path("/brave"))
-    monkeypatch.setattr("apps.remote_browser.service.shared", lambda executable, profile, inbox: fake)
+    monkeypatch.setattr("apps.remote_browser.service.shared", lambda executable, profile, inbox, logins=None: fake)
     at = start()
     at.switch_page(BROWSER_PAGE).run()
     assert not at.exception
@@ -488,9 +570,46 @@ def test_browser_events_are_validated_before_reaching_browser():
     assert apply_events(fake, events, "gizli", "dha.com.tr") == 6
     assert fake.calls == [
         ("click", (1023.0, 0.0)), ("wheel", (10.0, 10.0, 6000.0)), ("type", "ş" * 2000), ("key", "Enter"),
-        ("type", "gizli"), ("goto", "dha.com.tr"),
-    ]
+        ("fill_login", None), ("type", "gizli"), ("goto", "dha.com.tr"),
+    ]  # 🔑: önce kayıtlı giriş, yoksa DHA_SIFRE
     fake.calls.clear()
-    apply_events(fake, [{"t": "password"}], None, "x")
-    assert fake.calls == []  # şifre kayıtlı değilse hiçbir şey yazılmaz
+    apply_events(fake, [{"t": "password"}, {"t": "save_login"}, {"t": "dismiss_login"}], None, "x")
+    assert fake.calls == [("fill_login", None), ("answer", True), ("answer", False)]  # şifre yoksa hiçbir şey yazılmaz
     assert apply_events(fake, [{"t": "click", "v": [1, 1]}] * 500, None, "x") == 60  # olay yağmuru sınırlı
+
+
+def test_video_studio_preselects_video_sent_from_browser_page(local_env):
+    project = saved_project(media_library())
+    inbox = local_env / "Downloads"
+    at = start()
+    at.session_state["selected_media"] = [inbox / "dha_kaza.mp4", inbox / "silinmis.mp4"]
+    at.switch_page(VIDEO_PAGE).run()
+    at.selectbox(key="video_project_id").select(project.id).run()
+    assert not at.exception
+    assert at.multiselect(key="selected_media").value == [inbox / "dha_kaza.mp4"]
+
+
+def test_design_job_cancel_stops_running_render(local_env, monkeypatch):
+    import threading
+
+    from apps.design_studio import jobs
+    from apps.design_studio.pipeline import load_project_design
+    from apps.design_studio.render import Cancelled
+
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    started = threading.Event()
+
+    def slow_render(rough, design, background, fps, seconds, output, cancel=None):
+        started.set()
+        while not cancel.wait(0.01):
+            pass
+        raise Cancelled
+
+    monkeypatch.setattr("apps.design_studio.jobs.render_final", slow_render)
+    jobs.start(project, load_project_design(project, 20.0))
+    assert started.wait(5)
+    jobs.cancel(project)  # Video Stüdyosu kurguyu yeniden üretirken
+    job = jobs.get(project)
+    assert not job.running and job.cancelled and not job.error
+    assert not (project.folder / store.FINAL_VIDEO_FILENAME).exists()

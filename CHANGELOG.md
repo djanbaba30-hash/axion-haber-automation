@@ -1,3 +1,47 @@
+# v3.0.0 — 2.x'in toparlanması: repo incelemesi, DHA giriş kaydı, arka planda video — 2026-09-25
+
+Editörün isteği: 3. sürüme geçmeden tüm repoyu kontrol et, optimize et, toparla, hayat kalitesini artır; DHA girişini
+bir kez kaydedip otomatik doldur; Faz 4 ROADMAP'te ihtiyaç halinde dönülecek biçimde kalsın. Bulgular ve kararlar:
+`reviews/claude-v3.md`.
+
+3.0 itibarıyla: Faz 0–3 ve 5 tamam, Faz 6'nın temel akışı (tabletten DHA → video → son video) hazır, Faz 4 ertelendi.
+
+## Added
+- **DHA girişi bir kez kaydedilir:** Tarayıcı sayfasında giriş formu gönderilirken "girişi kaydedilsin mi?" sorulur;
+  kaydedilince sonraki girişlerde kullanıcı adı ve şifre kutuları kendiliğinden dolar (Giriş'e dokunmak yeter).
+  **🔑 Girişi doldur** düğmesi, kenar çubuğunda **🔑 Kayıtlı girişler** (Sil). Şifre Windows'ta DPAPI ile şifreli
+  (`data/tarayici_girisler.json`), tablete gönderilmez. Şifre değişirse yeniden sorar; "Hayır" denen sorulmaz.
+- **🎬 Video Stüdyosu'nda kullan:** Tarayıcıda inen video tek dokunuşla Video Stüdyosu'nda seçili gelir.
+- **Video arka planda üretilir:** "Videoyu oluştur" sayfayı kilitlemez; kurgu ve son video bilgisayarda sürer (geçen
+  süre görünür), tablet kapansa da biter. Aynı haberin Tasarım Stüdyosu'nda süren üretimi önce durdurulur.
+- Üslup örnekleri hatırlanır (`data/ayarlar.json`).
+
+## Fixed
+- Haber Stüdyosu'nda başlıklar değişip proje yeniden kaydedilince Tasarım Stüdyosu ve son video eski başlıkları
+  kullanıyordu. Artık yeni başlıklar gelir; yalnız Tasarım Stüdyosu'nda yapılan başlık düzenlemeleri (satır kırma,
+  sansür) haber değişmedikçe korunur.
+- Haber yeniden kaydedilince eski son video da silinir (eski başlık/sesle üretilmişti).
+- "Başlıkları yeniden üret" çağrısının token kullanımı toplama eklenmiyordu.
+- Video Stüdyosu'nda "Son videoyu indir" videoyu her etkileşimde belleğe okuyordu; artık yalnız tıklanınca.
+- "Axion'u kapat" ve `guncelle.bat` Tarayıcı sayfasının görünmez Brave'ini arkada bırakabiliyordu; artık kapatılır.
+  Profil kilitli kalmışsa tarayıcı başlarken artık süreci kapatıp yeniden dener (normal Brave'e dokunulmaz).
+
+## Changed
+- `news_studio/ai/clients.py`: OpenAI/Claude çağrıları tek yerde (davranış aynı; çağrı biçimi testleri eklendi).
+- `news_studio/page.py` okunur biçimde yeniden yazıldı (yıldızlı import ve sıkıştırılmış satırlar kaldırıldı).
+- Kesit adımında video süresi dosya başına bir kez ölçülür (FFprobe her etkileşimde çalışmaz).
+- Streamlit'in eskiyen `use_container_width` parametresi `width="stretch"` oldu. Ölü kod ve kullanılmayan importlar
+  temizlendi.
+- `🔑 Şifre` düğmesi `🔑 Girişi doldur` oldu (`DHA_SIFRE` eski yol olarak çalışmaya devam eder).
+- README, KURULUM, ROADMAP (Faz 4 "ertelendi; ihtiyaç halinde geri dönülecek", planıyla), AGENTS güncellendi.
+
+## Verification
+- `make test` geçti. Gerçek Chromium ile giriş kaydı/otomatik doldurma testleri (6 kez üst üste kararlı), AppTest ile
+  arka plan video işi (başarı, hata + yeniden deneme), tasarım işi iptali, başlık eşitleme, yapay zekâ çağrı biçimi.
+- Headless Chromium'da tablet boyutunda: giriş → kaydet → yeniden girişte kutuların dolması → indirme → "Video
+  Stüdyosu'nda kullan".
+- **Windows'ta, gerçek DHA panelinde ve AMD kodlayıcıyla denenmedi** (deneme listesi `reviews/claude-v3.md`).
+
 # v2.10.0 — Tarayıcı: tabletten DHA'ya girip videoyu doğrudan bilgisayara indirme — 2026-09-25
 
 Editörün durumu: dükkân başka ilçede, interneti yavaş (45/13 Mbps). Tablete indirip yüklemek olmaz; bilgisayarı uzak

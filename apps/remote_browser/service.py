@@ -7,6 +7,9 @@ dokunulmaz; DHA'ya bu profilde bir kez giriş yapılır, oturum orada kalır. T�
 (tek editör). Uzun süre kullanılmazsa kapanır, sayfa yeniden açılınca kendiliğinden başlar.
 
 Playwright'ın async API'si kendi iş parçacığındaki olay döngüsünde çalışır: indirmeler sürerken ekran akmaya devam eder.
+
+Girişler (logins.py): editör bir giriş formunu gönderirken (Giriş düğmesi / Enter) kullanıcı adı ve şifre okunur,
+"kaydedilsin mi?" sorulur; kayıtlı sitenin giriş sayfası açılınca kutular kendiliğinden doldurulur.
 """
 
 from __future__ import annotations
@@ -21,6 +24,10 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from apps.axion_local.store import MEDIA_EXTENSIONS
+
+from .logins import Logins, site_of
 
 VIEWPORT = (1024, 640)  # tablet ekranına yakın oran; DHA paneli masaüstü düzeninde kalır
 JPEG_QUALITY = 60
@@ -38,6 +45,46 @@ _UNIX_BROWSERS = ("brave-browser", "brave", "google-chrome", "chromium", "chromi
 KEYS = {"Enter", "Backspace", "Tab", "Escape", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Delete", "Home", "End",
         "PageUp", "PageDown"}
 
+# Giriş formu: görünür şifre kutusu ve ondan önceki son yazı kutusu (kullanıcı adı). `point` verilirse (tıklama)
+# yalnızca bir gönder düğmesine/bağlantıya tıklanıyorsa okunur (şifre yazılıyken başka yere dokunmak kaydı açmasın).
+_LOGIN_FIELDS = """
+const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)
+  && getComputedStyle(el).visibility !== 'hidden' && !el.disabled && !el.readOnly;
+const loginFields = () => {
+  const pw = [...document.querySelectorAll('input[type=password]')].find(visible);
+  if (!pw) return null;
+  const scope = pw.form || document;
+  let user = null;
+  for (const el of scope.querySelectorAll('input')) {
+    const type = (el.getAttribute('type') || 'text').toLowerCase();
+    if (el === pw) break;
+    if (['text', 'email', 'tel'].includes(type) && visible(el)) user = el;
+  }
+  return { pw, user };
+};
+"""
+READ_LOGIN = "(point) => {" + _LOGIN_FIELDS + """
+  const f = loginFields();
+  if (!f || !f.pw.value) return null;
+  if (point) {
+    const target = document.elementFromPoint(point[0], point[1]);
+    if (!target || !target.closest('button, input[type=submit], input[type=image], a, [role=button]')) return null;
+  }
+  return { username: f.user ? f.user.value : '', password: f.pw.value };
+}"""
+FILL_LOGIN = "([username, password]) => {" + _LOGIN_FIELDS + """
+  const f = loginFields();
+  if (!f || f.pw.value) return false;
+  const set = (el, value) => {  // React/Vue gibi sayfalar da görsün: gerçek yazma olayları
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  if (f.user && !f.user.value && username) set(f.user, username);
+  set(f.pw, password);
+  return true;
+}"""
+
 
 def find_browser(configured: str | None = None) -> Path | None:
     """Sürülecek tarayıcı: ayar (TARAYICI_YOLU) → AXION_BROWSER → Brave → Chrome. Edge kasıtlı yok (editör kararı)."""
@@ -53,6 +100,26 @@ def find_browser(configured: str | None = None) -> Path | None:
         if found:
             return Path(found)
     return None
+
+
+def kill_orphans(profile: Path) -> None:
+    """Axion'un profiliyle çalışan artık tarayıcı süreçlerini kapatır (normal Brave'e dokunmaz: profil yolu ayırt eder)."""
+    import subprocess
+
+    marker = str(profile.resolve())
+    if sys.platform == "win32":
+        escaped = marker.replace("'", "''")
+        script = ("Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('"
+                  + escaped + "') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+        command = ["powershell", "-NoProfile", "-Command", script]
+    else:
+        command = ["pkill", "-f", "--", f"--user-data-dir={marker}"]
+    try:
+        subprocess.run(command, capture_output=True, timeout=20, check=False,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        pass
+    time.sleep(1.0)
 
 
 def normalize_url(text: str) -> str:
@@ -94,7 +161,8 @@ class Download:
     def summary(self) -> dict[str, Any]:
         size = self.path.stat().st_size if self.finished and self.path.exists() else 0
         return {"name": self.path.name, "state": self.state, "mb": round(size / 1e6, 1), "error": self.error,
-                "seconds": round((self.finished or time.monotonic()) - self.started)}
+                "seconds": round((self.finished or time.monotonic()) - self.started),
+                "video": self.path.suffix.lower() in MEDIA_EXTENSIONS}
 
 
 @dataclass
@@ -106,8 +174,12 @@ class Screen:
 
 
 class RemoteBrowser:
-    def __init__(self, executable: Path, profile: Path, inbox: Path) -> None:
+    def __init__(self, executable: Path, profile: Path, inbox: Path, logins: Logins | None = None) -> None:
         self.executable, self.profile, self.inbox = executable, profile, inbox
+        self.logins = logins
+        self.login_offer: dict[str, str] | None = None  # {site, username, password}: "kaydedilsin mi?"
+        self.filled_site: str | None = None              # az önce kutuları doldurulan site (ekranda not)
+        self._declined: set[tuple[str, str, str]] = set()
         self.downloads: list[Download] = []
         self.last_used = time.monotonic()
         self.closed = False
@@ -134,11 +206,14 @@ class RemoteBrowser:
 
         self.profile.mkdir(parents=True, exist_ok=True)
         self._playwright = await async_playwright().start()
-        self._context = await self._playwright.chromium.launch_persistent_context(
-            str(self.profile), executable_path=str(self.executable), headless=True,
-            viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]}, accept_downloads=True, locale="tr-TR",
-            args=["--no-first-run", "--no-default-browser-check"],
-        )
+        options = dict(executable_path=str(self.executable), headless=True, accept_downloads=True, locale="tr-TR",
+                       viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]},
+                       args=["--no-first-run", "--no-default-browser-check"])
+        try:
+            self._context = await self._playwright.chromium.launch_persistent_context(str(self.profile), **options)
+        except Exception:  # noqa: BLE001 — çoğunlukla: Axion zorla kapatılmış, eski Brave profili kilitli tutuyor
+            await asyncio.to_thread(kill_orphans, self.profile)
+            self._context = await self._playwright.chromium.launch_persistent_context(str(self.profile), **options)
         self._context.on("page", self._on_new_page)
         for page in self._context.pages:
             self._watch(page)
@@ -147,7 +222,13 @@ class RemoteBrowser:
 
     def _watch(self, page) -> None:
         page.on("download", lambda download: self._loop.create_task(self._save(download)))
-        page.on("close", lambda closed: self._on_close(closed))
+        page.on("close", self._on_close)
+        page.on("load", lambda loaded: self._loop.create_task(self._autofill(loaded)))
+        page.on("framenavigated", lambda frame: self._on_navigated(page, frame))
+
+    def _on_navigated(self, page, frame) -> None:
+        if frame is page.main_frame and page is self._page:
+            self.filled_site = None  # yeni sayfa: "dolduruldu" notu yalnız dolduran sayfada görünür
 
     def _on_new_page(self, page) -> None:  # yeni sekme / açılır pencere öne gelir
         self._watch(page)
@@ -192,6 +273,62 @@ class RemoteBrowser:
             except Exception:  # noqa: BLE001
                 pass
 
+    # ------------------------------------------------------------------ girişler
+    async def _autofill(self, page) -> bool:
+        """Kayıtlı sitenin giriş kutularını doldurur (şifre kutusu boşsa). Doldurduysa True."""
+        site = site_of(page.url)
+        saved = self.logins.get(site) if self.logins and site else None
+        if not saved:
+            return False
+        for frame in page.frames:
+            try:
+                if await frame.evaluate(FILL_LOGIN, list(saved)):
+                    self.filled_site = site
+                    return True
+            except Exception:  # noqa: BLE001 — çerçeve kapandı / gezinme sürüyor
+                continue
+        return False
+
+    async def _read_login(self, page, point: tuple[float, float] | None) -> None:
+        """Form gönderilirken kullanıcı adı + şifreyi okur; kayıtlıdan farklıysa "kaydedilsin mi?" sorulacak."""
+        site = site_of(page.url)
+        if not self.logins or not site:
+            return
+        try:
+            found = await page.evaluate(READ_LOGIN, list(point) if point else None)
+        except Exception:  # noqa: BLE001
+            return
+        if not found or not found.get("password"):
+            return
+        entry = (site, str(found.get("username", "")), str(found["password"]))
+        if self.logins.get(site) == entry[1:] or entry in self._declined:
+            return
+        self.login_offer = {"site": entry[0], "username": entry[1], "password": entry[2]}
+
+    def login_state(self) -> dict[str, Any]:
+        """Tablete giden giriş bilgisi (şifre asla): kayıt teklifi ve az önce doldurulan site."""
+        offer = self.login_offer
+        return {"offer": {"site": offer["site"], "username": offer["username"]} if offer else None,
+                "filled": self.filled_site}
+
+    def answer_login_offer(self, save: bool) -> None:
+        offer, self.login_offer = self.login_offer, None
+        if not offer:
+            return
+        if save and self.logins:
+            self.logins.save(offer["site"], offer["username"], offer["password"])
+        else:
+            self._declined.add((offer["site"], offer["username"], offer["password"]))
+
+    def fill_login(self) -> bool:
+        """"🔑 Girişi doldur" düğmesi: kayıtlı girişi şimdi yazar (sayfa kendiliğinden doldurmadıysa)."""
+        self.last_used = time.monotonic()
+
+        async def fill() -> bool:
+            return await self._autofill(await self._active())
+
+        return bool(self._call(fill()))
+
     async def _active(self):
         if self._page is None or self._page.is_closed():
             self._page = await self._context.new_page()
@@ -204,6 +341,7 @@ class RemoteBrowser:
             if action == "goto" and value:
                 await page.goto(normalize_url(str(value)), wait_until="commit", timeout=20000)
             elif action == "click":
+                await self._read_login(page, (float(value[0]), float(value[1])))
                 await page.mouse.click(float(value[0]), float(value[1]))
             elif action == "wheel":
                 await page.mouse.move(float(value[0]), float(value[1]))
@@ -211,6 +349,8 @@ class RemoteBrowser:
             elif action == "type" and value:
                 await page.keyboard.type(str(value))
             elif action == "key" and value in KEYS:
+                if value == "Enter":
+                    await self._read_login(page, None)
                 await page.keyboard.press(str(value))
             elif action == "back":
                 await page.go_back(wait_until="commit", timeout=10000)
@@ -249,6 +389,13 @@ class RemoteBrowser:
     def download_rows(self, limit: int = 6) -> list[dict[str, Any]]:
         return [d.summary() for d in self.downloads[-limit:]][::-1]
 
+    def downloaded(self, name: str) -> Path | None:
+        """Bitmiş bir indirmenin yolu (ekrandaki adıyla)."""
+        for item in reversed(self.downloads):
+            if item.path.name == name and item.state == "bitti" and item.path.exists():
+                return item.path
+        return None
+
     def close(self) -> None:
         if not self.closed and self._loop.is_running():
             try:
@@ -263,12 +410,21 @@ _SHARED: RemoteBrowser | None = None
 _LOCK = threading.Lock()
 
 
-def shared(executable: Path, profile: Path, inbox: Path) -> RemoteBrowser:
+def shared(executable: Path, profile: Path, inbox: Path, logins: Logins | None = None) -> RemoteBrowser:
     """Uygulamadaki tek tarayıcı; kapanmışsa (boşta kaldı, çöktü) yeniden başlatılır."""
     global _SHARED
     with _LOCK:
         if _SHARED is None or _SHARED.closed or _SHARED.executable != executable:
             if _SHARED is not None:
                 _SHARED.close()
-            _SHARED = RemoteBrowser(executable, profile, inbox)
+            _SHARED = RemoteBrowser(executable, profile, inbox, logins)
         return _SHARED
+
+
+def close_shared() -> None:
+    """Axion kapanırken (os._exit öncesi): tarayıcıyı düzgün kapat, arkada Brave süreci kalmasın."""
+    global _SHARED
+    with _LOCK:
+        if _SHARED is not None:
+            _SHARED.close()
+            _SHARED = None

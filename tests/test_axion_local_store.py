@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
@@ -93,8 +92,10 @@ def test_updating_project_keeps_media_and_drops_stale_edit_project(tmp_path):
     project = store.get_news_project(folder.name, base_dir=tmp_path)
     store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, {"assets": []})
     store.save_project_json(project, store.EDIT_PROJECT_FILENAME, {"old": True})
+    (folder / store.FINAL_VIDEO_FILENAME).write_bytes(b"eski son video")
 
     same = store.save_news_project(package("YENİ BAŞLIK"), b"v2", folder=folder)
+    assert not (folder / store.FINAL_VIDEO_FILENAME).exists()  # eski başlık/sesle üretilmişti
     assert same == folder
     project = store.get_news_project(folder.name, base_dir=tmp_path)
     loaded, audio = store.load_news_project(project)

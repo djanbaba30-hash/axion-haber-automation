@@ -70,6 +70,13 @@ function setup(root, S) {
     send(b.dataset.k ? { t: 'key', v: b.dataset.k } : { t: b.dataset.t });
   });
   root.querySelector('.tabs').addEventListener('click', (e) => { if (e.target.closest('button')) send({ t: 'close_tab' }); });
+  // Giriş kaydı / indirilen videoyu kullanma düğmeleri (içerikleri her güncellemede yeniden çizilir).
+  for (const box of [$('.login'), $('.downloads')]) {
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-t]'); if (b) send(b.dataset.v ? { t: b.dataset.t, v: b.dataset.v } : { t: b.dataset.t });
+    });
+  }
+  const esc = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   S.apply = () => {
     const d = S.data;
@@ -82,11 +89,21 @@ function setup(root, S) {
     const tabs = $('.tabs');
     tabs.innerHTML = d.tabs > 1 ? `${d.tabs} sekme <button type="button" title="Bu sekmeyi kapat">✕</button>` : '';
     $('.pw').style.display = d.password ? '' : 'none';
-    $('.downloads').innerHTML = (d.downloads || []).map((x) => {
-      const label = x.state === 'bitti' ? `✅ ${x.name} — ${x.mb} MB, bilgisayara indi (Video Stüdyosu'nda listede)`
+    const login = d.login || {}, box = $('.login');
+    const loginHtml = login.offer
+      ? `<span>🔑 <b>${esc(login.offer.site)}</b> girişi kaydedilsin mi? (${esc(login.offer.username) || 'kullanıcı adı yok'}) Sonraki girişlerde kutular kendiliğinden dolar.</span>
+         <button type="button" data-t="save_login">Kaydet</button><button type="button" data-t="dismiss_login">Hayır</button>`
+      : login.filled ? `<span>🔑 Giriş bilgileri dolduruldu. Sayfadaki <b>Giriş</b> düğmesine dokun.</span>` : '';
+    if (box.dataset.html !== loginHtml) { box.innerHTML = loginHtml; box.dataset.html = loginHtml; }
+    box.classList.toggle('filled', !login.offer && !!login.filled);
+    const rows = (d.downloads || []).map((x) => {
+      const label = x.state === 'bitti' ? `✅ ${x.name} — ${x.mb} MB, bilgisayara indi`
         : x.state === 'hata' ? `⚠️ ${x.name} — inmedi: ${x.error || ''}` : `⏳ ${x.name} — iniyor… ${x.seconds} sn`;
-      return `<div class="${x.state}">${label.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</div>`;
+      const use = x.state === 'bitti' && x.video ? `<button type="button" data-t="use_download" data-v="${esc(x.name)}">🎬 Video Stüdyosu'nda kullan</button>` : '';
+      return `<div class="${x.state}"><span>${esc(label)}</span>${use}</div>`;
     }).join('');
+    const dl = $('.downloads');
+    if (dl.dataset.html !== rows) { dl.innerHTML = rows; dl.dataset.html = rows; }
     if (d.applied === `${S.born}-${S.seq}` || !S.seq) wait.classList.remove('on');
   };
 }

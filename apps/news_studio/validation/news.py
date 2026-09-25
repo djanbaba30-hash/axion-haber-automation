@@ -143,7 +143,5 @@ _CENSOR_PATTERNS = [
 
 
 def find_censorship_warnings(text: str) -> list[str]:
-    found=[]
-    for pattern, replacement in _CENSOR_PATTERNS:
-        if pattern.search(text): found.append(f"Sansür kontrolü: '{pattern.pattern}' görüldü; model çıktısı incelenmeli.")
-    return found
+    return [f"Sansür kontrolü: '{pattern.pattern}' görüldü; model çıktısı incelenmeli."
+            for pattern, _ in _CENSOR_PATTERNS if pattern.search(text)]

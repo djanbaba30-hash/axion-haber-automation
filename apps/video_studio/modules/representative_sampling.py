@@ -205,7 +205,7 @@ def validate_frame_count(
 
         raise ValueError(
             "Frame sayısı geçerli bir sayı olmalıdır."
-        )
+        ) from None
 
     if not (
         MIN_FRAME_COUNT

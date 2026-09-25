@@ -13,7 +13,6 @@ from shared.edit_models import (
     TrackKind,
 )
 from shared.media_models import (
-    AnalysisFrame,
     AnalysisWindow,
     DisplayGeometry,
     EditorialRole,

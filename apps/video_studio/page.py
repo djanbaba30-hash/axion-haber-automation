@@ -5,6 +5,7 @@ Adımlar sırayla açılır; tamamlanan adım tek satırlık özete daralır.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -23,14 +24,13 @@ from apps.axion_local.store import (
     load_project_json,
     save_project_json,
 )
-from apps.design_studio.pipeline import render_project_final
+from apps.video_studio import jobs as video_jobs
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_library import detect_media_type
 from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
 from apps.video_studio.modules.news_package import news_package_to_state
-from apps.video_studio.modules.render import render_rough_cut
 from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut
 from apps.video_studio.modules.soundbites import (
     PLACEMENT_LABELS,
@@ -53,10 +53,35 @@ UPLOAD_TYPES = ["mp4", "mov", "mkv", "avi", "webm", "m4v", "jpg", "jpeg", "png",
 DESIGN_PAGE = "apps/design_studio/page.py"
 
 ss = st.session_state
+page_started = time.monotonic()
 
 st.set_page_config(page_title="Video Stüdyosu · Axion", page_icon="🎬", layout="wide")
 require_secrets("OPENAI_API_KEY")
 st.title("Video Stüdyosu")
+
+
+@st.cache_data(show_spinner=False, max_entries=32)
+def video_duration(path: str, mtime: float) -> float:
+    """Kesit kaydırıcısının uzunluğu; FFprobe her etkileşimde değil, dosya başına bir kez çalışır."""
+    return float(probe_video(Path(path)).get("duration_seconds") or 0)
+
+
+def render_status(project: NewsProject) -> None:
+    """Arka planda süren video üretimi: saniyede bir yenilenen durum; bitince sayfa videoyu göstermek için yenilenir."""
+    job = video_jobs.get(project)
+
+    @st.fragment(run_every=1.0 if job and job.running else None)
+    def status() -> None:
+        job = video_jobs.get(project)
+        if job and job.running:
+            st.info(f"⏳ {video_jobs.STAGES[job.stage]} oluşturuluyor… {job.elapsed:.0f} sn. Bu bilgisayarda sürer: "
+                    "sayfadan ayrılabilir ya da tableti kapatabilirsin, bitince burada görünür.")
+        elif job and job.finished and not job.seen:
+            job.seen = True
+            if job.finished > page_started:
+                st.rerun(scope="app")  # iş bu sayfa açıkken bitti: video ve İndir görünsün
+
+    status()
 
 
 def mmss(seconds: float) -> str:
@@ -156,6 +181,9 @@ with st.expander(
         media_files = st.file_uploader("Video ve görseller", type=UPLOAD_TYPES, accept_multiple_files=True, label_visibility="collapsed") or []
     else:
         local_files = list_inbox_media(Path(folder))
+        # Tarayıcı sayfasından "Video Stüdyosu'nda kullan" ile gelen seçim: listede olmayan (silinmiş, başka klasör) atlanır.
+        if ss.get("selected_media"):
+            ss["selected_media"] = [path for path in ss["selected_media"] if path in local_files]
         selected = st.multiselect(
             "Dosyalar",
             local_files,
@@ -168,7 +196,7 @@ with st.expander(
 
     if media_files:
         label = "Görüntüleri yeniden analiz et" if media_library else "Görüntüleri analiz et"
-        if st.button(label, type="primary", use_container_width=True):
+        if st.button(label, type="primary", width="stretch"):
             try:
                 with st.status("Görüntüler analiz ediliyor...", expanded=True) as status:
                     media_library, usage = prepare_media_library(
@@ -221,7 +249,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
         source = kesit_sources[source_key]
         preview = preview_path(source, project.folder)
         if not preview.exists():
-            if st.button("▶️ Videoyu izle ve kesit seç", use_container_width=True):
+            if st.button("▶️ Videoyu izle ve kesit seç", width="stretch"):
                 ss.kesit_open = True
                 try:
                     with st.spinner("Önizleme hazırlanıyor (bir kez)..."):
@@ -232,7 +260,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                     st.rerun()
         else:
             ss.kesit_open = True
-            duration = float(probe_video(source).get("duration_seconds") or 0)
+            duration = video_duration(str(source), source.stat().st_mtime)
             if ss.get("kesit_source") != source_key or ss.get("kesit_range", (0, 0))[1] > duration:
                 ss.kesit_source = source_key
                 ss.kesit_range = (0.0, min(5.0, duration))
@@ -245,7 +273,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                 "Nereye", list(PLACEMENT_LABELS), key="kesit_placement", default="before",
                 format_func=PLACEMENT_LABELS.get,
             )
-            if add_col.button("➕ Kesiti ekle", type="primary", use_container_width=True, disabled=end_s - start_s < 0.5):
+            if add_col.button("➕ Kesiti ekle", type="primary", width="stretch", disabled=end_s - start_s < 0.5):
                 bite = Soundbite(
                     path=str(source), filename=source.name, start_s=round(start_s, 2), end_s=round(end_s, 2),
                     placement=placement or "before",
@@ -259,7 +287,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
             f"**{PLACEMENT_LABELS[bite.placement]}:** {bite.filename} · {mmss(bite.start_s)}–{mmss(bite.end_s)} "
             f"({bite.duration_s:.1f} sn)"
         )
-        if remove_col.button("Kaldır", key=f"kesit_kaldir_{index}", use_container_width=True):
+        if remove_col.button("Kaldır", key=f"kesit_kaldir_{index}", width="stretch"):
             save_soundbites(project, [b for i, b in enumerate(soundbites) if i != index])
             st.rerun()
 
@@ -304,41 +332,37 @@ with st.expander("4. Video", expanded=True):
         st.caption("Hazırlık: " + "  ·  ".join(f"{'✅' if ok else '⬜'} {label}" for label, ok in checks))
     else:
         output = project.folder / ROUGH_CUT_FILENAME
+        render_status(project)
+        job = video_jobs.get(project)
+        busy = bool(job and job.running)
         label = "Videoyu yeniden oluştur" if output.exists() else "🎬 Videoyu oluştur"
-        if st.button(label, type="primary", use_container_width=True):
+        if st.button("⏳ Video oluşturuluyor…" if busy else label, type="primary", width="stretch", disabled=busy):
             try:
                 # Plan güncel kurallarla yeniden kurulur (API yok): kural güncellemeleri eski projelere de uygulanır.
                 edit_project = plan_rough_cut(edit_project, media_library, soundbites=soundbites)
-                with st.spinner("Video oluşturuluyor... (birkaç dakika sürebilir)"):
-                    encoder = render_rough_cut(edit_project, media_library, output)
-            except (RuntimeError, ValueError, FileNotFoundError) as error:
-                st.error("Video oluşturulamadı.")
-                st.code(str(error))
+            except ValueError as error:
+                st.error(f"Kurgu planı oluşturulamadı: {error}")
             else:
                 ss.edit_project = edit_project
-                ss.render_encoder = encoder
                 save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
-                # Son video (1080x1920, Axion şablonu) hemen standart ayarlarla (ve varsa editörün tasarımıyla) hazırlanır.
-                try:
-                    with st.spinner("Axion şablonu uygulanıyor..."):
-                        render_project_final(project)
-                except (RuntimeError, ValueError, FileNotFoundError) as error:
-                    ss.final_error = str(error)
-                else:
-                    ss.pop("final_error", None)
+                # Kurgu ve ardından son video (1080x1920, Axion şablonu; varsa editörün tasarımıyla) arka planda üretilir.
+                video_jobs.start(project, edit_project, media_library)
                 st.rerun()
         final = project.folder / FINAL_VIDEO_FILENAME
-        if ss.get("final_error"):
+        if job and job.finished and job.error:
+            st.error("Video oluşturulamadı.")
+            st.code(job.error[-1500:])
+        elif job and job.finished and job.final_error:
             st.warning("Kurgu hazır ama şablon uygulanamadı; Tasarım Stüdyosu'nda yeniden dene.")
-        if final.exists() or output.exists():
+        if not busy and (final.exists() or output.exists()):
             shown = final if final.exists() else output
             st.video(str(shown))
             download_col, design_col = st.columns(2)
-            download_col.download_button(
-                "⬇️ Son videoyu indir" if final.exists() else "MP4'ü indir", shown.read_bytes(), file_name=f"{project.id}.mp4",
-                mime="video/mp4", use_container_width=True,
+            download_col.download_button(  # dosya yalnızca tıklanınca okunur (her etkileşimde 10–25 MB değil)
+                "⬇️ Son videoyu indir" if final.exists() else "MP4'ü indir", lambda: shown.read_bytes(),
+                file_name=f"{project.id}.mp4", mime="video/mp4", width="stretch", on_click="ignore",
             )
-            if design_col.button("🎨 Tasarım Stüdyosu'nda düzenle →", use_container_width=True):
+            if design_col.button("🎨 Tasarım Stüdyosu'nda düzenle →", width="stretch"):
                 st.switch_page(DESIGN_PAGE)
         else:
             st.caption(
@@ -367,10 +391,11 @@ if media_library:
             st.caption(f"Proje klasörü: {project.folder}")
         rows = shot_rows(media_library)
         if rows:
-            st.dataframe(rows, use_container_width=True, hide_index=True)
+            st.dataframe(rows, width="stretch", hide_index=True)
         st.json(media_library, expanded=False)
         if edit_project:
-            if ss.get("render_encoder"):
-                st.caption(f"Son video kodlayıcısı: {ss.render_encoder}")
-            st.dataframe(clip_rows(edit_project), use_container_width=True, hide_index=True)
+            job = video_jobs.get(project) if project else None
+            if job and job.encoder:
+                st.caption(f"Kurgu kodlayıcısı: {job.encoder} · {job.elapsed:.0f} sn")
+            st.dataframe(clip_rows(edit_project), width="stretch", hide_index=True)
             st.json(edit_project, expanded=False)

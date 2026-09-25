@@ -192,11 +192,10 @@ def write_mask_sequences(folder: Path, blurs: list[dict[str, Any]], fps: int, to
         region = blur_region(blur, fps, total_frames, width, height)
         if region is None:
             continue
-        rx, ry, rw, rh = region
         path = write_sequence(
             folder, f"blur{number}", fps, total_frames,
             lambda t, f, b=blur: mask_state(b, t, width, height),
-            lambda state, b=blur: render_mask(b, state, rw, rh, (rx, ry)),
+            lambda state, b=blur, r=region: render_mask(b, state, r[2], r[3], (r[0], r[1])),
         )
         passes.append(BlurPass(blur, path, region))
     return passes
