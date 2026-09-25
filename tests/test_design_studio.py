@@ -70,7 +70,7 @@ def test_strike_markup_marks_words():
 
 
 def test_headline_fits_two_lines_or_shrinks():
-    assert [" ".join(t.text for t in l) for l in fit_text("Mansur Yavaş CHP'den istifa etti").lines] == ["MANSUR YAVAŞ", "CHP'DEN İSTİFA ETTİ"]
+    assert [" ".join(t.text for t in line) for line in fit_text("Mansur Yavaş CHP'den istifa etti").lines] == ["MANSUR YAVAŞ", "CHP'DEN İSTİFA ETTİ"]
     manual = fit_text("Mansur Yavaş CHP'den\nistifa etti")
     assert len(manual.lines) == 2 and manual.fits
     long = fit_text("Savrulan otomobil berber dükkânına çarptı, kazada yaralanan beş kişi hastaneye kaldırıldı ve tedavi altına alındı")

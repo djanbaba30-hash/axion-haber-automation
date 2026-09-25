@@ -65,13 +65,19 @@ def _open(sealed: str) -> str | None:
 class Logins:
     def __init__(self, path: Path) -> None:
         self.path = path
+        self._cache: tuple[int, dict[str, dict[str, str]]] | None = None  # (dosya zamanı, içerik)
 
     def _read(self) -> dict[str, dict[str, str]]:
+        # Tarayıcı ekranı saniyede birkaç kez sorar: dosya değişmedikçe yeniden okunmaz.
         try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
+            stamp = self.path.stat().st_mtime_ns
+            if self._cache is None or self._cache[0] != stamp:
+                data = json.loads(self.path.read_text(encoding="utf-8"))
+                entries = {k: v for k, v in data.items() if isinstance(v, dict)} if isinstance(data, dict) else {}
+                self._cache = (stamp, entries)
         except (OSError, ValueError):
             return {}
-        return {k: v for k, v in data.items() if isinstance(v, dict)} if isinstance(data, dict) else {}
+        return dict(self._cache[1])
 
     def get(self, site: str) -> tuple[str, str] | None:
         entry = self._read().get(site)

@@ -53,8 +53,10 @@ def test_missing_projects_dir_returns_empty(tmp_path):
 
 
 def test_inbox_lists_only_media_newest_first(tmp_path):
-    old = tmp_path / "eski.mp4"; old.write_bytes(b"1")
-    new = tmp_path / "yeni.MOV"; new.write_bytes(b"2")
+    old = tmp_path / "eski.mp4"
+    old.write_bytes(b"1")
+    new = tmp_path / "yeni.MOV"
+    new.write_bytes(b"2")
     (tmp_path / "not.txt").write_text("x")
     (tmp_path / "klasor.mp4").mkdir()
     os.utime(old, (1_000, 1_000))

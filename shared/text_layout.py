@@ -103,13 +103,11 @@ def fit_text(
         if len(manual) > 1:
             candidate = manual
         else:
-            candidate = next(
-                (balanced_lines(words, font, n) for n in range(1, lines_allowed + 1)
-                 if max(_line_width(l, font) for l in balanced_lines(words, font, n)) <= max_width),
-                None,
-            )
+            layouts = (balanced_lines(words, font, n) for n in range(1, lines_allowed + 1))  # her biri bir kez
+            candidate = next((lines for lines in layouts
+                              if max(_line_width(line, font) for line in lines) <= max_width), None)
         if candidate and len(candidate) <= max(lines_allowed, len(manual)) and all(
-            _line_width(l, font) <= max_width for l in candidate
+            _line_width(line, font) <= max_width for line in candidate
         ):
             return candidate
         return None

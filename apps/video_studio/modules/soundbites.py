@@ -61,7 +61,7 @@ def parse_soundbites(data) -> list[Soundbite]:
 
 
 def preview_path(source: Path, project_folder: Path) -> Path:
-    key = hashlib.sha1(f"{source.resolve()}|{source.stat().st_size}".encode("utf-8")).hexdigest()[:12]
+    key = hashlib.sha1(f"{source.resolve()}|{source.stat().st_size}".encode()).hexdigest()[:12]
     return project_folder / PREVIEW_DIR / f"{source.stem[:40]}_{key}.mp4"
 
 

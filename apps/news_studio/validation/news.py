@@ -50,8 +50,8 @@ def remove_license_plates(text: str) -> tuple[str, bool]:
 def _sentence_case_after(text: str, separator: str) -> str:
     pieces = text.split(separator)
     out = pieces[0]
-    for piece in pieces[1:]:
-        piece = piece.lstrip()
+    for raw_piece in pieces[1:]:
+        piece = raw_piece.lstrip()
         out += ". " + (turkish_upper(piece[0]) + piece[1:] if piece else "")
     return out
 
@@ -92,14 +92,18 @@ def find_tts_repetitions(tts: str) -> list[str]:
 
 
 def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> ValidationResult:
+    """Çıktıyı temizler (büyük harf, plaka, okunuş) ve kontrol eder. Hatalar tek düzeltme çağrısına gider, uyarılar
+    editöre gösterilir."""
     result.baslik1 = turkish_upper((result.baslik1 or "").strip())
     result.baslik2 = turkish_upper((result.baslik2 or "").strip())
     result.icerik = (result.icerik or "").strip()
     result.tts = make_speakable(normalize_tts_punctuation((result.tts or "").strip()))
-    errors=[]; warnings=[]
+    errors: list[str] = []
+    warnings: list[str] = []
     hard_numbers = unreadable_numbers(result.tts)
     if hard_numbers:
-        warnings.append("Seslendirme metninde spikerin yanlış okuyabileceği sayı var: " + ", ".join(hard_numbers) + ". Kelimeyle yazmayı düşün.")
+        warnings.append("Seslendirme metninde spikerin yanlış okuyabileceği sayı var: " + ", ".join(hard_numbers)
+                        + ". Kelimeyle yazmayı düşün.")
 
     plate_removed = False
     for field in ("baslik1", "baslik2", "icerik", "tts"):
@@ -111,29 +115,39 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
     if any(_PLATE.search(getattr(result, f)) for f in ("icerik", "tts")):
         warnings.append("Çıktıda plaka olabilecek bir ifade var; kontrol et.")
 
-    for name, value in (("1. başlık",result.baslik1),("2. başlık",result.baslik2),("Paylaşım metni (caption)",result.icerik),("Seslendirme metni (tts)",result.tts)):
-        if not value: errors.append(f"{name} boş.")
-    for i,h in enumerate((result.baslik1,result.baslik2),1):
-        if h and count_words(h)>9: errors.append(f"{i}. başlık 9 kelimeden uzun.")
-        fit=check_headline(h) if h else None
+    fields = (("1. başlık", result.baslik1), ("2. başlık", result.baslik2), ("Paylaşım metni (caption)", result.icerik),
+              ("Seslendirme metni (tts)", result.tts))
+    errors.extend(f"{name} boş." for name, value in fields if not value)
+    for i, headline in enumerate((result.baslik1, result.baslik2), 1):
+        if headline and count_words(headline) > 9:
+            errors.append(f"{i}. başlık 9 kelimeden uzun.")
+        fit = check_headline(headline) if headline else None
         if fit and not fit.fits:
             # Videodaki gerçek yazıyla (Google Sans Flex ExtraBold 58 px) ölçülür; düzeltme çağrısına somut hedef verilir.
-            errors.append(f"{i}. başlık videoda 2 satıra sığmıyor ({len(h)} karakter): anlamı koruyarak yaklaşık {fit.over_chars} karakter kısalt, en fazla 44 karakter.")
-    cap=len(result.icerik); tts=len(result.tts); raw=len(raw_text.strip())
-    if cap>2200: errors.append(f"Paylaşım metni (caption) {cap} karakter; en fazla 2200 olmalı.")
-    if raw>=2200 and cap<850: errors.append("Uzun ham haber için paylaşım metni (caption) gereğinden fazla kısa.")
-    elif raw>=3500 and cap<1100: errors.append("Çok uzun ham haber için paylaşım metni (caption) bilgi açısından fazla kısa.")
-    if tts and tts < tts_min_chars*TTS_HARD_MIN_RATIO:
-        errors.append(f"Seslendirme metni (tts) çok kısa: {tts} karakter (hedef {tts_min_chars}-{tts_max_chars}).")
-    elif tts and tts < tts_min_chars-TTS_TOLERANCE_CHARS:
-        warnings.append(f"Seslendirme metni hedefin altında: {tts} karakter (hedef {tts_min_chars}-{tts_max_chars}). Tekrar yerine kısa tutulduysa sorun değil.")
-    elif tts > tts_max_chars+TTS_TOLERANCE_CHARS:
-        errors.append(f"Seslendirme metni (tts) hedefin belirgin şekilde üstünde: {tts} karakter (hedef {tts_min_chars}-{tts_max_chars}).")
-    if cap>900 and tts>cap*1.10: errors.append("Seslendirme metni (tts), paylaşım metninden (caption) belirgin şekilde uzun.")
-    if cap and tts>=cap: warnings.append("Seslendirme metni, paylaşım metni kadar uzun veya daha uzun; kontrol etmen önerilir.")
-    warnings.extend(find_tts_repetitions(result.tts))
-    return ValidationResult(errors,warnings)
+            errors.append(f"{i}. başlık videoda 2 satıra sığmıyor ({len(headline)} karakter): anlamı koruyarak yaklaşık "
+                          f"{fit.over_chars} karakter kısalt, en fazla 44 karakter.")
 
+    cap, tts, raw = len(result.icerik), len(result.tts), len(raw_text.strip())
+    target = f"(hedef {tts_min_chars}-{tts_max_chars})"
+    if cap > 2200:
+        errors.append(f"Paylaşım metni (caption) {cap} karakter; en fazla 2200 olmalı.")
+    if raw >= 2200 and cap < 850:
+        errors.append("Uzun ham haber için paylaşım metni (caption) gereğinden fazla kısa.")
+    elif raw >= 3500 and cap < 1100:
+        errors.append("Çok uzun ham haber için paylaşım metni (caption) bilgi açısından fazla kısa.")
+    if tts and tts < tts_min_chars * TTS_HARD_MIN_RATIO:
+        errors.append(f"Seslendirme metni (tts) çok kısa: {tts} karakter {target}.")
+    elif tts and tts < tts_min_chars - TTS_TOLERANCE_CHARS:
+        warnings.append(f"Seslendirme metni hedefin altında: {tts} karakter {target}. "
+                        "Tekrar yerine kısa tutulduysa sorun değil.")
+    elif tts > tts_max_chars + TTS_TOLERANCE_CHARS:
+        errors.append(f"Seslendirme metni (tts) hedefin belirgin şekilde üstünde: {tts} karakter {target}.")
+    if cap > 900 and tts > cap * 1.10:
+        errors.append("Seslendirme metni (tts), paylaşım metninden (caption) belirgin şekilde uzun.")
+    if cap and tts >= cap:
+        warnings.append("Seslendirme metni, paylaşım metni kadar uzun veya daha uzun; kontrol etmen önerilir.")
+    warnings.extend(find_tts_repetitions(result.tts))
+    return ValidationResult(errors, warnings)
 
 _CENSOR_PATTERNS = [
     (re.compile(r"\bsilah\b", re.I), "s*lah"),

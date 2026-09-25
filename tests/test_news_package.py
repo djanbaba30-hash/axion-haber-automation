@@ -7,4 +7,5 @@ class TestNewsPackage(unittest.TestCase):
         q=NewsPackage.model_validate_json(p.model_dump_json())
         self.assertEqual(q.tts_text,"D")
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()

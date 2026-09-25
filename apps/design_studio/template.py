@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -357,7 +357,7 @@ class Scene:
 
     def render(self, t: float, frame: int) -> Image.Image:
         canvas = Image.new("RGBA", (CANVAS_WIDTH, CANVAS_HEIGHT), (0, 0, 0, 0))
-        blocks = {"h1": self.headline_1, "h2": self.headline_2, **{f"t:{l.id}": b for l, b in self.layers}}
+        blocks = {"h1": self.headline_1, "h2": self.headline_2, **{f"t:{layer.id}": b for layer, b in self.layers}}
         for name, state in self.items(t, frame):
             if name in blocks:
                 draw_block(canvas, blocks[name], state)

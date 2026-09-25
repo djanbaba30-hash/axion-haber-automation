@@ -17,7 +17,8 @@ class TestNews(unittest.TestCase):
         self.assertTrue(any("2200" in e for e in check.errors))
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()
 
 
 def test_headline_must_fit_two_lines_in_video():
