@@ -20,7 +20,6 @@ from apps.axion_local.store import (
     read_text_file,
     save_news_project,
 )
-from apps.design_studio.preview import headline_preview
 from apps.news_studio.ai.clients import generate, make_anthropic, make_openai, regenerate_headlines
 from apps.news_studio.config import (
     CLAUDE_MODEL,
@@ -235,7 +234,21 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                 correction_reason = ""
                 fields = ("baslik1", "baslik2", "icerik", "tts")
                 first = {name: getattr(result, name) for name in fields}
-                if check.errors:  # tek düzeltme çağrısı (düşük düşünme); daha az hatalıysa o alınır
+                if check.headlines_only:  # yalnız başlık hatalı: tam düzeltme yerine küçük başlık çağrısı (token ~1/5)
+                    correction_reason = " | ".join(check.errors)
+                    try:
+                        headlines, headline_usage = regenerate_headlines(
+                            openai_client(), anthropic_client(), provider, openai_model, result.icerik, correction_reason)
+                        total = accumulate(total, headline_usage)
+                        # Yalnız hatalı başlık değişir; geçerli başlık korunur. Tek deneme, döngü yok.
+                        corrected = result.model_copy(update={
+                            f"baslik{i}": getattr(headlines, f"baslik{i}") for i in check.headline_errors})
+                        corrected_check = validate_news_output(corrected, raw, tts_min, tts_max)
+                        if len(corrected_check.errors) < len(check.errors):
+                            result, check = corrected, corrected_check
+                    except Exception as exc:  # noqa: BLE001
+                        st.warning(f"Başlık düzeltme çağrısı başarısız; ilk sonuç korunuyor: {exc}")
+                elif check.errors:  # tek düzeltme çağrısı (düşük düşünme); daha az hatalıysa o alınır
                     correction_reason = " | ".join(check.errors)
                     correction = build_correction_prompt(style, duration_label, tts_min, tts_target, tts_max, raw, result, check.errors)
                     try:
@@ -285,12 +298,10 @@ if ss.icerik:
         text = ss.get(key, "").strip()
         if text:  # Videodaki yazıyla ölçülür: editör başlığı düzeltirken sığıp sığmadığını hemen görür.
             fit = check_headline(text)
-            prefix = "✅ Videoda: " if fit.fits else f"⚠️ Videoda 2 satıra sığmıyor, ~{fit.over_chars} karakter kısalt: "
+            prefix = ("✅ Videoda: " if fit.fits else f"✅ Videoda (küçültülmüş yazı, {fit.size} px): " if fit.shrinks
+                      else f"⚠️ Videoda 2 satıra sığmıyor, ~{fit.over_chars} karakter kısalt: ")
             col.caption(prefix + " / ".join(fit.lines))
             source_note(col, missing_numbers(text, raw))
-    if ss.baslik1.strip() or ss.baslik2.strip():  # videodaki gibi: gerçek yazı tipi, satır kırılımı, günün arka planı
-        with st.expander("🖼️ Başlıklar videoda böyle görünür", expanded=True):
-            st.image(headline_preview(ss.baslik1.strip(), ss.baslik2.strip(), date.today()), width=540)
     if st.button("↻ Başlıkları yeniden üret", help="Sadece başlıklar için küçük bir yapay zekâ çağrısı yapar."):
         try:
             headlines, headline_usage = regenerate_headlines(openai_client(), anthropic_client(), provider, openai_model, ss.icerik)

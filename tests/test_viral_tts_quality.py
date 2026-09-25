@@ -162,3 +162,18 @@ def test_generated_tts_is_made_speakable_and_hard_numbers_warned():
     check = validate_news_output(result, "Ham haber", 10, 400)
     assert result.tts == "Kaza akşam 6'da oldu. Araç 3,2 metre sürüklendi."
     assert any("3,2" in w for w in check.warnings)
+
+
+def test_headline_that_fits_when_shrunk_is_a_warning_not_a_correction():
+    """v3.3: kalın fontla (v3.1) başlık sığmıyor hatası sıklaştı, her seferinde tam düzeltme çağrısı gidiyordu."""
+    check = validate_news_output(output(NON_REPETITIVE_TTS, b1="KONTROLDEN ÇIKAN OTOMOBİL YAYAYA ÇARPIP DURAĞA DALDI"),
+                                 "ham", 381, 396)
+    assert check.errors == [] and any("küçültülmüş yazıyla" in w for w in check.warnings)
+
+
+def test_only_headline_errors_are_marked_for_the_small_headline_call():
+    long = "KONTROLDEN ÇIKAN OTOMOBİL KALDIRIMDAKİ YAYALARA ÇARPIP DURAĞA DALDI"
+    check = validate_news_output(output(NON_REPETITIVE_TTS, b2=long), "ham", 381, 396)
+    assert check.headlines_only and list(check.headline_errors) == [2]
+    check = validate_news_output(output("Kısa metin.", b2=long), "ham", 381, 396)
+    assert check.errors and not check.headlines_only  # seslendirme de hatalı: tam düzeltme

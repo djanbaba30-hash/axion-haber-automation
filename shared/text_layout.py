@@ -16,6 +16,7 @@ from .axion_template import HEADLINE_FONT_SIZE, HEADLINE_MAX_WIDTH, HEADLINE_MIN
 from .fonts import DEFAULT_FAMILY, DEFAULT_STYLE, load_font
 
 MAX_LINES = 2
+SHRINK_OK_SIZE = 50  # bu boyuta kadar küçülerek sığan başlık hata değil uyarı (42 px videoda zayıf kalır)
 STRIKE = "~~"
 
 
@@ -132,6 +133,8 @@ class HeadlineCheck:
     fits: bool
     lines: list[str]
     over_chars: int  # yaklaşık kaç karakter kısalmalı (sığıyorsa 0)
+    shrinks: bool = False  # varsayılan boyutta sığmıyor ama biraz küçültülmüş yazıyla (en az 50 px) 2 satıra sığıyor
+    size: int = HEADLINE_FONT_SIZE
 
 
 def check_headline(text: str) -> HeadlineCheck:
@@ -139,13 +142,14 @@ def check_headline(text: str) -> HeadlineCheck:
     fitted = fit_text(text)
     lines = [" ".join(t.text for t in line) for line in fitted.lines]
     if fitted.fits:
-        return HeadlineCheck(True, lines, 0)
+        return HeadlineCheck(True, lines, 0, size=fitted.size)
     font = load_font(size=HEADLINE_FONT_SIZE)
     full = turkish_upper(plain_text(" ".join(text.split())))
     per_char = font.getlength(full) / max(1, len(full))
     # 2 satır × 920 px'e (dengeli bölmenin kaybı için %8 pay) göre fazlalık.
     over = font.getlength(full) - 2 * HEADLINE_MAX_WIDTH * 0.92
-    return HeadlineCheck(False, lines, max(1, math.ceil(over / per_char)))
+    shrinks = len(fitted.lines) <= MAX_LINES and fitted.size >= SHRINK_OK_SIZE
+    return HeadlineCheck(False, lines, max(1, math.ceil(over / per_char)), shrinks, fitted.size)
 
 
 def headline_char_budget() -> int:

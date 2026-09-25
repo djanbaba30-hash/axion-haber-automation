@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 
 from shared.text_layout import check_headline
@@ -12,6 +12,12 @@ from .speakable import make_speakable, unreadable_numbers
 class ValidationResult:
     errors: list[str]
     warnings: list[str]
+    headline_errors: dict[int, str] = field(default_factory=dict)  # başlık no → hata (errors içinde de var)
+
+    @property
+    def headlines_only(self) -> bool:
+        """Hataların hepsi başlıkta mı (tam düzeltme yerine küçük başlık çağrısı yeter)."""
+        return bool(self.errors) and len(self.errors) == len(self.headline_errors)
 
 
 def turkish_upper(text: str) -> str:
@@ -118,14 +124,21 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
     fields = (("1. başlık", result.baslik1), ("2. başlık", result.baslik2), ("Paylaşım metni (caption)", result.icerik),
               ("Seslendirme metni (tts)", result.tts))
     errors.extend(f"{name} boş." for name, value in fields if not value)
+    headline_errors: dict[int, str] = {}
     for i, headline in enumerate((result.baslik1, result.baslik2), 1):
-        if headline and count_words(headline) > 9:
-            errors.append(f"{i}. başlık 9 kelimeden uzun.")
-        fit = check_headline(headline) if headline else None
-        if fit and not fit.fits:
+        if not headline:
+            continue
+        problems = ["9 kelimeden uzun"] if count_words(headline) > 9 else []
+        fit = check_headline(headline)
+        if fit.shrinks:  # küçültülmüş yazıyla 2 satır: hata değil (düzeltme çağrısı yok), editör isterse kısaltır
+            warnings.append(f"{i}. başlık videoda küçültülmüş yazıyla ({fit.size} px) 2 satıra sığıyor.")
+        elif not fit.fits:
             # Videodaki gerçek yazıyla (Google Sans Flex ExtraBold 58 px) ölçülür; düzeltme çağrısına somut hedef verilir.
-            errors.append(f"{i}. başlık videoda 2 satıra sığmıyor ({len(headline)} karakter): anlamı koruyarak yaklaşık "
-                          f"{fit.over_chars} karakter kısalt, en fazla 44 karakter.")
+            problems.append(f"videoda 2 satıra sığmıyor ({len(headline)} karakter): anlamı koruyarak yaklaşık "
+                            f"{fit.over_chars} karakter kısalt, en fazla 44 karakter")
+        if problems:
+            headline_errors[i] = f"{i}. başlık " + "; ".join(problems) + "."
+    errors.extend(headline_errors.values())
 
     cap, tts, raw = len(result.icerik), len(result.tts), len(raw_text.strip())
     target = f"(hedef {tts_min_chars}-{tts_max_chars})"
@@ -147,7 +160,7 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
     if cap and tts >= cap:
         warnings.append("Seslendirme metni, paylaşım metni kadar uzun veya daha uzun; kontrol etmen önerilir.")
     warnings.extend(find_tts_repetitions(result.tts))
-    return ValidationResult(errors, warnings)
+    return ValidationResult(errors, warnings, headline_errors)
 
 _CENSOR_PATTERNS = [
     (re.compile(r"\bsilah\b", re.I), "s*lah"),

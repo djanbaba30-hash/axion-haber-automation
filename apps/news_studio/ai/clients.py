@@ -1,4 +1,5 @@
-"""OpenAI ve Claude çağrıları: haber (tek çağrı + gerekirse tek düzeltme çağrısı) ve başlık yenileme.
+"""OpenAI ve Claude çağrıları: haber (tek çağrı + gerekirse tek düzeltme çağrısı; yalnız başlık hatalıysa küçük başlık
+çağrısı) ve başlık yenileme.
 
 SDK'ların kendi retry'ı kapalı; tek retry katmanı `retry_transient`. Sistem prompt'ları önbelleğe alınır
 (OpenAI `prompt_cache_key`, Claude `cache_control`).
@@ -108,9 +109,12 @@ def generate(client_openai, client_claude, provider: str, model_name: str, promp
 
 
 def regenerate_headlines(client_openai, client_claude, provider: str, model_name: str,
-                         content: str) -> tuple[HeadlineOutput, dict[str, Any]]:
-    """Yalnız iki başlık (küçük, düşünmesiz çağrı); büyük harfe Türkçe kurallarıyla çevrilir."""
+                         content: str, problems: str = "") -> tuple[HeadlineOutput, dict[str, Any]]:
+    """Yalnız iki başlık (küçük, düşünmesiz çağrı); büyük harfe Türkçe kurallarıyla çevrilir. `problems`: önceki
+    başlıkların hatası (haber işlenirken başlık sığmadıysa tam düzeltme yerine bu çağrı yapılır)."""
     prompt = HEADLINE_REQUEST.format(content=content)
+    if problems:
+        prompt += f"\nÖnceki başlıkların sorunu: {problems}"
     if provider == "OpenAI":
         output, usage = _parse_openai(client_openai, OPENAI_MODELS[model_name], HEADLINE_SYSTEM_PROMPT, prompt,
                                       HeadlineOutput, "none", HEADLINE_MAX_TOKENS["OpenAI"], HEADLINE_CACHE_KEY)

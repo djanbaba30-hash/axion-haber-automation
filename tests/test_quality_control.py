@@ -39,18 +39,6 @@ def test_word_times_come_from_character_alignment():
     assert words[1][1] == 0.5 and round(words[1][2], 3) == 1.4
 
 
-def test_headline_preview_renders_like_the_video():
-    from io import BytesIO
-
-    from PIL import Image
-
-    from apps.design_studio.preview import headline_preview
-
-    image = Image.open(BytesIO(headline_preview("KONTROLDEN ÇIKAN TIR DEVRİLDİ", "SÜRÜCÜ YARALANDI", date(2026, 9, 25))))
-    assert image.width == 540 and image.height == 306  # iki bant alt alta
-    assert headline_preview("", "", date(2026, 9, 25)) == b""
-
-
 def test_news_studio_shows_quality_checks_end_to_end(local_env, monkeypatch):
     from apps.news_studio.models.news import NewsOutput
 
@@ -70,8 +58,7 @@ def test_news_studio_shows_quality_checks_end_to_end(local_env, monkeypatch):
     assert any(e.label == "🔁 Düzeltme çağrısı neyi değiştirdi" for e in at.expander)
     notes = [m.value for m in at.markdown if "Kaynakta yok" in m.value]
     assert any("[5]" in n for n in notes) and any("Mehmet" in n for n in notes)
-    preview = next(e for e in at.expander if e.label == "🖼️ Başlıklar videoda böyle görünür")
-    assert [c.type for c in preview.children.values()] == ["image"]
+    assert not any("videoda böyle görünür" in e.label for e in at.expander)  # v3.3: önizleme yok, satır yazısı yeter
 
 
 def test_finished_video_is_announced_on_any_page_and_named_after_headline(local_env, monkeypatch):
@@ -125,3 +112,33 @@ def test_step_timings_are_logged_locally(local_env):
     lines = [json.loads(line) for line in metrics.path().read_text(encoding="utf-8").splitlines()]
     assert [(x["adim"], x["haber"], x.get("kodlayici"), x.get("hata")) for x in lines] == [
         ("kurgu", "haber-1", "x264", None), ("seslendirme", None, None, "RuntimeError")]
+
+
+def test_headline_only_error_uses_the_small_headline_call(local_env, monkeypatch):
+    """v3.3 token tasarrufu: yalnız başlık hatalıysa tam düzeltme (sistem + ham haber + tüm çıktı) yerine başlık çağrısı."""
+    from types import SimpleNamespace
+
+    from apps.news_studio.models.news import NewsOutput
+
+    first = NewsOutput(baslik1="OTOMOBİL DURAĞA DALDI",
+                       baslik2="KONTROLDEN ÇIKAN OTOMOBİL KALDIRIMDAKİ YAYALARA ÇARPIP DURAĞA DALDI",
+                       icerik="Antalya'da kontrolden çıkan otomobil yayaya çarptı ve durağa daldı. " * 20,
+                       tts_plani=["olay"], tts="Kontrolden çıkan otomobil yayaya çarptı ve durağa daldı. " * 7)
+    calls = []
+    monkeypatch.setattr("apps.news_studio.ai.clients.generate",
+                        lambda *args, **kwargs: calls.append("haber") or (first, {"input_tokens": 3000}))
+
+    def headlines(*args):
+        calls.append(("başlık", args[-1]))
+        return SimpleNamespace(baslik1="BAŞKA", baslik2="3 KİŞİ YARALANDI"), {"input_tokens": 400, "requests": 1}
+
+    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines", headlines)
+    at = start()
+    at.session_state["raw_text"] = RAW
+    at.session_state["tts_duration"] = "Kısa (15-20 sn)"
+    at.run()
+    button(at, "Haberi işle").click().run()
+    assert not at.exception
+    assert calls[0] == "haber" and calls[1][0] == "başlık" and "2. başlık" in calls[1][1] and len(calls) == 2
+    assert (at.session_state["baslik1"], at.session_state["baslik2"]) == ("OTOMOBİL DURAĞA DALDI", "3 KİŞİ YARALANDI")
+    assert at.session_state["last_usage"]["input_tokens"] == 3400
