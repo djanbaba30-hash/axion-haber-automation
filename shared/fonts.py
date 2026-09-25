@@ -18,8 +18,9 @@ from PIL import ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 REPO_FONT_DIR = ROOT / "assets" / "sablon" / "fontlar"
 FONT_EXTENSIONS = {".ttf", ".otf"}
-DEFAULT_FAMILY = "Google Sans"
-DEFAULT_STYLE = "Bold"
+# v3.1: editör Google Sans Bold'u ince buldu; aynı tasarımın daha kalını (Google Fonts, OFL). Eski tasarımlar kendi fontunu korur.
+DEFAULT_FAMILY = "Google Sans Flex"
+DEFAULT_STYLE = "ExtraBold"
 
 _WEIGHT_ORDER = ["thin", "extralight", "light", "regular", "book", "medium", "semibold", "bold", "extrabold", "black"]
 
@@ -103,7 +104,7 @@ def families() -> dict[str, list[str]]:
 
 
 def resolve(family: str | None, style: str | None) -> FontFace:
-    """İstenen yüz yoksa aynı ailenin en yakın kalınlığı, o da yoksa varsayılan (Google Sans Bold)."""
+    """İstenen yüz yoksa aynı ailenin en yakın kalınlığı, o da yoksa varsayılan (Google Sans Flex ExtraBold)."""
     faces = registry()
     styles = faces.get(family or "") or faces.get(DEFAULT_FAMILY) or next(iter(faces.values()), None)
     if not styles:

@@ -20,6 +20,7 @@
   "logo": {"fade_in": 0.4, "fade_out": 0.3, "pop_in": 0.35, "pop_out": 0.25},
   "frame": {
     "period": {"kovalayan": 3.5, "nefes": 2.4, "akis": 6.0},
-    "comet_tail": 0.22, "comet_head": 8.0, "comet_cap": 0.004
+    "comet_tail": 0.45, "comet_head": 10.0, "comet_cap": 0.004, "comet_base": 3.0, "comet_base_alpha": 0.6,
+    "breath_width": [4.0, 10.0], "breath_glow": [0.25, 0.9], "flow_width": 8.0
   }
 }

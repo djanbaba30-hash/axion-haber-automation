@@ -29,7 +29,7 @@ def video_seconds(tts_seconds: float, soundbite_seconds: float = 0.0) -> float:
     return max(float(tts_seconds) + float(soundbite_seconds), MIN_VIDEO_SECONDS)
 
 
-# Başlıklar: büyük harf, beyaz, hafif parıltı (glow); yazı tipi Google Sans Bold (OFL lisanslı, assets/sablon/fontlar).
+# Başlıklar: büyük harf, beyaz, hafif parıltı (glow); yazı tipi Google Sans Flex ExtraBold (OFL lisanslı, assets/sablon/fontlar).
 # İkisi de aynı kutuda: 960x155, x=60, y=260. En fazla 2 satır (sığmazsa yazı küçülür).
 HEADLINE_BOX = {"x": 60, "y": 260, "width": 960, "height": 155}
 HEADLINE_FONT_SIZE = 58

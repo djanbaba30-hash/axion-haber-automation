@@ -236,7 +236,8 @@ def frame_data(frame: Any, slot: dict[str, int], border: int, radius: int) -> di
     return {
         "style": frame.style, "color": frame.color, "accent": frame.accent, "speed": frame.speed,
         "slot": slot, "border": border, "radius": radius, "periods": fx.FRAME_PERIOD,
-        "comet": {"tail": fx.COMET_TAIL, "head": fx.COMET_HEAD},
+        "comet": {"tail": fx.COMET_TAIL, "head": fx.COMET_HEAD, "base": fx.COMET_BASE, "base_alpha": fx.COMET_BASE_ALPHA},
+        "breath": {"width": fx.BREATH_WIDTH, "glow": fx.BREATH_GLOW}, "flow_width": fx.FLOW_WIDTH,
     }
 
 

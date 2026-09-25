@@ -139,20 +139,24 @@ function drawFrame(ctx, G, F, t) {
   const period = (G.periods[F.style] || 1) / Math.max(0.2, F.speed);
   ctx.save(); ctx.lineCap = 'round';
   if (F.style === 'sabit') { path(); ctx.strokeStyle = F.color; ctx.lineWidth = G.border; ctx.stroke(); }
-  else if (F.style === 'nefes') { const p = 0.5 + 0.5 * Math.sin(2 * Math.PI * t / period); path(); ctx.shadowColor = F.accent; ctx.shadowBlur = 6 + 16 * p; ctx.strokeStyle = F.color; ctx.lineWidth = 2.5 + 2.5 * p; ctx.stroke(); }
+  else if (F.style === 'nefes') {
+    const p = 0.5 + 0.5 * Math.sin(2 * Math.PI * t / period), [w0, w1] = G.breath.width, [g0, g1] = G.breath.glow;
+    path(); ctx.shadowColor = F.accent; ctx.shadowBlur = 30 * (g0 + (g1 - g0) * p); ctx.strokeStyle = F.color;
+    ctx.lineWidth = w0 + (w1 - w0) * p; ctx.stroke(); ctx.stroke();  // iki kez: parıltı son videodaki kadar belirgin
+  }
   else if (F.style === 'akis') {
     const grad = ctx.createConicGradient(-Math.PI / 2 + 2 * Math.PI * (t / period), g.cx, g.cy);
     [[0, F.color], [0.33, F.accent], [0.66, '#D0E491'], [1, F.color]].forEach(([o, c]) => grad.addColorStop(o, c));
-    path(); ctx.strokeStyle = grad; ctx.lineWidth = 5; ctx.stroke();
+    path(); ctx.strokeStyle = grad; ctx.lineWidth = G.flow_width; ctx.stroke();
   } else if (F.style === 'kovalayan') {
-    path(); ctx.globalAlpha = 0.35; ctx.strokeStyle = F.color; ctx.lineWidth = 1.5; ctx.stroke(); ctx.globalAlpha = 1;
+    path(); ctx.globalAlpha = G.comet.base_alpha; ctx.strokeStyle = F.color; ctx.lineWidth = G.comet.base; ctx.stroke(); ctx.globalAlpha = 1;
     for (const offset of [0, 0.5]) {
       const head = (t / period + offset) % 1; let prev = pointAt(g, head);
       for (let i = 1; i <= 70; i++) {
         const k = 1 - i / 70, p = pointAt(g, head - (i / 70) * G.comet.tail);
         ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(p[0], p[1]);
         ctx.strokeStyle = k > 0.5 ? '#FFFFFF' : F.accent; ctx.globalAlpha = 0.35 + 0.65 * k;
-        ctx.shadowColor = F.accent; ctx.shadowBlur = 12 * k * k; ctx.lineWidth = 0.6 + G.comet.head * Math.pow(k, 1.3); ctx.stroke(); prev = p;
+        ctx.shadowColor = F.accent; ctx.shadowBlur = 12 * k * k; ctx.lineWidth = G.comet.base + (G.comet.head - G.comet.base) * Math.pow(k, 1.3); ctx.stroke(); prev = p;
       }
     }
   }

@@ -1,7 +1,7 @@
 """Başlık yerleşimi: satırlara bölme, sığdırma ve "iki satıra sığıyor mu" ölçümü.
 
 Haber Stüdyosu (başlık üretimi/doğrulama) ve Tasarım Stüdyosu (videoya yazma) aynı ölçümü kullanır: başlık gerçek
-yazı tipiyle (varsayılan Google Sans Bold 58 px) piksel olarak ölçülür, 920 px genişliğe en fazla 2 satır.
+yazı tipiyle (varsayılan Google Sans Flex ExtraBold 58 px) piksel olarak ölçülür, 920 px genişliğe en fazla 2 satır.
 Sansür: `~~kelime~~` işaretli kelimelerin üstü videoda çizilir (işaretler görünmez).
 """
 
@@ -137,7 +137,7 @@ class HeadlineCheck:
 
 
 def check_headline(text: str) -> HeadlineCheck:
-    """Başlık, videodaki varsayılan yazıyla (Google Sans Bold 58 px) 2 satıra sığıyor mu?"""
+    """Başlık, videodaki varsayılan yazıyla (Google Sans Flex ExtraBold 58 px) 2 satıra sığıyor mu?"""
     fitted = fit_text(text)
     lines = [" ".join(t.text for t in line) for line in fitted.lines]
     if fitted.fits:

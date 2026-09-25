@@ -267,6 +267,13 @@ FRAME_PERIOD = FX["frame"]["period"]
 COMET_TAIL = FX["frame"]["comet_tail"]
 COMET_HEAD = FX["frame"]["comet_head"]
 COMET_CAP = FX["frame"]["comet_cap"]  # baş ucunun yumuşaklığı (çevrenin oranı)
+# Editör (Windows denemesi): ışıklar geçince video çıplak kalmasın → hep görünen taban çizgisi, uzun kuyruk;
+# nefes ve renk akışı daha kalın ve belirgin.
+COMET_BASE = FX["frame"]["comet_base"]
+COMET_BASE_ALPHA = FX["frame"]["comet_base_alpha"]
+BREATH_WIDTH = FX["frame"]["breath_width"]
+BREATH_GLOW = FX["frame"]["breath_glow"]
+FLOW_WIDTH = FX["frame"]["flow_width"]
 
 
 def _hex(color: str) -> np.ndarray:
@@ -341,14 +348,14 @@ def frame_rgba(style: str, color: str, accent: str, t: float, speed: float = 1.0
         alpha = np.clip(half + 0.5 - ad, 0, 1)
     elif style == "kovalayan":
         period = frame_period(style, speed) or 1
-        alpha = 0.35 * np.clip(1.5 - ad, 0, 1)
+        alpha = COMET_BASE_ALPHA * np.clip(COMET_BASE / 2 + 0.5 - ad, 0, 1)
         for offset in (0.0, 0.5):                      # simetrik iki ışık
             head = (t / period + offset) % 1.0
             behind = (head - f.s) % 1.0                # başın ne kadar gerisinde (0 = baş)
             k = np.clip(1 - behind / COMET_TAIL, 0, 1)  # 1 baş → 0 kuyruk ucu
             front = np.clip(1 - ((f.s - head) % 1.0) / COMET_CAP, 0, 1)  # başın önünde yuvarlak uç
             k = np.maximum(k, np.sqrt(front) * (front < 1))
-            width = 0.6 + COMET_HEAD * k ** 1.3        # kalından inceye
+            width = COMET_BASE + (COMET_HEAD - COMET_BASE) * k ** 1.3  # kalından tabana
             core = np.clip(width / 2 + 0.5 - ad, 0, 1) * (k > 0)
             glow = np.exp(-(ad ** 2) / (2 * (2 + 5 * k) ** 2)) * 0.55 * k ** 2
             a = np.maximum(core * (0.35 + 0.65 * k), glow)
@@ -358,9 +365,9 @@ def frame_rgba(style: str, color: str, accent: str, t: float, speed: float = 1.0
     elif style == "nefes":
         period = frame_period(style, speed) or 1
         pulse = 0.5 + 0.5 * math.sin(2 * math.pi * t / period)
-        width = 2.5 + 2.5 * pulse
+        width = BREATH_WIDTH[0] + (BREATH_WIDTH[1] - BREATH_WIDTH[0]) * pulse
         core = np.clip(width / 2 + 0.5 - ad, 0, 1)
-        glow = np.exp(-(ad ** 2) / (2 * 7 ** 2)) * (0.15 + 0.45 * pulse)
+        glow = np.exp(-(ad ** 2) / (2 * 9 ** 2)) * (BREATH_GLOW[0] + (BREATH_GLOW[1] - BREATH_GLOW[0]) * pulse)
         alpha = np.maximum(core, glow)
         rgb = np.where((glow > core)[:, None], glow_color, rgb)
     elif style == "akis":
@@ -370,7 +377,7 @@ def frame_rgba(style: str, color: str, accent: str, t: float, speed: float = 1.0
         i = np.floor(u).astype(int)
         frac = (u - i)[:, None]
         rgb = palette[i] * (1 - frac) + palette[np.minimum(i + 1, 3)] * frac
-        alpha = np.clip(2.5 - ad, 0, 1)
+        alpha = np.clip(FLOW_WIDTH / 2 + 0.5 - ad, 0, 1)
     out[f.ys, f.xs, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
     out[f.ys, f.xs, 3] = np.clip(alpha * 255, 0, 255).astype(np.uint8)
     return out

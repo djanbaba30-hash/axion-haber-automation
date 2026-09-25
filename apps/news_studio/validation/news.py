@@ -117,7 +117,7 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
         if h and count_words(h)>9: errors.append(f"{i}. başlık 9 kelimeden uzun.")
         fit=check_headline(h) if h else None
         if fit and not fit.fits:
-            # Videodaki gerçek yazıyla (Google Sans Bold 58 px) ölçülür; düzeltme çağrısına somut hedef verilir.
+            # Videodaki gerçek yazıyla (Google Sans Flex ExtraBold 58 px) ölçülür; düzeltme çağrısına somut hedef verilir.
             errors.append(f"{i}. başlık videoda 2 satıra sığmıyor ({len(h)} karakter): anlamı koruyarak yaklaşık {fit.over_chars} karakter kısalt, en fazla 44 karakter.")
     cap=len(result.icerik); tts=len(result.tts); raw=len(raw_text.strip())
     if cap>2200: errors.append(f"Paylaşım metni (caption) {cap} karakter; en fazla 2200 olmalı.")

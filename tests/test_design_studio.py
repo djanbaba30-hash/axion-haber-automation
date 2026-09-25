@@ -27,9 +27,11 @@ def test_template_assets_exist():
 
 
 def test_font_registry_reads_family_and_weight_from_file():
-    assert "Bold" in families()[DEFAULT_FAMILY]
+    assert {"ExtraBold", "Black"} <= set(families()[DEFAULT_FAMILY])  # v3.1: daha kalın varsayılan
+    assert "Bold" in families()["Google Sans"]  # eski tasarımlar kendi fontunu korur
     assert resolve("Yok Böyle Font", "Bold").family == DEFAULT_FAMILY  # bilinmeyen → varsayılan
-    assert resolve(DEFAULT_FAMILY, "Black").style == "Bold"  # en yakın kalınlık
+    assert resolve(DEFAULT_FAMILY, "Bold").style == "ExtraBold"  # en yakın kalınlık
+    assert resolve("Google Sans", "Black").style == "Bold"
     assert load_font(size=40).size == 40
 
 
