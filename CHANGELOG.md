@@ -21,6 +21,7 @@ Editörün Windows testinden sonraya bıraktığı işler ve Claude'un QoL notla
 - `axion_app.py`: yeni başlatma noktası (`st.App` = Streamlit'in resmi ASGI yolu) + Tarayıcı'nın akış kanalı.
 
 ## Changed
+- `guncelle.bat` Axion'u artık kendisi açmaz (editör isteği); masaüstündeki simgeyle açılır.
 - **Tarayıcı doğrudan akışla:** kareler Chrome ürettiği anda WebSocket'ten gider, dokunuş/kaydırma/yazı doğrudan gelir
   (jetonlu; yalnız Axion'a girmiş sayfa). Tablet her kareyi gösterince onaylar, en fazla 2 kare yolda: yavaş internette
   gecikme birikmez. Kanal yoksa eski yola düşer. Ölçüm (sandbox, headless Chromium): sürekli kaydırmada ~4 → ~19 kare/sn,

@@ -19,7 +19,5 @@ if errorlevel 1 (
   exit /b 1
 )
 powershell -NoProfile -ExecutionPolicy Bypass -File "windows\kisayol.ps1"
-echo Axion yeniden baslatiliyor...
-wscript "%~dp0axion_baslat.vbs"
-echo Guncelleme tamam.
-timeout /t 3 >nul
+echo Guncelleme tamam. Axion kapali: masaustundeki Axion simgesiyle ac.
+timeout /t 5 >nul
