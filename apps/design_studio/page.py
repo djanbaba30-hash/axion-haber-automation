@@ -163,7 +163,7 @@ def render_status() -> None:
             jobs.start(project, current_design)
             st.rerun()  # tüm sayfa: durum kutusu saniyede bir yenilenmeye başlasın
         if final.exists():
-            st.download_button("⬇️ İndir", final.read_bytes, file_name=f"{pid}.mp4", mime="video/mp4",
+            st.download_button("⬇️ İndir", final.read_bytes, file_name=project.video_filename, mime="video/mp4",
                                width="stretch", on_click="ignore",
                                help=None if current else "Son oluşturulan hâl (değişiklikler hariç).")
             caption_copy(load_news_project(project)[0].caption, key=key("paylasim"))

@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -92,6 +93,32 @@ def rendering() -> bool:
     return video_jobs.busy() or design_jobs.busy()
 
 
+def notify_finished_jobs() -> None:
+    """Arka plandaki video biterse editör hangi sayfadaysa kısa bildirim (editör: "✅ … videosu hazır")."""
+    from apps.design_studio import jobs as design_jobs
+    from apps.video_studio import jobs as video_jobs
+
+    ss = st.session_state
+    since = ss.setdefault("axion_oturum_basi", time.monotonic())
+    seen = ss.setdefault("axion_bildirilen_isler", set())
+
+    @st.fragment(run_every=2.0 if rendering() else None)
+    def watch() -> None:
+        for kind, module in (("video", video_jobs), ("tasarim", design_jobs)):
+            for folder, job in module.finished_since(since):
+                if (kind, folder, job.finished) in seen or getattr(job, "cancelled", False):
+                    continue
+                seen.add((kind, folder, job.finished))
+                project = get_news_project(Path(folder).name)
+                name = f"«{project.headline}»" if project else "Haber"
+                if job.error or getattr(job, "final_error", None):
+                    st.toast(f"{name} videosu oluşturulamadı; ayrıntı Video/Tasarım Stüdyosu'nda.", icon="⚠️")
+                else:
+                    st.toast(f"{name} videosu hazır ({job.elapsed:.0f} sn).", icon="✅")
+
+    watch()
+
+
 def sidebar_footer() -> None:
     with st.sidebar:
         active_id = st.session_state.get("active_news_project")
@@ -152,3 +179,4 @@ with st.sidebar:
     st.divider()
 page.run()
 sidebar_footer()
+notify_finished_jobs()

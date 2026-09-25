@@ -365,7 +365,7 @@ with st.expander("4. Video", expanded=True):
             download_col, design_col = st.columns(2)
             download_col.download_button(  # dosya yalnızca tıklanınca okunur (her etkileşimde 10–25 MB değil)
                 "⬇️ Son videoyu indir" if final.exists() else "MP4'ü indir", shown.read_bytes,
-                file_name=f"{project.id}.mp4", mime="video/mp4", width="stretch", on_click="ignore",
+                file_name=project.video_filename, mime="video/mp4", width="stretch", on_click="ignore",
             )
             if design_col.button("🎨 Tasarım Stüdyosu'nda düzenle →", width="stretch"):
                 st.switch_page(DESIGN_PAGE)

@@ -107,6 +107,12 @@ class NewsProject:
         return self.folder.name
 
     @property
+    def video_filename(self) -> str:
+        """İndirilen son videonun adı: haber başlığı (editör: dosyayı paylaşırken hangi haber olduğu belli olsun)."""
+        name = re.sub(r"\s+", " ", re.sub(r'[\\/:*?"<>|\x00-\x1f]', "", self.headline)).strip(" .")
+        return f"{name[:80].rstrip(' .') or self.id}.mp4"
+
+    @property
     def package_path(self) -> Path:
         return self.folder / PACKAGE_FILENAME
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime
+from datetime import date, datetime
 
 import streamlit as st
 from elevenlabs.client import ElevenLabs
@@ -18,6 +18,7 @@ from apps.axion_local.store import (
     read_text_file,
     save_news_project,
 )
+from apps.design_studio.preview import headline_preview
 from apps.news_studio.ai.clients import generate, make_anthropic, make_openai, regenerate_headlines
 from apps.news_studio.config import (
     CLAUDE_MODEL,
@@ -29,11 +30,15 @@ from apps.news_studio.config import (
 )
 from apps.news_studio.integration.history import log_run
 from apps.news_studio.prompts.news import build_correction_prompt, build_news_prompt
+from apps.news_studio.read_along import read_along
 from apps.news_studio.tts.calibration import estimate
 from apps.news_studio.tts.calibration import load as load_calibration
 from apps.news_studio.tts.calibration import update as update_calibration
 from apps.news_studio.tts.service import synthesize
+from apps.news_studio.validation.diff import STYLE as DIFF_STYLE
+from apps.news_studio.validation.diff import changed_fields, word_diff_html
 from apps.news_studio.validation.news import find_censorship_warnings, validate_news_output
+from apps.news_studio.validation.source_check import missing_numbers, unsupported
 from apps.news_studio.validation.speakable import make_speakable
 from shared.news_package import NewsPackage, TTSAlignment
 from shared.text_layout import check_headline
@@ -81,7 +86,7 @@ def init_state() -> None:
     defaults = {
         "baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "raw_text": "",
         "examples": examples, "last_usage": None, "last_validation": [], "last_warnings": [],
-        "last_correction_reason": "", "tts_calibration": load_calibration(), **AUDIO_STATE,
+        "last_correction_reason": "", "last_correction_diff": {}, "tts_calibration": load_calibration(), **AUDIO_STATE,
     }
     for key, value in defaults.items():
         ss.setdefault(key, value)
@@ -126,10 +131,18 @@ def reset_state() -> None:
     ss.update(AUDIO_STATE)
 
 
+def source_note(container, items: list[str]) -> None:
+    """Kaynakta (ham haberde) bulunmayan sayı/isimler: yapay zekâ uydurmuş ya da farklı yazmış olabilir, kontrol et."""
+    if items:
+        container.markdown("🟡 **Kaynakta yok:** " + " · ".join(f":orange-background[{item}]" for item in items[:12]),
+                           help="Ham haberde geçmiyor. Yapay zekâ uydurmuş ya da farklı yazmış olabilir (ör. \"iki\" ↔ \"2\").")
+
+
 def start_from_text(text: str) -> None:
     """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
     ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
-               "last_warnings": [], "last_correction_reason": "", **AUDIO_STATE, "raw_text": text})
+               "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
+               "raw_text": text})
     for key in ("active_news_project", "loaded_news_project", "active_news_source"):
         ss.pop(key, None)
 
@@ -217,6 +230,8 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                 check = validate_news_output(result, raw, tts_min, tts_max)
                 total = accumulate(None, {**usage, "provider": provider})
                 correction_reason = ""
+                fields = ("baslik1", "baslik2", "icerik", "tts")
+                first = {name: getattr(result, name) for name in fields}
                 if check.errors:  # tek düzeltme çağrısı (düşük düşünme); daha az hatalıysa o alınır
                     correction_reason = " | ".join(check.errors)
                     correction = build_correction_prompt(style, duration_label, tts_min, tts_target, tts_max, raw, result, check.errors)
@@ -236,6 +251,7 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                 ss.last_validation = check.errors
                 ss.last_warnings = check.warnings + find_censorship_warnings(result.tts + "\n" + result.icerik)
                 ss.last_correction_reason = correction_reason
+                ss.last_correction_diff = changed_fields(first, {name: getattr(result, name) for name in fields})
                 log_run(HISTORY_DB_PATH, raw_text=raw, result=result, usage=total, style=style, provider=provider,
                         model=total.get("model", ""), validation=check.errors)
                 st.rerun()
@@ -247,6 +263,11 @@ if ss.icerik:
     notes = ss.last_validation + ss.last_warnings
     if notes:
         st.warning("**Kontrol et:**\n\n" + "\n".join(f"- {note}" for note in notes))
+    if ss.last_correction_diff:  # kalite kontrolü: ikinci (düzeltme) çağrısının yaptığı değişiklik
+        with st.expander("🔁 Düzeltme çağrısı neyi değiştirdi"):
+            labels = {"baslik1": "1. başlık", "baslik2": "2. başlık", "icerik": "Paylaşım metni", "tts": "Seslendirme"}
+            st.html(DIFF_STYLE + "".join(f"<p><b>{labels[name]}</b></p>{word_diff_html(old, new)}"
+                                         for name, (old, new) in ss.last_correction_diff.items()))
 
     # =================================================
     # BAŞLIKLAR + PAYLAŞIM METNİ
@@ -261,6 +282,10 @@ if ss.icerik:
             fit = check_headline(text)
             prefix = "✅ Videoda: " if fit.fits else f"⚠️ Videoda 2 satıra sığmıyor, ~{fit.over_chars} karakter kısalt: "
             col.caption(prefix + " / ".join(fit.lines))
+            source_note(col, missing_numbers(text, raw))
+    if ss.baslik1.strip() or ss.baslik2.strip():  # videodaki gibi: gerçek yazı tipi, satır kırılımı, günün arka planı
+        with st.expander("🖼️ Başlıklar videoda böyle görünür", expanded=True):
+            st.image(headline_preview(ss.baslik1.strip(), ss.baslik2.strip(), date.today()), width=540)
     if st.button("↻ Başlıkları yeniden üret", help="Sadece başlıklar için küçük bir yapay zekâ çağrısı yapar."):
         try:
             headlines, headline_usage = regenerate_headlines(openai_client(), anthropic_client(), provider, openai_model, ss.icerik)
@@ -273,6 +298,7 @@ if ss.icerik:
     st.subheader("Paylaşım metni")
     bound_text(st.text_area, "Paylaşım metni", "icerik", height=260, label_visibility="collapsed")
     st.caption(f"{len(ss.icerik)}/2200 karakter")
+    source_note(st, unsupported(ss.icerik, raw))
     with st.expander("Kopyalamaya hazır tam metin"):
         st.code(f"{ss.baslik1}\n\n{ss.baslik2}\n\n{ss.icerik}", language="text")
 
@@ -282,6 +308,7 @@ if ss.icerik:
     st.subheader("Seslendirme")
     bound_text(st.text_area, "Seslendirme metni", "tts_metni", height=150, label_visibility="collapsed")
     st.caption(f"{len(ss.tts_metni)} karakter · hedef {tts_min}–{tts_max} ({duration_label})")
+    source_note(st, unsupported(ss.tts_metni, raw))
     if st.button("🎙️ Seslendir", type="primary", width="stretch"):
         tts_text = make_speakable(ss.tts_metni.strip())  # "18.00'de" → "akşam 6'da" (spiker okuyabilsin)
         if not voice_id:
@@ -309,7 +336,11 @@ if ss.icerik:
     audio_stale = bool(ss.last_audio_bytes) and ss.get("last_audio_text") != ss.tts_metni
     if ss.last_audio_bytes:
         player, download = st.columns([4, 1])
-        player.audio(ss.last_audio_bytes, format="audio/mp3")
+        with player:
+            if ss.last_audio_alignment and not audio_stale:  # çalan kelime vurgulanır, kelimeye dokununca oradan çalar
+                read_along(ss.last_audio_bytes, ss.last_audio_alignment, key="okuyarak_dinle")
+            else:
+                st.audio(ss.last_audio_bytes, format="audio/mp3")
         download.download_button("MP3 indir", data=ss.last_audio_bytes, file_name=ss.last_audio_filename, mime="audio/mp3",
                                  width="stretch")
         if ss.last_audio_duration:

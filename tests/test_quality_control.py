@@ -1,0 +1,92 @@
+"""Kalite kontrolünü hızlandıran araçlar (API yok): kaynakta yok işaretleri, düzeltme farkı, okuyarak dinleme,
+başlık önizlemesi; Haber Stüdyosu'nda uçtan uca."""
+
+from __future__ import annotations
+
+from datetime import date
+
+from apps.news_studio.read_along import word_times
+from apps.news_studio.validation.diff import changed_fields, word_diff_html
+from apps.news_studio.validation.source_check import missing_numbers, unsupported
+from tests.test_axion_local_app import button, local_env, start  # noqa: F401 — fixture
+
+RAW = ("Bursa'nın İnegöl ilçesinde 24.09.2026 günü saat 18.00'de kontrolden çıkan tır devrildi. Sürücü Ahmet Yılmaz (45) "
+       "hafif yaralandı. Olay yerine AFAD ve itfaiye ekipleri sevk edildi. DHA")
+
+
+def test_numbers_and_names_missing_from_source_are_marked():
+    caption = ("Bursa'nın İnegöl ilçesinde tır devrildi. Sürücü Ahmet Yılmaz (45) ile Mehmet Kaya yaralandı, 3 kişi "
+               "hastaneye kaldırıldı. Olay 24 Eylül'de yaşandı. AFAD ekipleri bölgede.")
+    assert unsupported(caption, RAW) == ["3", "Mehmet", "Kaya"]
+    # Seslendirmede okunuşa çevrilmiş saat/tarih kaynak sayılır (18.00 → akşam 6).
+    assert unsupported("İnegöl'de akşam 6'da tır devrildi. Sürücü Ahmet Yılmaz yaralandı.", RAW) == []
+    assert missing_numbers("TIR DEVRİLDİ, 5 YARALI", RAW) == ["5"]  # başlık: yalnız sayılar (hepsi büyük harf)
+    assert unsupported("", RAW) == [] and unsupported("Metin 5", "") == []
+
+
+def test_correction_diff_marks_removed_and_added_words():
+    html = word_diff_html("TIR DEVRİLDİ 5 YARALI VAR", "KONTROLDEN ÇIKAN TIR DEVRİLDİ 5 YARALI")
+    assert html == '<div class="fark"><ins>KONTROLDEN ÇIKAN</ins> TIR DEVRİLDİ 5 YARALI <del>VAR</del></div>'
+    assert "&lt;b&gt;" in word_diff_html("a", "<b>")  # metin HTML olarak çalışmaz
+    assert changed_fields({"a": "1", "b": "2"}, {"a": "1", "b": "3"}) == {"b": ("2", "3")}
+
+
+def test_word_times_come_from_character_alignment():
+    text = "Tır  devrildi."
+    starts = [i * 0.1 for i in range(len(text))]
+    words = word_times(list(text), starts, [s + 0.1 for s in starts])
+    assert [w[0] for w in words] == ["Tır", "devrildi."]
+    assert words[1][1] == 0.5 and round(words[1][2], 3) == 1.4
+
+
+def test_headline_preview_renders_like_the_video():
+    from io import BytesIO
+
+    from PIL import Image
+
+    from apps.design_studio.preview import headline_preview
+
+    image = Image.open(BytesIO(headline_preview("KONTROLDEN ÇIKAN TIR DEVRİLDİ", "SÜRÜCÜ YARALANDI", date(2026, 9, 25))))
+    assert image.width == 540 and image.height == 306  # iki bant alt alta
+    assert headline_preview("", "", date(2026, 9, 25)) == b""
+
+
+def test_news_studio_shows_quality_checks_end_to_end(local_env, monkeypatch):
+    from apps.news_studio.models.news import NewsOutput
+
+    first = NewsOutput(baslik1="TIR DEVRİLDİ VE ARDINDAN ÇOK UZUN BİR BAŞLIK OLARAK SÜRÜP GİTTİ", baslik2="5 YARALI",
+                       icerik="Bursa'nın İnegöl ilçesinde tır devrildi. Sürücü Mehmet Kaya yaralandı." * 3,
+                       tts_plani=["olay"], tts="İnegöl'de tır devrildi. Sürücü yaralandı.")
+    fixed = first.model_copy(update={"baslik1": "KONTROLDEN ÇIKAN TIR DEVRİLDİ"})
+    answers = iter([(first, {"input_tokens": 1}), (fixed, {"input_tokens": 1})])
+    monkeypatch.setattr("apps.news_studio.ai.clients.generate", lambda *args, **kwargs: next(answers))
+    at = start()
+    at.session_state["raw_text"] = RAW
+    at.run()
+    button(at, "Haberi işle").click().run()
+    assert not at.exception
+    assert at.session_state["baslik1"] == "KONTROLDEN ÇIKAN TIR DEVRİLDİ"  # düzeltme çağrısı başlığı kısalttı
+    assert list(at.session_state["last_correction_diff"]) == ["baslik1"]
+    assert any(e.label == "🔁 Düzeltme çağrısı neyi değiştirdi" for e in at.expander)
+    notes = [m.value for m in at.markdown if "Kaynakta yok" in m.value]
+    assert any("[5]" in n for n in notes) and any("Mehmet" in n for n in notes)
+    preview = next(e for e in at.expander if e.label == "🖼️ Başlıklar videoda böyle görünür")
+    assert [c.type for c in preview.children.values()] == ["image"]
+
+
+def test_finished_video_is_announced_on_any_page_and_named_after_headline(local_env, monkeypatch):
+    import time
+
+    from apps.video_studio import jobs as video_jobs
+    from tests.test_axion_local_app import media_library, saved_project
+
+    project = saved_project(media_library())
+    assert project.video_filename == f"{project.headline}.mp4"
+    at = start()  # Haber Stüdyosu açık
+    job = video_jobs.Job()
+    job.finished = time.monotonic() + 1
+    monkeypatch.setitem(video_jobs._JOBS, str(project.folder), job)
+    at.run()
+    assert [t.value for t in at.toast] == [f"«{project.headline}» videosu hazır ({job.elapsed:.0f} sn)."]
+    at.run()
+    assert not at.toast  # bir kez

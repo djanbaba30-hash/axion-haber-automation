@@ -104,6 +104,11 @@ def busy() -> bool:
     return any(job.running for job in _JOBS.values())
 
 
+def finished_since(since: float) -> list[tuple[str, Job]]:
+    """Bu andan sonra biten işler (proje klasörü, iş): her sayfada "video hazır" bildirimi için."""
+    return [(folder, job) for folder, job in list(_JOBS.items()) if job.finished is not None and job.finished >= since]
+
+
 def get(project: NewsProject) -> Job | None:
     return _JOBS.get(str(project.folder))
 
