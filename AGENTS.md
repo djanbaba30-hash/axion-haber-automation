@@ -212,6 +212,31 @@ kalitesi, kesit aralığı gerçek DHA videolarında (özellikle güvenlik kamer
 (özne kutusu, yan dolgu), bekçi + `guncelle.bat` (çift tıkla). **Açık karar:** sistem komutunu kısaltmak (plan 5. adım)
 — önbellek tuttuğu için kazanç küçük; editör isterse gerçek haberle önce/sonra karşılaştırılarak yapılır.
 
+### Sıradaki: v3.4.0 kurgu ve kadraj (editörle konuşuldu, 2026-09-25; editörün yeni denemesi bekleniyor)
+Örnek: "kadın polis arızalı midibüsü tek başına itti" (DHA 1524464.mp4: 640x480, ortada dikey telefon şeridi ~%37,
+yanları DHA'nın bulanık dolgusu; tek, 55 sn'lik gece elde çekimi). GPT editörün projesini okudu
+(`data/projects/20260925-215857_kadin-polis-...`): Luna 6 pencere (ekonomik, pencere başına 1 kare) — 0–37 sn beyaz
+araç ve "aracın yanındaki kişi" (özne kutusu ortada), 37–55 sn ağaçlık/boş yol (kutu tüm kare). Kurgu YALNIZ
+46,3–55,4 sn'yi kullandı; kırpma genişliği karenin %27,7'si (net şerit ~%37). Editör: "boşuna haber oluşturmuyoruz,
+olay örgüsü orada yazıyor; saçma sapan kurgu yapmasın". Yapılacaklar (editörün geri bildirimi gelince, tek seferde):
+1. **Kurgu olay örgüsünü izlesin:** `rough_cut` çekim başına tek `cursor` tutuyor → geç bir pencere bir kez seçilince
+   aynı çekimin önceki pencereleri "tekrar" sayılıp puan kaybediyor, hep aynı pencere seçiliyor (bu videonun hatası).
+   Kullanımı pencere/aralık bazında tut. Seslendirmenin anlattığı sırayla (olay → sonuç) kaynak zamanı eşleşsin;
+   öznesi olmayan pencereler (kutu tüm kare, ağaçlık/boş yol) geride kalsın; aynı çekimde kaynak sırası (v3.3.2
+   `_chronological`) korunur. Regresyon testi bu videonun Luna tablosuyla (GPT'nin tablosu yukarıda) yazılsın.
+2. **Yanları bulanık video:** kırpma TAM bulanıklığın bittiği yerden; net görüntüden yandan hiç kesilmez, fazladan
+   yakınlaştırma yok. `framing.detect_content_region` bu videoda editörün bilgisayarında dar çıktı (%27,7 vs ~%37;
+   sandbox'ta .3133/.3733 bulundu — farkın nedeni araştırılacak: pencere/kare seçimi, karanlık gece karesi). Dikey şerit
+   (9:16) 960x1226 alana enine sığar, üst+alttan ~%28 kesilir (editör: seçenek a; koyu kenarla "tamamı" değil).
+3. **Dikey görüntüde hiç kaydırma yok:** ne klip içinde ne klipten klibe (sabit kadraj, tüm video boyunca aynı dikey
+   konum; özne kutularının ortalamasına göre bir kez). Kaydırma yalnız yatay (geniş) videoda, özne alandan genişse.
+4. **Yatay normal video:** alana sığan en geniş alan (tüm yükseklik); özneye göre gereksiz yakınlaştırma yok.
+5. **Luna'ya yalnız net şerit:** yanları bulanık videoda analiz karesini bulanıklığın bittiği yerden kırp (özne ~1,3x
+   büyük görünür, kare başı ~231 → ~154 token). Luna bu videoda kişiyi gördü; sorun kurgudaydı, bu ek iyileştirme.
+6. Çözünürlük: 640x480 kaynakta şerit ~239 px → ~4x büyütme bulanık; editör "Tüm Materyali İndir"deki video daha
+   büyük mü bakacak (kodla çözülmez).
+Editörün bu testi v3.3.2 ile: indirmeyi Axion yapıyor (Brave çöküyordu), aynı çekim kaynak sırasıyla.
+
 ### 3.2.0
 
 **3.2.0:** ROADMAP'teki "Sıradaki işler"in hepsi yapıldı (editörün Windows testinden sonraya bıraktıkları dahil):
