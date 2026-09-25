@@ -1,3 +1,47 @@
+# v3.3.0 — Kesit olay anından, token tasarrufu, önbellek sayacı — 2026-09-25
+
+Editörün 3.2.0 denemesi (Antalya "otomobil yayaya çarpıp durağa daldı") ve GPT'nin 3.2 incelemesi
+(`reviews/gpt-v3.2.md`). Plan: AGENTS.md → v3.3.0.
+
+## Added
+- **Kaynak sesli kesit olay anından başlar** (API yok): önizlemede sabit kamerada ani hareket (en çok değişen küçük
+  bölge; kesmeler ve elde çekim sayılmaz), ani ses (çarpma; müziğin başlaması değil) ve Luna'nın "olay" sahneleri
+  aranır; varsayılan aralık olaydan 2 sn önce … 3 sn sonra. Belirgin an yoksa "bulunamadı, elle seç" yazar (önceden
+  hep ilk 5 sn). Editörün videosundaki güvenlik kamerası bölümünde yayanın savrulduğu an (2,9. sn) bulundu.
+- **Önbellek sayacı** (Haber Stüdyosu kenar çubuğunda, modelin altında): "🟢 Önbellek sıcak, ~N dk (tahmini)" /
+  "⚪ Önbellek soğuk"; dakikada bir yenilenir, her haberde süre baştan (Luna 30 dk, Claude 1 saat). Önbellek tutmadıysa
+  (okunan ve yazılan 0) sayaç başlamaz.
+- **Haber başına tahmini maliyet** ve girdinin önbellekten gelen payı: Geliştirici bilgileri'nde (AGENTS kural 10).
+  Fiyat tablosu tarihli (`apps/news_studio/ai/cost.py`); önbellek okuma/yazma ayrı, düşünme çıktının içinde.
+
+## Changed
+- **Başlık yalnız hatalıysa küçük başlık çağrısı:** tam düzeltme çağrısı (sistem + ham haber + tüm çıktı) yerine
+  yalnız başlıklar; geçerli başlık korunur, tek deneme, sonuç yeniden ölçülür. Kalın font (v3.1) bu hatayı sıklaştırmıştı.
+- Varsayılan boyutta sığmayıp **50 px'e kadar küçülerek 2 satıra sığan başlık hata değil uyarı** (düzeltme çağrısı
+  yok); satır yazısı "✅ Videoda (küçültülmüş yazı, 54 px): …". 42 px'e kadar küçülen başlıklar videoda zayıf kaldığı
+  için hâlâ hata.
+- **Claude önbelleği 1 saat** (`ttl: "1h"`; yazma 2x, okuma 0,1x): haberler arası 10–20 dk'da 5 dk'lık önbellek her
+  haberde yeniden yazılıyordu. Luna (GPT-5.6) önbelleği zaten en az 30 dk ve tek seçenek bu; 24 saatlik saklama
+  5.6'da yok. OpenAI'ın önbelleğe yazılan token sayısı da okunuyor.
+- **Görüntü analizi token'ı:** kareler Luna'ya uzun kenarı 512 px ile gider (GPT-5.6 görseli 32 px'lik parçalarla sayar:
+  dikey 640x1138 kare ~864 → ~173 token); aynı sahnede öncekiyle aynı görünen kareler gönderilmez (küçük bir bölgedeki
+  olay elenmez), tüm kareleri aynı olan pencerenin sonucu önceki pencereden kopyalanır; açıklama en fazla 8 kelime.
+  Editörün videosunda (6 sahne, 12 kare) görüntü token'ı ~7.500 → ~3.000. `detail: "low"` 5.6'da doğrulanamadığı için
+  kullanılmadı. Yerel kareler (kadraj tespiti) 640 px kalır.
+
+## Removed
+- Haber Stüdyosu'ndaki başlık görsel önizlemesi (editör: satırlara sığıp sığmadığını görmek yeter). API'siz yerel
+  çizimdi; token'la ilgisi yoktu, arayüz sadeliği için kalktı.
+
+## Fixed (GPT v3.2 bulguları, `reviews/claude-v3.md` G6–G8)
+- Bekçi, `guncelle.bat` çalışırken Axion'u yeniden açmaz (komut satırında `guncelle.bat` geçen `cmd.exe` varsa çıkar).
+- Tarayıcı akış durumu oturum başına (jeton oturuma bağlı, imzalı): bir tabletin akışı ötekinin görüntüsünü kesmez.
+- Akış kanalı kapanınca alıcı görevin istisnası tüketilir; kopma normal kapanış.
+
+## Yapılmayan
+- Sistem komutunu kısaltmak (plan 5. adım): önbellek artık tuttuğu için kazanç küçük; gerçek haberle önce/sonra
+  karşılaştırması gerekiyor (AGENTS kural 5). Editörün kararına bırakıldı.
+
 # v3.2.0 — "Sonraya" bırakılanlar, akıcı Tarayıcı, temizlik — 2026-09-25
 
 Editörün Windows testinden sonraya bıraktığı işler ve Claude'un QoL notları (ROADMAP → Sıradaki işler) bu sürümde.

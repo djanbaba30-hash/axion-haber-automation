@@ -61,7 +61,12 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    Kontrolü hızlandıranlar:
    - **🟡 Kaynakta yok:** çıktıda olup ham haberde geçmeyen sayı ve isimler (yapay zekâ uydurmuş ya da farklı yazmış
      olabilir; "iki" ↔ "2" gibi yazım farkları da çıkabilir).
-   - **🖼️ Başlıklar videoda böyle görünür:** gerçek yazı tipi, satır kırılımı ve günün arka planıyla.
+   - Başlığın altında videodaki satır bölünmesi: **✅ Videoda** (sığıyor), **✅ Videoda (küçültülmüş yazı)** (biraz
+     küçülerek sığıyor; istersen kısalt) ya da **⚠️ 2 satıra sığmıyor** (kaç karakter kısaltman gerektiği yazar).
+     Yalnız başlık sığmazsa Axion kendiliğinden sadece başlıkları yeniden yazdırır (küçük, ucuz çağrı).
+   - **Önbellek** (kenar çubuğunda modelin altında): ilk haberde yapay zekânın kuralları önbelleğe yazılır; süre
+     dolmadan gelen haberde bu kısım ~%10 fiyatına gider. **🟢 Önbellek sıcak, ~N dk** tahminidir (Luna 30 dk, Claude
+     1 saat; her haberde baştan). Haberin tahmini maliyeti ve önbellekten gelen pay **Geliştirici bilgileri**'nde.
    - **Okuyarak dinle:** ses çalarken söylenen kelime yeşil yanar; bir kelimeye dokununca oradan çalar.
    - **🔁 Düzeltme çağrısı neyi değiştirdi:** ilk sonuç düzeltildiyse silinenler kırmızı, eklenenler yeşil.
 2. Sayfanın altında **Kaydet ve Video Stüdyosu'na geç**. Haber, ses ve metin projeye kaydedilir; Video Stüdyosu bu projeyle açılır.
@@ -78,8 +83,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      Klasör, tarayıcıdan yükleme ve analiz yoğunluğu **⚙️ Ayarlar**'da.
    - **3. Kaynak sesli kesitler (isteğe bağlı):** Videodan bir bölümü **kendi sesiyle** seslendirmenin önüne
      (dikkat çekici an) veya arkasına (röportaj) ekler. Analizden önce de yapılabilir.
-     **Videoyu izle ve kesit seç** → kaydırıcıyla başlangıç ve bitişi ayarla (dakika:saniye, ör. 01:20; oynatıcı o aralığı
-     oynatır) →
+     **Videoyu izle ve kesit seç** → aralık kendiliğinden olayın olduğu yerden gelir (ani hareket/ses, ör. çarpma anı;
+     "📍 Aralık olayın olduğu yerden seçildi"); bulunamazsa videoyu izleyip seç. Kaydırıcıyla başlangıç ve bitişi ayarla
+     (dakika:saniye, ör. 01:20; oynatıcı o aralığı oynatır) →
      **Seslendirmeden önce / sonra** → **Kesiti ekle**. Birden fazla kesit ekleyebilirsin (ör. röportajın iki kısmı);
      eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
      İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
