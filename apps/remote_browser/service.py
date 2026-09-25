@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 import os
 import re
 import shutil
@@ -30,6 +31,8 @@ from apps.axion_local.store import MEDIA_EXTENSIONS
 
 from .logins import Logins, site_of
 
+logger = logging.getLogger(__name__)
+
 VIEWPORT = (1024, 768)  # 4:3: yatay tabletin dikey alanını doldurur; DHA paneli masaüstü düzeninde kalır
 # Tablet ekranı yoğun (2x): 1024 px'lik görüntü büyütülünce yazılar bulanıklaşıyordu. Sayfa 1,5 kat çözünürlükte çizilir
 # (yerleşim ve dokunuş koordinatları aynı: 1024x768); kare biraz büyür, evin interneti (1000 Mbps) sorun değil.
@@ -37,6 +40,7 @@ SCALE = 1.5
 JPEG_QUALITY = 70
 IDLE_SECONDS = 20 * 60
 COMMAND_TIMEOUT = 30.0
+STEP_TIMEOUT = 3.0  # tek bir CDP/sekme adımı; yanıt vermeyen sekme ekranı dondurmasın
 
 BROWSER_ENV = "AXION_BROWSER"
 _WINDOWS_BROWSERS = [
@@ -139,12 +143,13 @@ def normalize_url(text: str) -> str:
     return "https://" + text
 
 
-def unique_path(folder: Path, name: str) -> Path:
-    """İndirilenler'de aynı adlı dosya varsa üzerine yazmaz: "video (2).mp4"."""
+def unique_path(folder: Path, name: str, taken: set[Path] = frozenset()) -> Path:
+    """İndirilenler'de aynı adlı dosya varsa üzerine yazmaz: "video (2).mp4". `taken`: hâlâ inen dosyaların adları
+    (aynı anda inen iki "haber.mp4" aynı yarım dosyaya yazmasın; DHA "Tüm Materyali İndir", iki kez İndir)."""
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name).strip(" .") or "indirilen"
     path = folder / name
     stem, suffix, number = path.stem, path.suffix, 2
-    while path.exists():
+    while path.exists() or path in taken or path.with_name(path.name + ".iniyor").exists():
         path = folder / f"{stem} ({number}){suffix}"
         number += 1
     return path
@@ -187,6 +192,7 @@ class RemoteBrowser:
         self.downloads: list[Download] = []
         self.last_used = time.monotonic()
         self.closed = False
+        self.crashed = False  # Brave kendiliğinden kapandı (çöktü)
         self._screen: Screen | None = None
         # Canlı görüntü (CDP screencast): Chrome yalnız değişen kareyi yollar; ekran görüntüsü beklemekten hızlı.
         self._cast: Any = None
@@ -224,6 +230,7 @@ class RemoteBrowser:
             await asyncio.to_thread(kill_orphans, self.profile)
             self._context = await self._playwright.chromium.launch_persistent_context(str(self.profile), **options)
         self._context.on("page", self._on_new_page)
+        self._context.on("close", self._on_context_close)
         for page in self._context.pages:
             self._watch(page)
         self._page = self._context.pages[-1] if self._context.pages else await self._context.new_page()
@@ -239,6 +246,11 @@ class RemoteBrowser:
         if frame is page.main_frame and page is self._page:
             self.filled_site = None  # yeni sayfa: "dolduruldu" notu yalnız dolduran sayfada görünür
 
+    def _on_context_close(self, *_: Any) -> None:
+        if not self.closed:  # biz kapatmadık: Brave çöktü ya da kapatıldı
+            self.crashed = True
+            logger.warning("Tarayıcı (Brave) beklenmedik şekilde kapandı; yeniden başlatılacak.")
+
     def _on_new_page(self, page) -> None:  # yeni sekme / açılır pencere öne gelir
         self._watch(page)
         self._page = page
@@ -250,7 +262,8 @@ class RemoteBrowser:
 
     async def _save(self, download) -> None:
         self.inbox.mkdir(parents=True, exist_ok=True)
-        item = Download(download.suggested_filename, unique_path(self.inbox, download.suggested_filename))
+        busy = {d.path for d in self.downloads if d.state == "iniyor"}
+        item = Download(download.suggested_filename, unique_path(self.inbox, download.suggested_filename, busy))
         self.downloads.append(item)
         partial = item.path.with_name(item.path.name + ".iniyor")
         try:
@@ -344,15 +357,16 @@ class RemoteBrowser:
         old, self._cast, self._cast_page, self._frame = self._cast, None, None, None
         if old is not None:
             try:
-                await old.detach()
+                await asyncio.wait_for(old.detach(), STEP_TIMEOUT)
             except Exception:  # noqa: BLE001 — sekme kapanmış olabilir
                 pass
         try:
-            session = await self._context.new_cdp_session(page)
+            # Süre sınırlı: indirme başlatan sekme (DHA "İndir") yarım kalabilir; ekran onu beklerken donmasın.
+            session = await asyncio.wait_for(self._context.new_cdp_session(page), STEP_TIMEOUT)
             session.on("Page.screencastFrame", lambda frame: self._loop.create_task(self._on_frame(session, frame)))
-            await session.send("Page.startScreencast", {"format": "jpeg", "quality": JPEG_QUALITY,
-                                                        "maxWidth": round(VIEWPORT[0] * SCALE),
-                                                        "maxHeight": round(VIEWPORT[1] * SCALE)})
+            await asyncio.wait_for(session.send("Page.startScreencast", {
+                "format": "jpeg", "quality": JPEG_QUALITY,
+                "maxWidth": round(VIEWPORT[0] * SCALE), "maxHeight": round(VIEWPORT[1] * SCALE)}), STEP_TIMEOUT)
             self._cast, self._cast_page = session, page
         except Exception:  # noqa: BLE001 — akış yoksa ekran görüntüsüne düşülür
             self._cast = self._cast_page = None
@@ -409,7 +423,10 @@ class RemoteBrowser:
 
     def run(self, action: str, value: Any = None) -> None:
         self.last_used = time.monotonic()
-        self._call(self._run(action, value))
+        try:
+            self._call(self._run(action, value))
+        except Exception:  # noqa: BLE001 — işlem uzun sürdü (ör. indirme başlatan tıklama): ekran akmaya devam eder
+            logger.warning("Tarayıcı işlemi bitmedi: %s", action, exc_info=True)
 
     async def _capture(self) -> Screen:
         page = await self._active()
@@ -425,21 +442,32 @@ class RemoteBrowser:
         tabs = []
         for tab in self._context.pages:
             try:
-                title = await tab.title()
+                title = await asyncio.wait_for(tab.title(), 1.0)  # indirme sekmesi yanıt vermeyebilir
             except Exception:  # noqa: BLE001
                 title = ""
             tabs.append({"title": title or tab.url, "url": tab.url, "active": tab is page})
         self._screen = Screen(image, page.url, next((t["title"] for t in tabs if t["active"]), ""), tabs)
         return self._screen
 
+    def alive(self) -> bool:
+        """Tarayıcı süreci ayakta mı (çökmüş/kapanmışsa yeniden başlatılmalı)."""
+        return not self.closed and not self.crashed and self._thread.is_alive() and self._loop.is_running()
+
     def screen(self, after_frame: int | None = None, wait: float = 0.15) -> Screen:
         """Son kare. `after_frame` verilirse (tıklama/kaydırma sonrası) en fazla `wait` sn daha yeni kare beklenir:
-        tablet işlemin sonucunu bir sonraki yenilemeyi beklemeden görür."""
+        tablet işlemin sonucunu bir sonraki yenilemeyi beklemeden görür. Tarayıcı ayaktayken bir kare alınamazsa
+        (ör. indirme sekmesi yanıt vermiyor) son görüntü döner; hata yalnız tarayıcı gerçekten çöktüyse."""
         self.last_used = time.monotonic()
         deadline = time.monotonic() + wait
         while after_frame is not None and self.frame_count <= after_frame and time.monotonic() < deadline:
             time.sleep(0.01)
-        return self._call(self._capture(), 15)
+        try:
+            return self._call(self._capture(), 8)
+        except Exception:
+            if self.alive() and self._screen is not None:
+                logger.warning("Tarayıcı ekranı alınamadı; son görüntü gösteriliyor.", exc_info=True)
+                return self._screen
+            raise
 
     def latest_frame(self) -> bytes | None:
         """Canlı akışın son karesi (akış sayfası için; yoksa None)."""
@@ -473,7 +501,7 @@ def shared(executable: Path, profile: Path, inbox: Path, logins: Logins | None =
     """Uygulamadaki tek tarayıcı; kapanmışsa (boşta kaldı, çöktü) yeniden başlatılır."""
     global _SHARED
     with _LOCK:
-        if _SHARED is None or _SHARED.closed or _SHARED.executable != executable:
+        if _SHARED is None or not _SHARED.alive() or _SHARED.executable != executable:
             if _SHARED is not None:
                 _SHARED.close()
             _SHARED = RemoteBrowser(executable, profile, inbox, logins)
@@ -483,7 +511,7 @@ def shared(executable: Path, profile: Path, inbox: Path, logins: Logins | None =
 def current() -> RemoteBrowser | None:
     """Açık tarayıcı (akış uç noktası için); yoksa None, başlatmaz."""
     browser = _SHARED
-    return browser if browser is not None and not browser.closed else None
+    return browser if browser is not None and browser.alive() else None
 
 
 def close_shared() -> None:

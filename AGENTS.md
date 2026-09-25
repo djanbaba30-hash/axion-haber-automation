@@ -182,7 +182,11 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.3.0
+## Nerede kaldık (2026-09-25) — Sürüm 3.3.1
+
+**3.3.1:** Tarayıcı indirirken "yeniden başlatılıyor"da kalma düzeltildi (tek hata çökme sayılmaz, gerçek çökmede
+ekran kendiliğinden yeni tarayıcı açar ve sayfaya döner; eşzamanlı aynı adlı indirmeler). Windows'ta tetikleyici
+(Brave + DHA İndir) doğrulanmadı; olursa `data\axion.log`.
 
 **3.3.0** (editörün 3.2.0 denemesi + GPT'nin v3.2 incelemesi; ayrıntı `CHANGELOG.md`): kesitin varsayılan aralığı olay
 anı (`moment.py`, API yok); yalnız başlık hatalıysa küçük başlık çağrısı, 50 px'e kadar küçülerek sığan başlık uyarı;

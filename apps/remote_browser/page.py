@@ -42,9 +42,13 @@ if executable is None:
              "TARAYICI_YOLU'na brave.exe'nin yolunu yaz, sonra Axion'u yeniden başlat.")
     st.stop()
 
+def open_browser() -> service.RemoteBrowser:
+    return service.shared(executable, data_dir() / "tarayici", inbox_dir(), logins)
+
+
 try:
     with st.spinner("Tarayıcı açılıyor..."):
-        browser = service.shared(executable, data_dir() / "tarayici", inbox_dir(), logins)
+        browser = open_browser()
 except Exception as error:  # noqa: BLE001 — Playwright/tarayıcı başlatılamadı
     st.error(f"Tarayıcı açılamadı: {str(error).splitlines()[0][:300]}")
     st.stop()
@@ -76,10 +80,20 @@ def handle(events: list[Any]) -> None:
 
 
 def current_screen(after_frame: int | None = None):
+    """Tarayıcının son ekranı. Tarayıcı çöktüyse/kapandıysa burada yeniden açılır (v3.3.1: önceden fragment kapalı
+    tarayıcıda kalıyor, "yeniden başlatılıyor" sayfa yenilenene kadar sürüyordu)."""
+    global browser
     try:
+        if not browser.alive():
+            old = browser
+            browser = open_browser()
+            browser.downloads = [d for d in old.downloads if d.state != "iniyor"] + browser.downloads
+            last_url = old._screen.url if old._screen else ""
+            if last_url.startswith("http"):  # çökmeden önceki sayfaya dön
+                browser.run("goto", last_url)
         return browser.screen(after_frame)
-    except Exception:  # noqa: BLE001 — tarayıcı kapandı/çöktü: bir sonraki çalıştırmada yeniden açılır
-        browser.closed = True
+    except Exception:  # noqa: BLE001 — açılamadı: bir sonraki yenilemede yeniden denenir
+        service.logger.warning("Tarayıcı ekranı alınamadı.", exc_info=True)
         return None
 
 

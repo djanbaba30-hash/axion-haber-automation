@@ -505,6 +505,9 @@ class FakeBrowser:
     closed = False
     frame_count = 0
 
+    def alive(self):
+        return not self.closed
+
     def __init__(self):
         from apps.remote_browser.service import Screen
 

@@ -81,6 +81,10 @@ def test_normalize_url_and_unique_path(tmp_path):
     (tmp_path / "video.mp4").write_bytes(b"1")
     assert unique_path(tmp_path, "video.mp4").name == "video (2).mp4"
     assert unique_path(tmp_path, 'a/b:c?.mp4').name == "a_b_c_.mp4"
+    # Aynı anda inen iki "haber.mp4" (DHA'da İndir'e iki kez / Tüm Materyali İndir) aynı yarım dosyaya yazmasın.
+    assert unique_path(tmp_path, "haber.mp4", {tmp_path / "haber.mp4"}).name == "haber (2).mp4"
+    (tmp_path / "rapor.mp4.iniyor").write_bytes(b"")
+    assert unique_path(tmp_path, "rapor.mp4").name == "rapor (2).mp4"
 
 
 def test_find_browser_prefers_setting_and_skips_edge(tmp_path, monkeypatch):
@@ -151,6 +155,39 @@ def test_shared_browser_restarts_after_close(tmp_path):
         assert second is not first and not second.closed
     finally:
         service.shared(_chromium(), tmp_path / "p", tmp_path / "i").close()
+
+
+@pytest.mark.skipif(_chromium() is None, reason="Chromium/Brave yok")
+def test_crashed_browser_is_detected_and_restarted(tmp_path):
+    """Editör (v3.3): DHA'da İndir'e basınca "Tarayıcı yeniden başlatılıyor…" yazıp kalıyordu."""
+    first = service.shared(_chromium(), tmp_path / "p", tmp_path / "i")
+    try:
+        first.screen()
+        first._call(first._context.close())  # Brave çöktü (bağlam biz kapatmadan kapandı)
+        assert first.crashed and not first.alive() and service.current() is None
+        second = service.shared(_chromium(), tmp_path / "p", tmp_path / "i")
+        assert second is not first and second.alive() and second.screen().image
+    finally:
+        service.close_shared()
+
+
+def test_screen_keeps_last_image_when_one_capture_fails():
+    """Tarayıcı ayaktayken tek bir kare alınamazsa (yanıt vermeyen indirme sekmesi) son görüntü kalır, çökme sayılmaz."""
+    browser = object.__new__(RemoteBrowser)
+    browser.frame_count, browser.closed, browser.crashed = 0, False, False
+    browser._screen = service.Screen(b"jpeg", "https://dhaabone.dha.com.tr/news", "Haber", [])
+    browser.alive = lambda: True
+
+    def stuck(coroutine, timeout=0):
+        coroutine.close()
+        raise TimeoutError
+
+    browser._call = stuck
+    assert browser.screen() is browser._screen
+    browser.run("click", (10, 10))  # uzun süren işlem hata fırlatmaz
+    browser.alive = lambda: False
+    with pytest.raises(TimeoutError):
+        browser.screen()
 
 
 def test_logins_are_sealed_and_listed_without_passwords(tmp_path):

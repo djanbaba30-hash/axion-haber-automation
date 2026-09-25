@@ -1,3 +1,20 @@
+# v3.3.1 — Tarayıcı: indirirken "yeniden başlatılıyor"da kalma — 2026-09-25
+
+## Fixed
+- **DHA'da İndir / Tüm Materyali İndir'e basınca "Tarayıcı yeniden başlatılıyor…" yazıp kalıyordu** (editör, acil).
+  İki sorun vardı:
+  - Ekran bir kez alınamayınca (ör. indirme sekmesi yanıt vermiyor, 15 sn) tarayıcı "çöktü" sayılıyordu. Artık
+    tarayıcı ayaktaysa son görüntü kalır; sekme başlığı ve canlı görüntü adımlarının süresi sınırlı (1–3 sn);
+    uzun süren tıklama hata vermez.
+  - "Çöktü" sayılınca ekran bölümü kapalı tarayıcıda kalıyordu (yeni tarayıcı yalnız sayfa baştan yüklenince
+    açılıyordu). Artık Brave gerçekten çökerse (ya da kapanırsa) ekran kendiliğinden yeni tarayıcı açar, çökmeden önceki
+    sayfaya döner, bitmiş indirmeler listede kalır. Nedeni `data\axion.log`'a yazılır.
+- **Aynı adlı dosyalar aynı anda inince biri düşüyordu** ("No such file … haber.mp4.iniyor"): hâlâ inen dosyaların
+  adı da dolu sayılır → "haber (2).mp4".
+- Sandbox'ta denendi (Chromium): tarayıcı süreci öldürüldü → uyarı çıkmadan aynı sayfaya dönüldü; yeni sekme,
+  aynı sekme, `window.open` ile üç eşzamanlı indirme. Brave'e özgü asıl tetikleyici Windows'ta görülmedi:
+  tekrar olursa `data\axion.log`'daki "Tarayıcı" satırları nedeni gösterir.
+
 # v3.3.0 — Kesit olay anından, token tasarrufu, önbellek sayacı — 2026-09-25
 
 Editörün 3.2.0 denemesi (Antalya "otomobil yayaya çarpıp durağa daldı") ve GPT'nin 3.2 incelemesi
