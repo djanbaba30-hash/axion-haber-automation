@@ -81,6 +81,14 @@ def shut_down() -> None:
     threading.Timer(1.0, stop).start()
 
 
+def rendering() -> bool:
+    """Arka planda video üretimi sürüyor mu (Video ya da Tasarım Stüdyosu)."""
+    from apps.design_studio import jobs as design_jobs
+    from apps.video_studio import jobs as video_jobs
+
+    return video_jobs.busy() or design_jobs.busy()
+
+
 def sidebar_footer() -> None:
     with st.sidebar:
         active_id = st.session_state.get("active_news_project")
@@ -94,6 +102,8 @@ def sidebar_footer() -> None:
             return
         if st.session_state.get("axion_confirm_shutdown"):
             st.warning("Axion kapatılsın mı? Telefon/tabletten erişim de kapanır.")
+            if rendering():
+                st.error("⏳ Şu an bir video oluşturuluyor; kapatırsan yarıda kalır (bitmesini beklemen iyi olur).")
             yes, no = st.columns(2)
             if yes.button("Evet, kapat", type="primary", width="stretch"):
                 st.info("Axion kapatıldı. Bu sekmeyi kapatabilirsin.")

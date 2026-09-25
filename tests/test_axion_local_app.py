@@ -609,7 +609,61 @@ def test_design_job_cancel_stops_running_render(local_env, monkeypatch):
     monkeypatch.setattr("apps.design_studio.jobs.render_final", slow_render)
     jobs.start(project, load_project_design(project, 20.0))
     assert started.wait(5)
-    jobs.cancel(project)  # Video Stüdyosu kurguyu yeniden üretirken
+    assert jobs.busy()
+    assert jobs.cancel(project)  # Video Stüdyosu kurguyu yeniden üretirken
     job = jobs.get(project)
     assert not job.running and job.cancelled and not job.error
     assert not (project.folder / store.FINAL_VIDEO_FILENAME).exists()
+
+
+def test_video_job_skips_final_when_design_render_does_not_stop(local_env, monkeypatch):
+    """Tasarım üretimi zamanında durmazsa Video Stüdyosu aynı son videoya ikinci üretimi yazmaz."""
+    import threading
+
+    from apps.video_studio import jobs as video_jobs
+
+    project = saved_project(media_library())
+    release, finals = threading.Event(), []
+
+    def slow_rough_cut(edit_project, media_library, output):
+        release.wait(5)
+        output.write_bytes(b"mp4")
+        return "x264"
+
+    monkeypatch.setattr("apps.video_studio.modules.render.render_rough_cut", slow_rough_cut)
+    monkeypatch.setattr("apps.design_studio.jobs.cancel", lambda project: False)
+    monkeypatch.setattr("apps.design_studio.pipeline.render_project_final", finals.append)
+    assert video_jobs.start(project, {}, {})
+    assert video_jobs.busy(project) and video_jobs.busy()
+    release.set()
+    video_jobs.wait(project)
+    job = video_jobs.get(project)
+    assert not job.running and not job.error and "durdurulamadı" in job.final_error
+    assert not finals and not video_jobs.busy(project)
+
+
+def test_design_page_waits_while_video_studio_renders(local_env, monkeypatch):
+    """Video Stüdyosu aynı haberi üretirken Tasarım Stüdyosu ikinci bir üretim başlatmaz."""
+    import threading
+
+    from apps.design_studio import jobs as design_jobs
+    from apps.video_studio import jobs as video_jobs
+
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    release = threading.Event()
+
+    def slow_rough_cut(edit_project, media_library, output):
+        release.wait(10)
+        raise RuntimeError("test")
+
+    monkeypatch.setattr("apps.video_studio.modules.render.render_rough_cut", slow_rough_cut)
+    video_jobs.start(project, {}, {})
+    try:
+        at = open_page(project, DESIGN_PAGE, "design_project_id")
+        assert not at.exception
+        assert any("Video Stüdyosu bu haberin videosunu" in i.value for i in at.info)
+        assert design_jobs.get(project) is None  # son video yok ama otomatik üretim başlamadı
+    finally:
+        release.set()
+        video_jobs.wait(project)

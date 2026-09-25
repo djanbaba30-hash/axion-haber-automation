@@ -43,4 +43,6 @@ make test    # pytest
 make run     # http://localhost:8501
 ```
 
+Windows'ta `make` yok: testler için `windows\testler.bat` (ya da `.venv\Scripts\python.exe -m pytest`).
+
 Sistem gereksinimi: Python 3.12, FFmpeg; Tarayıcı sayfası için Brave (ya da Chrome).

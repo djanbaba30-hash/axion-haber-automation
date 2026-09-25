@@ -78,13 +78,22 @@ def start(project: NewsProject, design: Design, restart: bool = False) -> bool:
         return True
 
 
-def cancel(project: NewsProject, timeout: float = 60.0) -> None:
-    """Çalışan işi durdurur ve bitmesini bekler (Video Stüdyosu kurguyu yeniden üretirken: aynı dosyaya iki üretim yazmasın)."""
+def cancel(project: NewsProject, timeout: float = 60.0) -> bool:
+    """Çalışan işi durdurur ve bitmesini bekler (Video Stüdyosu kurguyu yeniden üretirken: aynı dosyaya iki üretim yazmasın).
+
+    İş durduysa (ya da hiç yoksa) True; süre içinde durmadıysa False: çağıran son videoyu yazmamalı.
+    """
     job = get(project)
     if job and job.running:
         job.cancel.set()
         if job.thread:
             job.thread.join(timeout)
+    return not (job and job.running)
+
+
+def busy() -> bool:
+    """Herhangi bir haberin son videosu üretiliyor mu (Axion kapatılırken uyarı için)."""
+    return any(job.running for job in _JOBS.values())
 
 
 def get(project: NewsProject) -> Job | None:

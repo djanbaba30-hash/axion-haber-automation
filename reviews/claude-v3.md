@@ -61,3 +61,11 @@ toplu olarak uygulanmadı.
 5. Tasarım Stüdyosu: 3–6 blur (biri kenarda, biri dönen, bir mozaik) → **Yeniden oluştur** süresi; oluşturma sürerken
    bir şey değiştirip **🔁 Değişikliklerle yeniden başlat**.
 6. Axion'u kapat → Görev Yöneticisi'nde arkada `brave.exe` kalmış mı (normal Brave açık değilken)?
+
+## GPT'nin yerel gözlemleri (editörün Windows bilgisayarı, v3.0.0) ve kararlar
+
+| # | Gözlem | Karar |
+|---|---|---|
+| G1 | `design_jobs.cancel` 60 sn beklemede döner, iş sürüyorsa Video Stüdyosu yine de son videoyu yazar: çakışma. | Doğru. `cancel` durup durmadığını döndürür; durmadıysa son video yazılmaz. Ayrıca tersi (video üretilirken Tasarım Stüdyosu'nun üretim başlatması) da kapatıldı. v3.0.1, testli. |
+| G2 | "Axion'u kapat" (`os._exit`) arka plan üretimini yarıda keser. | Bilinen borç; yarım dosya `.yaziliyor.mp4` olarak kalır, son videonun yerine geçmez. Ayrı işçi süreci bu ölçekte fazla; kapatma onayına "üretim sürüyor" uyarısı eklendi. |
+| G3 | Windows'ta `make` yok; `make test` çalışmıyor. | `windows/testler.bat` eklendi, README'de not. GPT'nin `.venv` bulamaması (Python yolunu görememesi) GPT'nin kendi korumalı ortamından; Axion'un kendisi aynı `.venv` ile çalışıyor. |

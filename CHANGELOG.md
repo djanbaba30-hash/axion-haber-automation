@@ -1,3 +1,21 @@
+# v3.0.1 — GPT'nin ilk Windows gözlemleri — 2026-09-25
+
+GPT (editörün bilgisayarındaki uygulama) repoyu yerelde inceledi; üç gözlem ve kararlar `reviews/claude-v3.md` sonunda.
+
+## Fixed
+- Tasarım Stüdyosu'ndaki üretim 60 sn içinde durmazsa Video Stüdyosu son videoyu artık yazmaz (aynı dosyaya iki
+  üretim yazabiliyordu); "Tasarım Stüdyosu'nda yeniden oluştur" der.
+- Tersi de: Video Stüdyosu bir haberi üretirken o haberin Tasarım Stüdyosu yeni üretim başlatmaz ("⏳ Video Stüdyosu bu
+  haberin videosunu oluşturuyor"), bitince kendiliğinden yenilenir.
+
+## Added
+- **Axion'u kapat** onayında, arka planda video üretiliyorsa "yarıda kalır" uyarısı.
+- `windows/testler.bat`: Windows'ta `make` olmadan test paketi (geliştirici/GPT için).
+
+## Verification
+- `make test`: 238 geçti, 25 atlandı. Yeni testler: iptal zamanında bitmezse son video yazılmaz; video üretimi
+  sürerken Tasarım Stüdyosu bekler.
+
 # v3.0.0 — 2.x'in toparlanması: repo incelemesi, DHA giriş kaydı, arka planda video — 2026-09-25
 
 Editörün isteği: 3. sürüme geçmeden tüm repoyu kontrol et, optimize et, toparla, hayat kalitesini artır; DHA girişini

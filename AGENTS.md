@@ -115,7 +115,7 @@ shared/                        Modüller arası sözleşmeler (Pydantic)
   text_layout.py               Başlık yerleşimi ve "2 satıra sığıyor mu" ölçümü (Haber + Tasarım stüdyosu ortak), ~~sansür~~
 
 windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı), guncelle.bat,
-                               anahtarlar.bat, sorun_giderme.bat, kisayol.ps1, axion_x.ico
+                               anahtarlar.bat, sorun_giderme.bat, testler.bat (make'siz test), kisayol.ps1, axion_x.ico
 tests/                         pytest; tests/test_axion_local_app.py uygulamayı AppTest ile uçtan uca sürer
 ```
 
@@ -161,15 +161,16 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.0.0
+## Nerede kaldık (2026-09-25) — Sürüm 3.0.1
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Faz 5 (Tasarım Stüdyosu) v2.5–v2.9'da yapıldı; editör v2.7.0'ı denedi ("sorunsuz çalıştı").
 Faz 6'nın temel akışı (tabletten DHA → video) v2.10–v3.0'da hazır. Faz 4 ertelendi (aşağıda). Sürüm ayrıntıları
 `CHANGELOG.md`'de.
 
-3.0.0 öncesi Claude tüm repoyu inceledi (`reviews/claude-v3.md`: bulgular ve yapılanlar). GPT'nin 3.0.0 incelemesi
-bekleniyor (aynı dosyadaki tabloya kararlar eklenir). Windows'ta henüz denenmeyenler: v2.8–v3.0 (geri al/yinele,
+3.0.0 öncesi Claude tüm repoyu inceledi (`reviews/claude-v3.md`: bulgular ve yapılanlar). GPT artık editörün
+bilgisayarında yerel çalışıyor (Windows dosyaları + repo); ilk gözlemleri ve kararlar aynı dosyanın sonunda (v3.0.1).
+Windows'ta test: `windows\testler.bat` (`make` yok). Windows'ta henüz denenmeyenler: v2.8–v3.0 (geri al/yinele,
 ~3 kat hızlı son video, FFprobe kontrolü, yeniden başlatma, Tarayıcı + gerçek DHA, giriş kaydı, arka planda video).
 Editör için deneme listesi `reviews/claude-v3.md` sonunda. Editörün isteği: arayüz, kullanım kolaylığı, optimizasyon.
 

@@ -49,7 +49,9 @@ def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict
     try:
         job.encoder = render.render_rough_cut(edit_project, media_library, project.folder / ROUGH_CUT_FILENAME)
         job.stage = "sablon"
-        design_jobs.cancel(project)
+        if not design_jobs.cancel(project):
+            job.final_error = "Tasarım Stüdyosu'ndaki üretim durdurulamadı; son videoyu orada yeniden oluştur."
+            return
         try:
             pipeline.render_project_final(project)
         except (RuntimeError, ValueError, FileNotFoundError) as error:
@@ -58,6 +60,14 @@ def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict
         job.error = str(error) or error.__class__.__name__
     finally:
         job.finished = time.monotonic()
+
+
+def busy(project: NewsProject | None = None) -> bool:
+    """Video üretiliyor mu (verilen haber için ya da herhangi biri)."""
+    if project is not None:
+        job = get(project)
+        return bool(job and job.running)
+    return any(job.running for job in _JOBS.values())
 
 
 def start(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any]) -> bool:
