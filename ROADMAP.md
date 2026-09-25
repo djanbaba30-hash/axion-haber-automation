@@ -30,7 +30,8 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 - Büyük videolar internete yüklenmez; diskten okunur.
 - Veriler (projeler, TTS kalibrasyonu, üretim geçmişi) kalıcıdır.
 - Axion yalnızca editör ikona tıkladığında çalışır (Windows açılışında başlamaz). Şifre isteğe bağlıdır.
-- Telefon/tabletten erişim, bilgisayar açıkken Tailscale ile sağlanır (internete açık port yok).
+- Telefon/tabletten erişim, bilgisayar açıkken Tailscale ile sağlanır (internete açık port yok). DHA videoları tablete
+  değil, Axion'un Tarayıcı sayfasıyla doğrudan bilgisayara indirilir.
 - Tek uygulama: Haber Stüdyosu ve Video Studio aynı projede buluşur ("Kaydet ve Video Studio'ya geç"). JSON/MP3 indirip yükleme yok.
 
 ## Ürün kararları (editör)
@@ -79,7 +80,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 | 3 ✅ | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 (ertelendi) | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → sahne seçimi. Editör kararı: token harcamamak için şimdilik yapılmıyor; günlük kullanımdaki sahne seçimi şikâyetleri önce kurallarla (API'siz) çözülür. Gerekirse her haberde otomatik değil, yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çalışır. | Daha isabetli sahne seçimi |
 | 5 (yapıldı, Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
-| 6 (sıradaki) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. DHA paneli giriş istediği ve bağlantılar oturumsuz inmediği için (editör doğruladı) DHA videoları uzak masaüstüyle evdeki tarayıcıdan indirilir; büyük dosya tabletten yüklenmez. Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Açık iş: tablet dokunmatiğinde editörün kullanım denemesi. | Evde olmadan haber → video |
+| 6 (başladı) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. Dükkân başka ilçede, interneti yavaş (45/13 Mbps): büyük dosya tabletten yüklenmez, tablete de indirilmez. DHA videoları Axion'un **🌐 Tarayıcı** sayfasından indirilir (v2.10.0): evdeki bilgisayarda görünmez bir Brave (Axion'un kendi profili; editör Edge kullanmaz), tablete yalnızca ekran görüntüsü gelir, video evin internetiyle İndirilenler'e iner. Uzak masaüstü yalnızca yedek (editör: iki monitör + gizli görev çubuğuyla pratik değil). Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Açık işler: Tarayıcı sayfasının gerçek DHA paneliyle denenmesi, tablet dokunmatiğinde Tasarım Stüdyosu denemesi, aynı haberin iki cihazda açılması uyarısı. | Evde olmadan haber → video |
 
 ## Ortam
 

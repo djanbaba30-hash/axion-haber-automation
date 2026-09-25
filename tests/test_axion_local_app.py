@@ -425,3 +425,72 @@ def test_edited_news_texts_survive_reruns_and_page_switch(local_env):
     at.switch_page(NEWS_PAGE).run()
     assert at.text_area(key="_w_tts_metni").value == "Düzenlenmiş seslendirme"
     assert at.text_input(key="_w_baslik1").value == "YENİ BAŞLIK"
+
+
+BROWSER_PAGE = "apps/remote_browser/page.py"
+
+
+class FakeBrowser:
+    closed = False
+
+    def __init__(self):
+        from apps.remote_browser.service import Screen
+
+        self.calls = []
+        self.screen_value = Screen(b"\xff\xd8jpeg", "about:blank", "", 1)
+
+    def run(self, action, value=None):
+        self.calls.append((action, value))
+
+    def screen(self):
+        return self.screen_value
+
+    def download_rows(self):
+        return [{"name": "kaza.mp4", "state": "bitti", "mb": 12.5, "error": None, "seconds": 4}]
+
+
+def test_browser_page_explains_missing_brave(local_env, monkeypatch):
+    monkeypatch.setattr("apps.remote_browser.service.find_browser", lambda configured=None: None)
+    at = start()
+    at.switch_page(BROWSER_PAGE).run()
+    assert not at.exception
+    assert any("Brave" in e.value for e in at.error)
+
+
+def test_browser_page_opens_home_page_and_remembers_it(local_env, monkeypatch):
+    from apps.axion_local.preferences import load_preferences
+
+    fake = FakeBrowser()
+    monkeypatch.setattr("apps.remote_browser.service.find_browser", lambda configured=None: Path("/brave"))
+    monkeypatch.setattr("apps.remote_browser.service.shared", lambda executable, profile, inbox: fake)
+    at = start()
+    at.switch_page(BROWSER_PAGE).run()
+    assert not at.exception
+    assert fake.calls == [("goto", "https://www.dha.com.tr")]  # boş sekme: ana sayfa açılır
+    at.sidebar.text_input(key="tarayici_ana_sayfa").set_value("panel.dha.com.tr").run()
+    assert load_preferences()["tarayici_ana_sayfa"] == "panel.dha.com.tr"
+    assert fake.calls == [("goto", "https://www.dha.com.tr")]  # bir kez
+
+
+def test_browser_events_are_validated_before_reaching_browser():
+    from apps.remote_browser.viewer import apply_events
+
+    fake = FakeBrowser()
+    events = [
+        {"t": "click", "v": [99999, -5]},            # ekran dışı → kenara kırpılır
+        {"t": "wheel", "v": [10, 10, 0]},            # boş kaydırma atlanır
+        {"t": "wheel", "v": [10, 10, 99999]},
+        {"t": "type", "v": "ş" * 3000},
+        {"t": "key", "v": "Enter"}, {"t": "key", "v": "F12"},
+        {"t": "password"}, {"t": "home"}, {"t": "goto", "v": "  "},
+        {"t": "eval", "v": "alert(1)"}, "bozuk", {"t": "click", "v": ["a", 1]},
+    ]
+    assert apply_events(fake, events, "gizli", "dha.com.tr") == 6
+    assert fake.calls == [
+        ("click", (1023.0, 0.0)), ("wheel", (10.0, 10.0, 6000.0)), ("type", "ş" * 2000), ("key", "Enter"),
+        ("type", "gizli"), ("goto", "dha.com.tr"),
+    ]
+    fake.calls.clear()
+    apply_events(fake, [{"t": "password"}], None, "x")
+    assert fake.calls == []  # şifre kayıtlı değilse hiçbir şey yazılmaz
+    assert apply_events(fake, [{"t": "click", "v": [1, 1]}] * 500, None, "x") == 60  # olay yağmuru sınırlı

@@ -7,7 +7,8 @@ Bu dosya, bu repoda çalışan her yapay zekâ geliştiricisi (GPT/Codex, Claude
 
 Axion Haber Automation, bir haber editörünün **evdeki Windows bilgisayarında** çalışan yerel bir uygulamadır.
 Ham haber + DHA videolarından sosyal medyaya hazır haber videosu üretmeyi otomatikleştirir.
-Tek uygulama (Streamlit), üç sayfa: **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım Stüdyosu**. Bulut/hosting yok.
+Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım Stüdyosu** ve tabletten DHA'ya girmek için
+**Tarayıcı** (evdeki bilgisayarın görünmez Brave'i). Bulut/hosting yok.
 
 - Ürün hedefi, editörün kararları ve faz sırası: `ROADMAP.md`
 - Kullanıcı için kurulum ve kullanım: `KURULUM.md`
@@ -43,6 +44,7 @@ assets/                        axion_mark.png (tarayıcı sekmesi ikonu); window
 
 apps/axion_local/
   settings.py                  secret(), require_secrets(): anahtar okuma
+  media.py                     media_url(): dosya/görseli tarayıcıya Streamlit medya sunucusuyla verir (Tasarım, Tarayıcı)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler)
   project_picker.py            Video/Tasarım stüdyosunun ortak haber seçicisi (taze açılışta boş, "Önceki günler")
@@ -89,6 +91,13 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
                                sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
                                zaman çizelgesi; tasarımı kendisi tutar, her değişiklikte `edits` ile Python'a gönderir
 
+apps/remote_browser/           TARAYICI (Faz 6; API yok): tabletten evdeki bilgisayarın görünmez tarayıcısını kullanma
+  service.py                   Playwright (async, kendi iş parçacığında) ile Brave/Chrome'u sürer (Edge kasıtlı yok);
+                               Axion'un kendi profili data/tarayici; indirmeler İndirilenler'e (.iniyor → ad); 20 dk boşta kapanır
+  viewer.py, viewer.js         Tabletteki görünüm (components v2): ekran görüntüsü, dokun=tıkla, sürükle=kaydır, yazı kutusu,
+                               🔑 DHA_SIFRE; `apply_events` olayları doğrular
+  page.py                      Sayfa: ana sayfa (hatırlanır), 0,5 sn'lik fragment (olay uygula → ekran görüntüsü)
+
 shared/                        Modüller arası sözleşmeler (Pydantic)
   news_package.py              NewsPackage 1.1 (+1.0 migration), TTSAlignment
   media_models.py              MediaLibrary / VideoAsset / Shot / AnalysisWindow (hedef 2.1 modelleri)
@@ -118,6 +127,7 @@ Tasarım Stüdyosu ──düzenle──►   tasarim.json v2 (başlıklar, stil,
                                  + onizleme/tasarim_onizleme.mp4 (tuval için hafif kopya)
                  ──oluştur───►   son_video.mp4 (1080x1920, sesiyle); imza tasarim.json'da ("güncel mi")
 Varlıklar ──────────────────►   data/varliklar/{fontlar,arka_planlar} (+ GITHUB_TOKEN varsa repoya assets/sablon/)
+Tarayıcı ──indir────────────►   İndirilenler/<dosya> (Video Stüdyosu'nun gelen kutusu); oturum data/tarayici'da
 ```
 
 - Aynı ham haber yeniden kaydedilirse aynı proje güncellenir (medya analizi korunur, eski edit_project silinir).
@@ -135,9 +145,11 @@ Varlıklar ──────────────────►   data/varl
 | Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
+| Tarayıcı profili (DHA oturumu, çerezler) | `data/tarayici/` | Silinmez (silinirse DHA'ya yeniden giriş) |
+| Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Faz 5 (Tasarım Stüdyosu) çalışıyor; v2.9.x son video hızı ve güvenilirliği
+## Nerede kaldık (2026-09-25) — Faz 5 çalışıyor (v2.9.x hız/güvenilirlik); Faz 6 başladı: Tarayıcı sayfası (v2.10.0)
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. Editör v2.6.0'ı Windows'ta açtı ("her şey çalışıyor
@@ -184,9 +196,16 @@ yalnızca editörün bastığı "Sahneleri Luna ile düzenle" düğmesiyle çal�
 doğrulama sığmayan başlığı hata sayar (mevcut tek düzeltme çağrısı somut "x karakter kısalt" hedefiyle gider).
 Gerçek model çağrısıyla editörün denemesi bekleniyor (AGENTS kural 5).
 
-### Sıradaki: editörün Windows testi, sonra Faz 6 (tabletten tam kullanım)
-Editör Windows'ta dener: animasyonların Canva'ya benzerliği, Google Sans, arayüz, blur/mozaik, render süresi (AMF).
-Faz 6 planı ROADMAP'te: tablette kullanım (DHA videoları uzak masaüstüyle bilgisayara; Paylaş ve APK yok).
+### Faz 6 başladı: Tarayıcı sayfası (v2.10.0)
+Editörün durumu: dükkân başka ilçede, interneti yavaş (45/13 Mbps), tablet orada; bilgisayarı uzak masaüstüyle
+kullanmak (iki monitör, gizli görev çubuğu) pratik değil; tabletten yükleme olmaz. Çözüm: Axion içinde uzak tarayıcı.
+Brave (editör Edge sevmiyor; Firefox Playwright ile sürülemiyor), Axion'un kendi profili, DHA'da captcha yok, arada
+şifre istiyor (isteğe bağlı `DHA_SIFRE`). Gerçek DHA paneliyle henüz denenmedi (sandbox'ta yerel test sitesiyle
+denendi: giriş formu, indirme, kaydırma, yeni sekme).
+
+### Sıradaki: editörün Windows testi
+Editör Windows'ta dener: Tarayıcı sayfası + gerçek DHA, animasyonların Canva'ya benzerliği, Google Sans, arayüz,
+blur/mozaik, render süresi (AMF). Faz 6'nın kalanı ROADMAP'te.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.

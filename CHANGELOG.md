@@ -1,3 +1,32 @@
+# v2.10.0 — Tarayıcı: tabletten DHA'ya girip videoyu doğrudan bilgisayara indirme — 2026-09-25
+
+Editörün durumu: dükkân başka ilçede, interneti yavaş (45/13 Mbps). Tablete indirip yüklemek olmaz; bilgisayarı uzak
+masaüstüyle kullanmak da (iki monitör, gizli görev çubuğu) pratik değil. Faz 6'nın ilk işi.
+
+## Added
+- **🌐 Tarayıcı** sayfası: evdeki bilgisayarda görünmez bir **Brave** (yoksa Chrome; Edge kendiliğinden seçilmez)
+  açılır, tablete ekran görüntüsü gelir. Dokun = tıkla, parmakla sürükle = kaydır, ◀ ▶ ⟳ ⌂ ve adres çubuğu, yeni
+  sekmeler öne gelir (✕ ile kapanır). Yazı: ekranda kutuya dokun, alttaki kutuya yaz → **Yaz**; ↵ ⌫ ⇥ tuşları; fiziksel
+  klavye de çalışır.
+- İndirilen dosyalar bilgisayarın **İndirilenler** klasörüne evin internetiyle iner (yarımken `.iniyor` uzantılı,
+  Video Stüdyosu'nun listesine karışmaz); sayfada "✅ … bilgisayara indi". Aynı adlı dosyanın üzerine yazılmaz.
+- Axion'un kendi tarayıcı profili (`data/tarayici`): DHA'ya bir kez giriş yeter; editörün normal Brave'ine dokunmaz.
+- İsteğe bağlı `DHA_SIFRE` (🔑 Şifre düğmesi seçili kutuya yazar), `TARAYICI_YOLU` (brave.exe bulunamazsa).
+- Ana sayfa adresi (⌂) kenar çubuğunda, hatırlanır. Tarayıcı 20 dk boşta kalırsa kapanır (indirme sürerken kapanmaz).
+- Bağımlılık: `playwright` (yalnızca sürücü; tarayıcı indirmez, bilgisayardaki Brave'i kullanır).
+
+## Changed
+- `media_url` ortak modüle taşındı (`apps/axion_local/media.py`); Tasarım Stüdyosu ve Tarayıcı kullanır.
+- KURULUM 4. bölüm: DHA videoları artık Tarayıcı sayfasından; uzak masaüstü yedek. ROADMAP Faz 6 güncellendi.
+
+## Verification
+- Gerçek Chromium ile testler: yazma (Türkçe), tuşlar, kaydırma, indirme (İndirilenler'e, `.iniyor` kalmadan), yeni
+  sekmenin öne gelmesi ve kapanması, paylaşılan tarayıcının yeniden başlaması; olay doğrulama (ekran dışı tıklama, uzun
+  metin, bilinmeyen tuş, olay yağmuru sınırı); AppTest ile sayfa (Brave yok uyarısı, ana sayfanın açılıp hatırlanması).
+- Headless Chromium'da tablet boyutunda (1180x820, dokunmatik): yerel deneme sitesinde giriş formu, Enter, dokunarak
+  video indirme, sürükleyerek kaydırma; 60 sn sürekli değişen ekranda sunucu belleği sabit (164 MB), saniyede 2 görüntü.
+- **Gerçek DHA paneliyle ve Windows'ta Brave ile denenmedi.**
+
 # v2.9.1 — GPT incelemesinin ardından: doğrulama testleri, kayıt yarışı düzeltmesi — 2026-09-25
 
 GPT v2.9.0'ı inceledi (`reviews/claude-faz5.md` → "GPT revizyonu"); kararlarına itiraz etmedi.

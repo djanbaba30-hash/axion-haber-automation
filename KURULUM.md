@@ -139,24 +139,35 @@ Uzaktan kullanacaksan bilgisayarın uyumasını kapat: Ayarlar → Sistem → G�
 ### Tabletten çalışırken videolar nerede durur?
 
 Tabletin tarayıcısında açtığın Axion aslında evdeki bilgisayarda çalışır; tabletteki dosyalara erişemez, tablet de
-bilgisayardaki dosyaları görmez. Bu yüzden büyük DHA videolarını tablete indirip yüklemek gerekmez, önerilmez de:
-- DHA videosunu **uzak masaüstüyle evdeki bilgisayarın tarayıcısından** indir (4. bölüm); video bilgisayarda kalır.
+bilgisayardaki dosyaları görmez. Bu yüzden büyük DHA videolarını tablete indirip yüklemek gerekmez, önerilmez de
+(dükkân internetinden iki kez geçer):
+- DHA videosunu Axion'un **🌐 Tarayıcı** sayfasından indir (aşağıda); video evin internetiyle doğrudan bilgisayara iner.
 - Axion'da her şey (analiz, kurgu, tasarım) bilgisayarda yapılır; tablete yalnızca küçük önizlemeler gelir.
 - Bitince **İndir** ile son videoyu (~10–20 MB) tablete al ve paylaş.
 
-## 4. Bilgisayarın tamamına uzaktan erişim (Firefox, DHA paneli vb.)
+## 4. Tabletten DHA'ya girip video indirme (🌐 Tarayıcı)
 
-Tailscale ile telefondan/tabletten **sadece Axion'u** açarsın. Evdeki bilgisayarın ekranını görüp Firefox'tan DHA paneline
-girmek, video indirmek gibi işler için bir **uzak masaüstü** uygulaması gerekir. Önce Windows sürümüne bak:
-Ayarlar → Sistem → Hakkında → "Sürüm".
+Axion'un menüsündeki **🌐 Tarayıcı** sayfası, evdeki bilgisayarda görünmeden çalışan bir **Brave** penceresini tablete
+getirir. Bilgisayarın ekranına, iki monitöre ya da görev çubuğuna dokunmaz; uzak masaüstü gerekmez.
 
-- **Windows Pro ise (önerilen):** Ayarlar → Sistem → **Uzak Masaüstü** → Aç. Telefona/tablete Microsoft'un
-  **Windows App** (eski adı Uzak Masaüstü) uygulamasını kur; bilgisayar adresi olarak Tailscale'deki `100.x.x.x` adresini
-  yaz, Windows kullanıcı adın ve şifrenle bağlan. Tailscale sayesinde modem ayarı gerekmez, internete açılmaz.
-- **Windows Home ise:** **Chrome Uzaktan Masaüstü** (ücretsiz, Google hesabıyla) ya da **RustDesk** (ücretsiz, açık kaynak)
-  kullan. İkisinin de telefon/tablet uygulaması var.
+- **Dokun** = tıkla. **Parmakla sürükle** = sayfayı kaydır. Üstte ◀ ▶ ⟳ ⌂ ve adres çubuğu.
+- **Yazmak için:** önce ekranda kutuya dokun, sonra alttaki metin kutusuna yaz ve **Yaz**'a bas. ↵ Enter, ⌫ sil, ⇥ sonraki
+  kutu. İstersen DHA şifreni `windows\anahtarlar.bat` ile `DHA_SIFRE`'ye yaz: **🔑 Şifre** düğmesi onu seçili kutuya yazar.
+- **Ana sayfa (⌂):** kenar çubuğundan DHA panelinin adresini bir kez yaz; hatırlanır.
+- DHA'ya bu tarayıcıda **bir kez** giriş yap; oturum bilgisayarda kalır (arada bir yeniden şifre isteyebilir). Bu, Axion'un
+  kendi Brave profilidir: normal Brave'ine, sekmelerine ve kayıtlı şifrelerine dokunmaz.
+- **İndir**'e bastığında video bilgisayarın **İndirilenler** klasörüne iner; sayfanın altında "✅ … bilgisayara indi" yazar.
+  Sonra **🎬 Video Stüdyosu'na geç** → video listede.
+- Dükkân internetinden yalnızca sayfanın görüntüsü geçer (saniyede birkaç küçük resim). Video oynatmak için değil, haber
+  bulup indirmek için tasarlandı.
+- Brave bulunamazsa sayfa söyler: Brave'i kur ya da `anahtarlar.bat` ile `TARAYICI_YOLU`'na `brave.exe`'nin yolunu yaz.
+- 20 dakika kullanılmazsa tarayıcı kendiliğinden kapanır (indirme sürerken kapanmaz); sayfayı açınca yeniden açılır.
 
-Tipik uzaktan akış: uzak masaüstüyle evdeki Firefox'tan DHA videosunu İndirilenler'e indir → Axion'da Video Stüdyosu'ndan seç.
+### Yedek: bilgisayarın tamamına uzaktan erişim
+
+Tarayıcı sayfasının yetmediği işler için bir **uzak masaüstü** uygulaması kullanılabilir (Tailscale ile, modem ayarı
+gerekmez). Windows Pro ise Ayarlar → Sistem → **Uzak Masaüstü** → Aç ve tablete **Windows App** (bilgisayar adresi:
+Tailscale'deki `100.x.x.x`); Windows Home ise **Chrome Uzaktan Masaüstü** ya da **RustDesk**.
 
 ## 5. Güncelleme
 
