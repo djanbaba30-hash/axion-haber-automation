@@ -236,3 +236,19 @@ def test_amd_failure_falls_back_to_x264(tmp_path, monkeypatch):
     assert render.render_rough_cut(project, library(source=str(source)), output) == "x264 (işlemci)"
     assert [("h264_amf" in c, "libx264" in c) for c in calls] == [(True, False), (False, True)]
     assert output.exists() and not (tmp_path / "kaba_kurgu.yaziliyor.mp4").exists()
+
+
+def test_opening_scene_is_a_clear_event_matching_the_headlines():
+    """İlk sahne sosyal medyada kapak olur (editör): manzara/genel görüntü değil, başlıktaki olayı gösteren sahne."""
+    from apps.video_studio.modules.edit_plan import build_edit_project
+
+    shots = [(0.0, 8.0, "landscape", "generic_broll", "Sabah saatlerinde yolda ilerleyen araçlar", ""),
+             (8.0, 16.0, "people", "context", "Kalabalık bekliyor", ""),
+             (16.0, 30.0, "vehicle", "action", "Devrilen tır yan yatmış", "")]
+    lib = library(shots)
+    text = "Sabah saatlerinde yolda ilerleyen araç kontrolü kaybetti. Sürücü hafif yaralandı. Ekipler bölgede çalışıyor."
+    package = {"headline_1": "KONTROLDEN ÇIKAN TIR DEVRİLDİ", "headline_2": "SÜRÜCÜ HAFİF YARALANDI", "caption": "c",
+               "tts_text": text}
+    project = plan_rough_cut(build_edit_project(lib, text, "C:/tts.mp3", 20.0, package), lib)
+    first = video_clips(project)[0]
+    assert first["asset_id"] == "video_001" and first["source_in_s"] >= 16.0

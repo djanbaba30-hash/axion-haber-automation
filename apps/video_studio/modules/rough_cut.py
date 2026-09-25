@@ -35,8 +35,11 @@ ROLE_BONUS = {
     EditorialRole.PORTRAIT: -6.0,
     EditorialRole.GENERIC_BROLL: -0.5,
 }
+# İlk sahne aynı zamanda sosyal medyada videonun kapağı (editör): olayı net gösteren, başlıkla eşleşen sahne öne geçer.
 OPENING_ROLES = {EditorialRole.ESTABLISHING, EditorialRole.ACTION}
 OPENING_TYPES = {VisualType.EVENT}
+WEAK_COVER_ROLES = {EditorialRole.GENERIC_BROLL, EditorialRole.PORTRAIT}
+WEAK_COVER_TYPES = {VisualType.GRAPHIC, VisualType.DOCUMENT, VisualType.SCREEN, VisualType.LANDSCAPE}
 
 # Haber cümlesindeki kavram → görüntüde karşılığı (kök başları; Türkçe ekler yüzünden önek eşleşmesi).
 CONCEPTS = [
@@ -156,8 +159,13 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     score += ROLE_BONUS.get(candidate.role, 0.0)
     if any(asset == candidate.asset_id and start < candidate.end and candidate.start < end for asset, start, end in usage.blocked):
         score -= 10.0
-    if opening and (candidate.role in OPENING_ROLES or candidate.visual_type in OPENING_TYPES):
-        score += 2.0
+    if opening:
+        if candidate.role in OPENING_ROLES or candidate.visual_type in OPENING_TYPES:
+            score += 3.0
+        if candidate.subject is not None:  # kapakta seçilebilir bir özne
+            score += 1.0
+        if candidate.role in WEAK_COVER_ROLES or candidate.visual_type in WEAK_COVER_TYPES:
+            score -= 3.0
     if candidate.plate:
         score -= 1.0
     score += candidate.confidence * 0.5
@@ -388,6 +396,7 @@ def plan_rough_cut(
 
     previous_shot: str | None = None
     previous_tokens: list[str] = []
+    headline_tokens = _tokens(f"{project.news.headline_1} {project.news.headline_2}")
     cuts = _cut_times(project, broll_s)
     for start, end in zip(cuts, cuts[1:]):
         # Sahne, o sırada söylenen kelimelere göre seçilir (sessiz uzatmada son söylenenlere göre).
@@ -399,7 +408,8 @@ def plan_rough_cut(
         while cursor_f < end_f:
             need = (end_f - cursor_f) / fps
             opening = cursor_f == 0
-            best = max(candidates, key=lambda c: (_score(c, tokens, opening, previous_shot, usage, need), -c.order))
+            wanted = tokens + headline_tokens if opening else tokens  # kapak: haberin bütününü (başlıkları) anlatsın
+            best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need), -c.order))
             source_in, available, _ = _source_range(best, usage, need)
             # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur.
             duration_f = max(1, min(end_f - cursor_f, math.floor(available * fps)))

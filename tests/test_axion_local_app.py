@@ -461,7 +461,8 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
     button(at, "▶️ Videoyu izle ve kesit seç").click().run()
     assert not at.exception
     assert list((project.folder / "onizleme").glob("*.mp4"))
-    at.slider(key="kesit_range").set_value((3.0, 8.5)).run()
+    assert "00:08.5" in at.select_slider(key="kesit_range").options  # dakika:saniye (80 sn değil 01:20)
+    at.select_slider(key="kesit_range").set_range("00:03.0", "00:08.5").run()
     at.segmented_control(key="kesit_placement").set_value("after").run()
     button(at, "➕ Kesiti ekle").click().run()
     assert not at.exception

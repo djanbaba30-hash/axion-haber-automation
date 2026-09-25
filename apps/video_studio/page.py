@@ -262,12 +262,16 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
         else:
             ss.kesit_open = True
             duration = video_duration(str(source), source.stat().st_mtime)
-            if ss.get("kesit_source") != source_key or ss.get("kesit_range", (0, 0))[1] > duration:
+            # Süre dakika:saniye gösterilir (editör: 80 sn yerine 01:20; video oynatıcısıyla aynı).
+            step = 0.1 if duration <= 180 else 0.5
+            seconds_of = {mmss(i * step): round(i * step, 1) for i in range(int(duration / step) + 1)}
+            if ss.get("kesit_source") != source_key or any(label not in seconds_of for label in ss.get("kesit_range", ())):
                 ss.kesit_source = source_key
-                ss.kesit_range = (0.0, min(5.0, duration))
-            start_s, end_s = st.slider(
-                "Kesit aralığı (saniye)", 0.0, duration, key="kesit_range", step=0.1, format="%.1f",
-            )
+                ss.pop("kesit_range", None)  # yeni video: varsayılan aralık (ilk 5 sn)
+            default_end = min(seconds_of, key=lambda label: abs(seconds_of[label] - min(5.0, duration)))
+            start_label, end_label = st.select_slider("Kesit aralığı (dakika:saniye)", list(seconds_of), key="kesit_range",
+                                                      value=(mmss(0), default_end))
+            start_s, end_s = seconds_of[start_label], seconds_of[end_label]
             st.video(str(preview), start_time=int(start_s), end_time=max(int(start_s) + 1, int(end_s + 0.999)))
             placement_col, add_col = st.columns([2, 1], vertical_alignment="bottom")
             placement = placement_col.segmented_control(
