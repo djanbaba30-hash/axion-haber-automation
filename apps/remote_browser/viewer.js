@@ -99,7 +99,9 @@ function setup(root, S) {
     const rows = (d.downloads || []).map((x) => {
       const label = x.state === 'bitti' ? `✅ ${x.name} — ${x.mb} MB, bilgisayara indi`
         : x.state === 'hata' ? `⚠️ ${x.name} — inmedi: ${x.error || ''}` : `⏳ ${x.name} — iniyor… ${x.seconds} sn`;
-      const use = x.state === 'bitti' && x.video ? `<button type="button" data-t="use_download" data-v="${esc(x.name)}">🎬 Video Stüdyosu'nda kullan</button>` : '';
+      const use = x.state !== 'bitti' ? ''
+        : x.video ? `<button type="button" data-t="use_download" data-v="${esc(x.name)}">🎬 Video Stüdyosu'nda kullan</button>`
+        : x.text ? `<button type="button" data-t="use_text" data-v="${esc(x.name)}">📰 Haber Stüdyosu'na aktar</button>` : '';
       return `<div class="${x.state}"><span>${esc(label)}</span>${use}</div>`;
     }).join('');
     const dl = $('.downloads');

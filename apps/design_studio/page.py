@@ -12,9 +12,10 @@ from pathlib import Path
 
 import streamlit as st
 
+from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import secret
-from apps.axion_local.store import FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME
+from apps.axion_local.store import FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME, load_news_project
 from apps.design_studio import assets, jobs, template
 from apps.design_studio.design import apply_editor_patch, dump_design
 from apps.design_studio.editor import block_data, design_editor, frame_data, image_bytes, media_url
@@ -165,6 +166,7 @@ def render_status() -> None:
             st.download_button("⬇️ İndir", lambda: final.read_bytes(), file_name=f"{pid}.mp4", mime="video/mp4",
                                width="stretch", on_click="ignore",
                                help=None if current else "Son oluşturulan hâl (değişiklikler hariç).")
+            caption_copy(load_news_project(project)[0].caption, key=key("paylasim"))
 
     status()
     st.divider()

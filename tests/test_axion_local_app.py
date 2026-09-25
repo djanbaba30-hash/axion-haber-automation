@@ -248,6 +248,7 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert (project.folder / store.FINAL_VIDEO_FILENAME).exists()
     assert any(b.label == "⬇️ Son videoyu indir" for b in at.get("download_button"))
     assert any(b.label == "🎨 Tasarım Stüdyosu'nda düzenle →" for b in at.button)
+    assert any(c.value == store.load_news_project(project)[0].caption for c in at.code)  # paylaşım metni
 
 
 def test_video_render_failure_is_shown_and_can_be_retried(local_env, monkeypatch):
@@ -332,7 +333,8 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
     assert any("güncel" in s.value for s in at.sidebar.success)
     assert any(c.value.startswith("Son oluşturma") and c.value.endswith("· x264") for c in at.sidebar.caption)
     assert any(b.label == "⬇️ İndir" for b in at.sidebar.get("download_button"))
-    assert not at.code  # paylaşım metni burada yok (yalnızca video tasarımı)
+    # Editör (Windows denemesi): videoyu indirirken paylaşım metni de lazım → kopyala düğmesi + kapalı metin.
+    assert [c.value for c in at.sidebar.code] == [store.load_news_project(project)[0].caption]
 
     pid = project.id
     at.sidebar.text_area(key=f"ds_{pid}_h1_text").set_value("KAZA\nYERİ").run()
@@ -698,3 +700,22 @@ def test_design_page_waits_while_video_studio_renders(local_env, monkeypatch):
     finally:
         release.set()
         video_jobs.wait(project)
+
+
+def test_news_text_is_imported_from_downloaded_txt(local_env):
+    """DHA'nın "metni kopyala"sı uzaktan çalışmıyor; "TXT indir" İndirilenler'e iner, Haber Stüdyosu oradan alır."""
+    (local_env / "Downloads" / "dha_haber.txt").write_bytes("KAZA\r\nİnegöl'de otomobil devrildi.".encode("cp1254"))
+    at = with_generated_news(start())
+    at.session_state["active_news_project"] = "eski-proje"
+    button(at, "Aktar").click().run()
+    assert not at.exception
+    assert at.session_state["raw_text"] == "KAZA\nİnegöl'de otomobil devrildi."
+    assert at.session_state["baslik1"] == "" and "active_news_project" not in at.session_state  # eski proje korunur
+
+
+def test_browser_txt_download_opens_in_news_studio(local_env):
+    at = start()
+    at.session_state["haber_aktar"] = "Ham DHA metni"
+    at.run()
+    assert not at.exception
+    assert at.session_state["raw_text"] == "Ham DHA metni" and "haber_aktar" not in at.session_state

@@ -63,6 +63,30 @@ def list_inbox_media(folder: Path | None = None, limit: int = 40) -> list[Path]:
     return files[:limit]
 
 
+NEWS_IMPORT_KEY = "haber_aktar"  # Tarayıcı/TXT → Haber Stüdyosu: bir sonraki açılışta yeni haber olarak yüklenecek metin
+
+
+def list_inbox_texts(folder: Path | None = None, limit: int = 8) -> list[Path]:
+    """Gelen kutusundaki TXT dosyaları (DHA'nın "TXT indir"i), en yeniden eskiye."""
+    folder = folder or inbox_dir()
+    if not folder.is_dir():
+        return []
+    files = [path for path in folder.iterdir() if path.is_file() and path.suffix.lower() == ".txt"]
+    files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return files[:limit]
+
+
+def read_text_file(path: Path, limit: int = 20000) -> str:
+    """TXT'yi okur: UTF-8 (BOM'lu da), olmazsa Türkçe Windows kodlaması (cp1254)."""
+    data = path.read_bytes()[: limit * 4]
+    for encoding in ("utf-8-sig", "cp1254"):
+        try:
+            return data.decode(encoding).replace("\r\n", "\n").strip()[:limit]
+        except UnicodeDecodeError:
+            continue
+    return data.decode("latin-1").strip()[:limit]
+
+
 def _slug(text: str, max_length: int = 40) -> str:
     table = str.maketrans("çğıöşüÇĞİÖŞÜâÂîÎûÛ", "cgiosuCGIOSUaAiIuU")
     slug = re.sub(r"[^a-z0-9]+", "-", text.translate(table).lower()).strip("-")

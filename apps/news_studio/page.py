@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from datetime import datetime
 
 import streamlit as st
 from elevenlabs.client import ElevenLabs
@@ -10,7 +11,13 @@ from mutagen.mp3 import MP3
 
 from apps.axion_local.preferences import load_preferences, persist, remember, save_preferences
 from apps.axion_local.settings import require_secrets, secret
-from apps.axion_local.store import get_news_project, save_news_project
+from apps.axion_local.store import (
+    NEWS_IMPORT_KEY,
+    get_news_project,
+    list_inbox_texts,
+    read_text_file,
+    save_news_project,
+)
 from apps.news_studio.ai.clients import generate, make_anthropic, make_openai, regenerate_headlines
 from apps.news_studio.config import (
     CLAUDE_MODEL,
@@ -119,8 +126,18 @@ def reset_state() -> None:
     ss.update(AUDIO_STATE)
 
 
+def start_from_text(text: str) -> None:
+    """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
+    ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
+               "last_warnings": [], "last_correction_reason": "", **AUDIO_STATE, "raw_text": text})
+    for key in ("active_news_project", "loaded_news_project", "active_news_source"):
+        ss.pop(key, None)
+
+
 require_secrets("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY")
 init_state()
+if ss.get(NEWS_IMPORT_KEY) is not None:  # Tarayıcı'daki "📰 Haber Stüdyosu'na aktar"
+    start_from_text(ss.pop(NEWS_IMPORT_KEY))
 
 # =================================================
 # KENAR ÇUBUĞU: AYARLAR (son kullanılan değerler hatırlanır)
@@ -174,6 +191,16 @@ persist(ss, PREFERENCES)
 # HAM HABER
 # =================================================
 st.title("Haber Stüdyosu")
+texts = list_inbox_texts()
+if texts:  # DHA'nın "TXT indir"i İndirilenler'e iner; "metni kopyala" uzaktan (tablette) çalışmayabilir
+    pick_col, import_col = st.columns([4, 1], vertical_alignment="bottom")
+    picked = pick_col.selectbox(
+        "📄 İndirilenler'deki haber metni (TXT)", texts, key="txt_secim",
+        format_func=lambda path: f"{path.name} · {datetime.fromtimestamp(path.stat().st_mtime):%d.%m %H:%M}",
+    )
+    if import_col.button("Aktar", width="stretch", help="Ekrandaki haberi temizler, TXT'yi ham habere yazar."):
+        start_from_text(read_text_file(picked))
+        st.rerun()
 bound_text(st.text_area, "Ham haber", "raw_text", height=200, placeholder="DHA'dan gelen ham haber metnini buraya yapıştır.")
 raw = ss.raw_text.strip()
 if len(raw) > 7000:

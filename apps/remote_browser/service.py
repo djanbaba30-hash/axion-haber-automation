@@ -162,7 +162,7 @@ class Download:
         size = self.path.stat().st_size if self.finished and self.path.exists() else 0
         return {"name": self.path.name, "state": self.state, "mb": round(size / 1e6, 1), "error": self.error,
                 "seconds": round((self.finished or time.monotonic()) - self.started),
-                "video": self.path.suffix.lower() in MEDIA_EXTENSIONS}
+                "video": self.path.suffix.lower() in MEDIA_EXTENSIONS, "text": self.path.suffix.lower() == ".txt"}
 
 
 @dataclass

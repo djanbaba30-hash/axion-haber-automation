@@ -10,6 +10,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
@@ -364,6 +365,7 @@ with st.expander("4. Video", expanded=True):
             )
             if design_col.button("🎨 Tasarım Stüdyosu'nda düzenle →", width="stretch"):
                 st.switch_page(DESIGN_PAGE)
+            caption_copy(news_text, key="video_paylasim_kopyala")  # videoyu paylaşırken gereken metin
         else:
             st.caption(
                 "Sahneler seslendirmeye göre seçildi. Kadraj her sahnede haberin ana öznesine göre ayarlanır, "

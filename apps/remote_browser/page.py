@@ -10,7 +10,7 @@ import streamlit as st
 from apps.axion_local.media import media_url
 from apps.axion_local.preferences import load_preferences, save_preferences
 from apps.axion_local.settings import secret
-from apps.axion_local.store import data_dir, inbox_dir
+from apps.axion_local.store import NEWS_IMPORT_KEY, data_dir, inbox_dir, read_text_file
 from apps.remote_browser import service
 from apps.remote_browser.logins import FILENAME as LOGINS_FILENAME
 from apps.remote_browser.logins import Logins, site_of
@@ -22,6 +22,7 @@ HOME_KEY = "tarayici_ana_sayfa"
 VIEW_KEY = "tarayici_gorunum"
 REFRESH_SECONDS = 0.5
 VIDEO_PAGE = "apps/video_studio/page.py"
+NEWS_PAGE = "apps/news_studio/page.py"
 logins = Logins(data_dir() / LOGINS_FILENAME)
 
 st.set_page_config(page_title="Tarayıcı · Axion", page_icon="🌐", layout="wide")
@@ -79,6 +80,11 @@ def live() -> None:
         if path:  # Video Stüdyosu'nun 2. adımında seçili gelsin (önceki seçimler korunur)
             ss["selected_media"] = [*[p for p in ss.get("selected_media") or [] if p != path], path]
             st.switch_page(VIDEO_PAGE)
+        text = next((e.get("v") for e in events if isinstance(e, dict) and e.get("t") == "use_text"), None)
+        text_path = browser.downloaded(str(text)) if text else None
+        if text_path:  # DHA'nın "TXT indir"i: "metni kopyala" evdeki tarayıcıda kalır, tablete gelmez
+            ss[NEWS_IMPORT_KEY] = read_text_file(text_path)
+            st.switch_page(NEWS_PAGE)
         if any(isinstance(e, dict) and e.get("t") == "save_login" for e in events):
             st.rerun(scope="app")  # kenar çubuğundaki "Kayıtlı girişler" listesi yenilensin
     try:
