@@ -10,7 +10,7 @@ if not exist ".venv\Scripts\python.exe" (
 ".venv\Scripts\python.exe" -m pip install -q -r requirements-dev.txt
 if not exist data mkdir data
 echo Testler calisiyor, bir dakika kadar surer...
-".venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider %* > data\test_sonucu.txt 2>&1
+".venv\Scripts\python.exe" -m pytest -p no:cacheprovider %* > data\test_sonucu.txt 2>&1
 type data\test_sonucu.txt
 echo.
 echo ==============================================================
