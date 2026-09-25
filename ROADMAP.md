@@ -106,22 +106,16 @@ kontrolü kaldırmak değil, hızlandırmak.
 7. **v3.4.0** (2026-09-25, yapıldı, editör Windows'ta doğruladı): kurgu olay örgüsünü izler, kırpma tam bulanığın
    bittiği yerden, dikeyde sabit kadraj, Luna'ya net şerit, indirmeler Brave'siz ("Tüm Materyali İndir" sorunsuz).
    Tailscale: evdeki bilgisayar + telefon (mobil veri) ile Axion açıldı; tabletten haber üretimi denenecek.
-8. **v3.5 QoL adayları** (Claude'un önerisi, 2026-09-25; editör seçecek, seçilenler yapılınca sürüm 4.0):
-   a. **"📦 Bu haberle başla"** — Tarayıcı'da "Tüm Materyali İndir"den sonra tek düğme: TXT Haber Stüdyosu'na, video(lar)
-      Video Stüdyosu'nun 2. adımına seçili gider (DHA dosya adlarındaki haber numarası ortak, ör. 1524464).
-   b. **Bugünün haberleri panosu** — günün haberleri tek listede: haber ✓ / ses ✓ / analiz ✓ / video hazır ✓ / indirildi;
-      tabletten hangi haberin nerede kaldığı bir bakışta; tıklayınca ilgili stüdyoya gider.
-   c. **Arka planda zincir** — "Kaydet ve Video Stüdyosu'na geç"te, haberle aynı numaralı video İndirilenler'deyse analiz ve
-      video üretimi kendiliğinden başlar (ek çağrı yok, zaten yapılacak olan analiz; editör açıp kapatabilir).
-   d. **Düşük çözünürlük uyarısı** — kaynak video 1280 px'ten darsa (ör. 640x480 önizleme) 2. adımda "DHA'dan Tüm
-      Materyali indir, bu video bulanık çıkar" uyarısı (midibüs videosunda yaşandı).
-   e. **Tablet dokunuş rahatlığı** — Haber Stüdyosu'nda büyük düğmeler, metin kutularında yazı büyüklüğü, "Haberi işle"
-      ve "Seslendir" ekranın altında sabit; yarın dükkândaki denemeden sonra editörün notlarıyla.
-   f. **Video hazır olunca tablete ses/titreşim** (bildirim zaten var; tablet başka sekmedeyken de duyulsun).
-   g. **Günlük/aylık maliyet** (Geliştirici bilgileri): history.sqlite3 + analiz kayıtlarından toplam $.
-   h. **Tarayıcı'da DHA kısayolları** — son açılan haberler / yer imleri, "haber listesine dön".
-   i. Faz 4 (isteğe bağlı "Sahneleri Luna ile düzenle" düğmesi): kural tabanlı kurgu artık iyi; ihtiyaç görülürse.
-   Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
+8. **v3.5 QoL adayları** (Claude önerdi, editör karar verdi, 2026-09-25):
+   - **Yapılacak:** g. Günlük/aylık toplam maliyet (Geliştirici bilgileri; history.sqlite3 + analiz kayıtlarından $).
+   - **Sonra, gerekirse:** i. "Sahneleri Luna ile düzenle" düğmesi (Faz 4).
+   - **İstenmedi:** a. "Bu haberle başla" (haberin birden çok videosu olabilir, editör kendisi seçer), b. günün haberleri
+     panosu, c. arka planda otomatik analiz/video zinciri, d. düşük çözünürlük uyarısı (DHA bazen kötü çözünürlük
+     veriyor, uyarı gereksiz), e. büyük düğmeler, f. "video hazır" sesi, h. Tarayıcı'da DHA kısayolları.
+   - Bilgisayarda Axion varsayılan tarayıcıda (Firefox) açılıyor; Brave'e çevirmek performans kazandırmaz (iş
+     sunucuda; editör çoğunlukla tabletten kullanıyor), değiştirilmedi.
+   - Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
+   - Seçilenler + dükkân denemesinin notları yapılınca sürüm 4.0.
 
 Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
 gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)

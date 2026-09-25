@@ -190,14 +190,15 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 **3.4.0:** "Sıradaki: v3.4.0" planı yapıldı (aşağıdaki bölüm; ayrıntı CHANGELOG). Kurgu olay örgüsü (aralık bazlı
 kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır
 çizgisi çiftiyle (`framing._edge_pair`), dikeyde sabit kadraj, Luna'ya net şerit, indirmeler sayfa betiğiyle
-(`service.DOWNLOAD_HOOK` + `axionIndir` bağlaması; Brave'in indirme yöneticisi kullanılmaz). Editörün denemesi
+(`service.DOWNLOAD_HOOK` + `axionIndir` bağlaması; Brave'in indirme yöneticisi kullanılmaz).
 **Editör doğruladı (Windows, 2026-09-25):** "Tüm Materyali İndir" tek seferde sorunsuz; midibüs videosu "çok daha
 başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber Stüdyosu 2 çağrı (haber + elle başlık yenileme)
 2.688 girdi (%66'sı önbellekten) / 482 çıktı ≈ $0.0008; görüntü analizi 6 kare (net şerit) 1.995 girdi / 754 çıktı
 ≈ $0.0013. Haber başına toplam ~$0.002.
 Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı. **Sıradaki:** editör yarın dükkânda
-tabletten tam akışı deneyecek (haber → ses → Tarayıcı'dan DHA → video); sonra ROADMAP "Sıradaki işler" 8'deki v3.5
-QoL adaylarından seçtikleri yapılır, ardından sürüm 4.0. Yeni oturum AGENTS.md + ROADMAP'ten başlar.
+tabletten tam akışı deneyecek (haber → ses → Tarayıcı'dan DHA → video); sonra dükkân notları + ROADMAP "Sıradaki
+işler" 8 (editör yalnız günlük/aylık maliyeti seçti; diğer QoL önerileri istenmedi) yapılır, ardından sürüm 4.0.
+Yeni oturum AGENTS.md + ROADMAP'ten başlar.
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
 httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Kurgu: aynı çekimin parçaları kaynak sırasıyla
