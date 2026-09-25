@@ -8,7 +8,7 @@ from datetime import date
 from apps.news_studio.read_along import word_times
 from apps.news_studio.validation.diff import changed_fields, word_diff_html
 from apps.news_studio.validation.source_check import missing_numbers, unsupported
-from tests.test_axion_local_app import button, local_env, start  # noqa: F401 — fixture
+from tests.test_axion_local_app import button, start
 
 RAW = ("Bursa'nın İnegöl ilçesinde 24.09.2026 günü saat 18.00'de kontrolden çıkan tır devrildi. Sürücü Ahmet Yılmaz (45) "
        "hafif yaralandı. Olay yerine AFAD ve itfaiye ekipleri sevk edildi. DHA")
@@ -90,3 +90,38 @@ def test_finished_video_is_announced_on_any_page_and_named_after_headline(local_
     assert [t.value for t in at.toast] == [f"«{project.headline}» videosu hazır ({job.elapsed:.0f} sn)."]
     at.run()
     assert not at.toast  # bir kez
+
+
+def test_same_news_open_on_two_devices_is_warned(local_env, monkeypatch):
+    from apps.axion_local import presence
+    from tests.test_axion_local_app import media_library, saved_project
+
+    project = saved_project(media_library())
+    monkeypatch.setattr(presence, "_is_connected", lambda session_id: session_id == "tablet")
+    monkeypatch.setitem(presence._OPEN, "tablet", project.id)       # tablette açık, hâlâ bağlı
+    monkeypatch.setitem(presence._OPEN, "kapanmis", project.id)     # bağlantısı kopmuş eski oturum sayılmaz
+    at = start()
+    at.switch_page("apps/video_studio/page.py").run()
+    at.selectbox(key="video_project_id").select(project.id).run()
+    assert any("başka bir cihazda da açık" in w.value for w in at.warning)
+    assert "kapanmis" not in presence._OPEN
+    presence._OPEN.pop("tablet")
+    at.run()
+    assert not any("başka bir cihazda" in w.value for w in at.warning)
+
+
+def test_step_timings_are_logged_locally(local_env):
+    import json
+
+    from apps.axion_local import metrics
+
+    with metrics.timed("kurgu", "haber-1") as info:
+        info["kodlayici"] = "x264"
+    try:
+        with metrics.timed("seslendirme", karakter=300):
+            raise RuntimeError("ElevenLabs")
+    except RuntimeError:
+        pass
+    lines = [json.loads(line) for line in metrics.path().read_text(encoding="utf-8").splitlines()]
+    assert [(x["adim"], x["haber"], x.get("kodlayici"), x.get("hata")) for x in lines] == [
+        ("kurgu", "haber-1", "x264", None), ("seslendirme", None, None, "RuntimeError")]

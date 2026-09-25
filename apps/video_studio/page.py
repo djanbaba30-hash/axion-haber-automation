@@ -11,6 +11,7 @@ from pathlib import Path
 import streamlit as st
 
 from apps.axion_local.copy_button import caption_copy
+from apps.axion_local.metrics import timed
 from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
@@ -199,7 +200,8 @@ with st.expander(
         label = "Görüntüleri yeniden analiz et" if media_library else "Görüntüleri analiz et"
         if st.button(label, type="primary", width="stretch"):
             try:
-                with st.status("Görüntüler analiz ediliyor...", expanded=True) as status:
+                with st.status("Görüntüler analiz ediliyor...", expanded=True) as status, \
+                        timed("goruntu_analizi", project.id if project else None, video=len(media_files)):
                     media_library, usage = prepare_media_library(
                         media_files,
                         frame_count,

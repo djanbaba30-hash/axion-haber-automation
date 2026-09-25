@@ -12,6 +12,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from apps.axion_local.metrics import timed
 from apps.axion_local.store import FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME, NewsProject
 
 from .design import Design
@@ -50,8 +51,10 @@ def _run(project: NewsProject, design: Design, job: Job, previous: Job | None) -
         if previous and previous.thread:
             previous.thread.join()  # aynı geçici dosyaya iki FFmpeg yazmasın; eski iş durdurulduğu için kısa sürer
         fps, seconds = project_timing(project)
-        job.encoder = render_final(project.folder / ROUGH_CUT_FILENAME, design, background_path(project, design), fps, seconds,
-                                   project.folder / FINAL_VIDEO_FILENAME, cancel=job.cancel)
+        with timed("tasarim_son_video", project.id, blur=len(design.blurs)) as info:
+            job.encoder = info["kodlayici"] = render_final(
+                project.folder / ROUGH_CUT_FILENAME, design, background_path(project, design), fps, seconds,
+                project.folder / FINAL_VIDEO_FILENAME, cancel=job.cancel)
         mark_rendered(project, design)
     except Cancelled:
         job.cancelled = True

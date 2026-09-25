@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import io
+import time
 from datetime import date, datetime
 
 import streamlit as st
 from elevenlabs.client import ElevenLabs
 from mutagen.mp3 import MP3
 
+from apps.axion_local.metrics import record, timed
 from apps.axion_local.preferences import load_preferences, persist, remember, save_preferences
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
@@ -226,6 +228,7 @@ if st.button("Haberi işle", type="primary", width="stretch"):
         prompt = build_news_prompt(style, duration_label, duration_range, tts_min, tts_target, tts_max, raw, speed, ss.examples)
         with st.spinner("Haber hazırlanıyor..."):
             try:
+                timer = time.monotonic()
                 result, usage = generate(openai_client(), anthropic_client(), provider, openai_model, prompt, thinking)
                 check = validate_news_output(result, raw, tts_min, tts_max)
                 total = accumulate(None, {**usage, "provider": provider})
@@ -252,6 +255,8 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                 ss.last_warnings = check.warnings + find_censorship_warnings(result.tts + "\n" + result.icerik)
                 ss.last_correction_reason = correction_reason
                 ss.last_correction_diff = changed_fields(first, {name: getattr(result, name) for name in fields})
+                record("haber_yazimi", time.monotonic() - timer, model=total.get("model"), duzeltme=bool(correction_reason),
+                       cagri=total.get("requests"))
                 log_run(HISTORY_DB_PATH, raw_text=raw, result=result, usage=total, style=style, provider=provider,
                         model=total.get("model", ""), validation=check.errors)
                 st.rerun()
@@ -317,7 +322,7 @@ if ss.icerik:
             st.error("Seslendirme metni boş.")
         else:
             try:
-                with st.spinner("Ses üretiliyor..."):
+                with st.spinner("Ses üretiliyor..."), timed("seslendirme", karakter=len(tts_text)):
                     audio, alignment = synthesize(elevenlabs_client(), tts_text, voice_id, speed, stability, similarity,
                                                   style_strength, boost)
                 try:

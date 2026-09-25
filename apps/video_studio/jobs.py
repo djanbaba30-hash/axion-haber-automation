@@ -12,6 +12,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from apps.axion_local.metrics import timed
 from apps.axion_local.store import ROUGH_CUT_FILENAME, NewsProject
 from apps.design_studio import jobs as design_jobs
 from apps.design_studio import pipeline
@@ -47,13 +48,16 @@ _LOCK = design_jobs.START_LOCK  # iki stüdyonun başlatması tek kilitte
 
 def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any], job: Job) -> None:
     try:
-        job.encoder = render.render_rough_cut(edit_project, media_library, project.folder / ROUGH_CUT_FILENAME)
+        with timed("kurgu", project.id) as info:
+            job.encoder = info["kodlayici"] = render.render_rough_cut(edit_project, media_library,
+                                                                      project.folder / ROUGH_CUT_FILENAME)
         job.stage = "sablon"
         if not design_jobs.cancel(project):
             job.final_error = "Tasarım Stüdyosu'ndaki üretim durdurulamadı; son videoyu orada yeniden oluştur."
             return
         try:
-            pipeline.render_project_final(project)
+            with timed("son_video", project.id):
+                pipeline.render_project_final(project)
         except (RuntimeError, ValueError, FileNotFoundError) as error:
             job.final_error = str(error)
     except Exception as error:  # noqa: BLE001 — sayfada gösterilir

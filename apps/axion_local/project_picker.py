@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from .presence import open_elsewhere
 from .store import NewsProject, list_news_projects, work_day_start
 
 
@@ -53,3 +54,6 @@ def project_selector(key: str) -> None:
         placeholder="Haber seç",
         label_visibility="collapsed",
     )
+    if open_elsewhere(st.session_state.get(key)):  # editör: bilgisayar + tablet
+        st.warning("Bu haber başka bir cihazda da açık. İkisinden aynı anda değişiklik yapma: son kaydeden geçerli olur.",
+                   icon="📱")
