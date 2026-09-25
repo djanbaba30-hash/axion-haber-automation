@@ -1,3 +1,49 @@
+# v3.1.0 — Editörün ilk gerçek gün denemesi (4 haber, Windows + tablet) — 2026-09-25
+
+Editör bir günün haberlerini baştan sona Axion'la hazırladı ve geri bildirim yazdı. Hepsi bu sürümde; editörün
+Windows'ta yeniden denemesi bekleniyor.
+
+## Fixed
+- **Haber Stüdyosu'na dönünce çökme** (`NewsPackage ... tts_alignment ... instance of TTSAlignment`): ses zamanları
+  oturumda artık düz veri; Streamlit dosya izleyicisi kapalı (`fileWatcherType = "none"`; modüller yeniden
+  yüklenmez, güncelleme zaten Axion'u yeniden başlatır). Regresyon testi.
+- **Ses:** tek geçişli `loudnorm` kısa kesitlerde pompalama/bozulma yapıyordu (editör: ilk videonun sonunda kısa bozulma).
+  Her parça ölçülüp sabit kazançla hedefe getirilir (seslendirme -18 LUFS, kaynak sesli kesit -20 LUFS), kesit
+  kenarları 30 ms yumuşak, sonda -2 dBFS sınırlayıcı ("ses patlamasın"). FFmpeg'li test: tepe ≤ -1,5 dB, kesit spikerin altında.
+- Paylaşım metninde röportaj verenlerin adı sansürleniyordu: yalnız şüpheli, mağdur, yaralı, ölen ve çocuklar baş harfle.
+
+## Changed
+- **Haber yazımı (istem, az token):** başlıkta il/ilçe adı yok (afet gibi yerin önemli olduğu olaylar hariç); seslendirme
+  metni haber spikeri gibi doğal ve canlı (kısa/orta cümle karışık, doğal bağlar, yazı dili yok). Gerçek modelle
+  editörün denemesi bekleniyor (AGENTS kural 5).
+- **İlk sahne = kapak:** ilk sahnede başlıktaki olayı net gösteren görüntü öne geçer (genel görüntü/manzara/grafik geri
+  düşer). Test.
+- **Kesit aralığı dakika:saniye** (80 sn yerine 01:20).
+- **Çerçeveler kalınlaştı:** kovalayan ışıklar hep görünen bir taban çizgisi ve iki kat uzun kuyrukla (video çıplak
+  kalmaz); nefes alan parıltı 4→10 px ve belirgin parıltı; renk akışı 5→8 px (`effects.json`, önizleme ve son video aynı).
+- **Varsayılan yazı tipi Google Sans Flex ExtraBold** (aynı tasarımın kalını; Google Fonts, OFL; Türkçe tam). Black da
+  seçilebilir. Eski tasarımlar kendi yazı tipini korur.
+- **Kenar çubuğu sabit 250 px**, boyutlandırılamaz; sayfalar kazanılan alanı kullanır (içerik 1240 px'e kadar).
+- **Tarayıcı yeniden tasarlandı:** kenar çubuğunda geri/ileri/yenile/⌂, adres, **sekmeler (seçilebilir, kapatılabilir)**
+  ve indirilenler; ortada 4:3 ekran (yatay tablette dikey alanı doldurur); sağda yazı paneli; dik tutuşta panel alta
+  iner. Ana sayfa ayarı ve açıklama kalktı: ⌂ ve açılış `https://dhaabone.dha.com.tr/news`. Düğmeler yeniden tasarlandı.
+- **Tarayıcı hızı:** Chrome'un canlı görüntü akışı (CDP screencast; yalnız değişen kare), ekran 0,25 sn'de bir yenilenir,
+  dokunuş/kaydırmadan sonra taze kare beklenir, kaydırırken görüntü parmakla hemen kayar. Ölçüm (sandbox, yerel ağ):
+  kaydırmadan yeni kareye 0,43 → 0,27 sn. Dükkân internetinde ayrıca ağ gecikmesi eklenir.
+
+## Added
+- **📋 Paylaşım metnini kopyala:** Video Stüdyosu'nda video hazır olunca ve Tasarım Stüdyosu'nda İndir'in altında
+  (tablette `http://` ile de çalışır: pano API'si yoksa yedek yol; ikisi de tarayıcıda denendi) + kapalı metin.
+- **TXT'den haber:** DHA'nın "metni kopyala"sı uzaktan tablete gelmez. "TXT indir" → Tarayıcı'da **📰 Habere aktar**
+  ya da Haber Stüdyosu'nun üstündeki **📄 İndirilenler'deki haber metni** → **Aktar** (UTF-8 / Windows Türkçe kodlama).
+  Ekrandaki haber temizlenir, önceki kayıtlı proje korunur.
+
+## Verification
+- `make test`: 271 geçti, 0 atlandı (bu kez FFmpeg ve Chromium'la; ses, render ve tarayıcı testleri gerçekten koştu).
+- Tarayıcı ve kopyalama düğmesi gerçek uygulamada headless Chromium ile denendi (1280×740 yatay, 800×1220 dik):
+  sekme açma/seçme, indirme kartı, kenar çubuğu 250 px ve tutamaç yok. TXT aktarma AppTest ile (uygulama içi akış).
+- Windows'ta, gerçek DHA'da ve gerçek model/ElevenLabs çağrısıyla denenmedi.
+
 # v3.0.1 — GPT'nin ilk Windows gözlemleri — 2026-09-25
 
 GPT (editörün bilgisayarındaki uygulama) repoyu yerelde inceledi; üç gözlem ve kararlar `reviews/claude-v3.md` sonunda.

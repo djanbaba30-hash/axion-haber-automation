@@ -56,7 +56,8 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
 
 ### Haberden videoya akış
 
-1. **Haber Stüdyosu:** Ham haberi yapıştır → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
+1. **Haber Stüdyosu:** Ham haberi yapıştır (ya da üstteki **📄 İndirilenler'deki haber metni** → DHA'dan indirdiğin TXT →
+   **Aktar**) → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
 2. Sayfanın altında **Kaydet ve Video Stüdyosu'na geç**. Haber, ses ve metin projeye kaydedilir; Video Stüdyosu bu projeyle açılır.
    - Seslendirmede saat, tarih ve ondalık sayılar okunabilir biçime çevrilir ("18.00'de" → "akşam 6'da").
    - Seslendirme metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
@@ -71,7 +72,8 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      Klasör, tarayıcıdan yükleme ve analiz yoğunluğu **⚙️ Ayarlar**'da.
    - **3. Kaynak sesli kesitler (isteğe bağlı):** Videodan bir bölümü **kendi sesiyle** seslendirmenin önüne
      (dikkat çekici an) veya arkasına (röportaj) ekler. Analizden önce de yapılabilir.
-     **Videoyu izle ve kesit seç** → kaydırıcıyla başlangıç ve bitişi ayarla (oynatıcı o aralığı oynatır) →
+     **Videoyu izle ve kesit seç** → kaydırıcıyla başlangıç ve bitişi ayarla (dakika:saniye, ör. 01:20; oynatıcı o aralığı
+     oynatır) →
      **Seslendirmeden önce / sonra** → **Kesiti ekle**. Birden fazla kesit ekleyebilirsin (ör. röportajın iki kısmı);
      eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
      İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
@@ -81,7 +83,11 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
        (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar.
      - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
      - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
+     - İlk sahne sosyal medyada videonun kapağı olur: Axion ilk sahneye başlıktaki olayı net gösteren görüntüyü koyar.
+     - Ses: seslendirme ve kaynak sesli kesitler aynı dengeye getirilir (kesit spikerin biraz altında), hiçbir yerde ses
+       patlamaz (tepe -2 dB); kesitlerin başı/sonu yumuşak.
      - Kurgu bitince Axion şablonu (arka plan, başlıklar, sloganlar, logo) hemen uygulanır: **Son videoyu indir**.
+       Yanında **📋 Paylaşım metnini kopyala** (Tasarım Stüdyosu'nda da, İndir'in altında).
      - Üretim arka planda, bilgisayarda sürer (geçen süre görünür): sayfadan ayrılabilir, tableti kapatabilirsin;
        dönünce video hazırdır.
      - Haber Stüdyosu'nda başlıkları değiştirip projeyi yeniden kaydedersen Tasarım Stüdyosu da yeni başlıkları alır
@@ -154,20 +160,25 @@ bilgisayardaki dosyaları görmez. Bu yüzden büyük DHA videolarını tablete 
 Axion'un menüsündeki **🌐 Tarayıcı** sayfası, evdeki bilgisayarda görünmeden çalışan bir **Brave** penceresini tablete
 getirir. Bilgisayarın ekranına, iki monitöre ya da görev çubuğuna dokunmaz; uzak masaüstü gerekmez.
 
-- **Dokun** = tıkla. **Parmakla sürükle** = sayfayı kaydır. Üstte ◀ ▶ ⟳ ⌂ ve adres çubuğu.
-- **Yazmak için:** önce ekranda kutuya dokun, sonra alttaki metin kutusuna yaz ve **Yaz**'a bas. ↵ Enter, ⌫ sil, ⇥ sonraki
-  kutu.
+- **Düzen:** solda (kenar çubuğu) geri/ileri/yenile/⌂, adres çubuğu, **sekmeler** ve **indirilenler**; ortada sayfa;
+  sağda yazı paneli. Tablet dik tutulursa yazı paneli sayfanın altına iner.
+- **Dokun** = tıkla. **Parmakla sürükle** = sayfayı kaydır (görüntü parmakla hemen kayar, yeni görüntü arkadan gelir).
+- **⌂** DHA abone panelini açar (`dhaabone.dha.com.tr/news`); sayfa da açılışta onu açar.
+- **Sekmeler:** DHA haberi yeni sekmede açar; soldaki listeden sekmeye dokunarak geçilir, ✕ ile kapatılır.
+- **Yazmak için:** önce ekranda kutuya dokun, sonra sağdaki kutuya yaz ve **Yaz**'a bas. ↵ Enter, ⌫ sil, ⇥ sonraki kutu.
 - **Giriş bilgileri bir kez kaydedilir:** DHA'ya ilk kez giriş yaparken **Giriş**'e bastığında üstte "girişi kaydedilsin
   mi?" çıkar → **Kaydet**. Sonraki girişlerde kullanıcı adı ve şifre kutuları kendiliğinden dolar ("Giriş bilgileri
-  dolduruldu") → yalnızca **Giriş**'e dokun. Dolmazsa alttaki **🔑 Girişi doldur**. Şifre değişirse yeniden sorar.
+  dolduruldu") → yalnızca **Giriş**'e dokun. Dolmazsa sağdaki **🔑 Girişi doldur**. Şifre değişirse yeniden sorar.
   Şifre bilgisayarda Windows hesabına bağlı şifrelenmiş olarak durur, tablete gönderilmez. Kayıtlı girişler kenar
   çubuğunda (**🔑 Kayıtlı girişler** → Sil).
-- **Ana sayfa (⌂):** kenar çubuğundan DHA panelinin adresini bir kez yaz; hatırlanır.
 - Oturum bilgisayarda kalır. Bu, Axion'un kendi Brave profilidir: normal Brave'ine, sekmelerine ve kayıtlı şifrelerine
   dokunmaz.
-- **İndir**'e bastığında video bilgisayarın **İndirilenler** klasörüne iner; sayfanın altında "✅ … bilgisayara indi" yazar.
-  Yanındaki **🎬 Video Stüdyosu'nda kullan** seni Video Stüdyosu'na götürür, video 2. adımda seçili gelir.
-- Dükkân internetinden yalnızca sayfanın görüntüsü geçer (saniyede birkaç küçük resim). Video oynatmak için değil, haber
+- **İndir**'e bastığında video bilgisayarın **İndirilenler** klasörüne iner; solda "✅ … bilgisayarda" yazar.
+  **🎬 Videoda kullan** seni Video Stüdyosu'na götürür, video 2. adımda seçili gelir.
+- **Haber metni:** DHA'nın "metni kopyala" düğmesi evdeki bilgisayarın panosuna kopyalar, tablete gelmez. Onun yerine
+  **TXT indir** → solda **📰 Habere aktar**: metin Haber Stüdyosu'nda ham haber olarak açılır. Haber Stüdyosu'nun
+  üstündeki **📄 İndirilenler'deki haber metni** listesinden de seçilebilir.
+- Dükkân internetinden yalnızca sayfanın görüntüsü geçer (değiştikçe, saniyede birkaç küçük resim). Video oynatmak için değil, haber
   bulup indirmek için tasarlandı.
 - Brave bulunamazsa sayfa söyler: Brave'i kur ya da `anahtarlar.bat` ile `TARAYICI_YOLU`'na `brave.exe`'nin yolunu yaz.
 - 20 dakika kullanılmazsa tarayıcı kendiliğinden kapanır (indirme sürerken kapanmaz); sayfayı açınca yeniden açılır.
