@@ -86,6 +86,54 @@ def shut_down() -> None:
     threading.Timer(1.0, stop).start()
 
 
+def restart_after_update() -> None:
+    """Güncellemeden sonra: Brave'i kapat, bekçiye "yeniden başlat" koduyla çık (paketleri o kurar)."""
+    def stop() -> None:
+        try:
+            from apps.remote_browser.service import close_shared
+
+            close_shared()
+        finally:
+            os._exit(update_check.RESTART_CODE)
+
+    threading.Timer(1.5, stop).start()
+
+
+def update_controls() -> None:
+    """🟢/🔴 satırı; 🔴 ise uygulamadan güncelle ve yeniden başlat (editör: dükkândayken bilgisayara erişim yok)."""
+    value = update_check.status()
+    text = update_check.label(value)
+    if not text:
+        return
+    st.caption(text, help="Bilgisayardaki Axion repodaki son sürümle karşılaştırılır (yarım saatte bir).")
+    if value != "var":
+        return
+    if not update_check.supervised():
+        st.caption("Uygulamadan güncellemek için Axion'u masaüstündeki simgeyle aç.")
+        return
+    if not st.session_state.get("axion_confirm_update"):
+        if st.button("⬇️ Güncelle ve yeniden başlat", width="stretch"):
+            st.session_state.axion_confirm_update = True
+            st.rerun()
+        return
+    st.warning("Axion güncellenip yeniden başlatılsın mı? Yaklaşık yarım dakika erişilemez; sayfa kendiliğinden yenilenir.")
+    if rendering():
+        st.error("⏳ Şu an bir video oluşturuluyor; güncellersen yarıda kalır (bitmesini beklemen iyi olur).")
+    yes, no = st.columns(2)
+    if yes.button("Evet, güncelle", type="primary", width="stretch"):
+        with st.spinner("Yeni sürüm indiriliyor..."):
+            error = update_check.apply_update()
+        st.session_state.axion_confirm_update = False
+        if error:
+            st.error(f"Güncelleme olmadı: {error}")
+        else:
+            st.success("Güncellendi. Axion yeniden başlıyor; yarım dakika içinde sayfa kendiliğinden yenilenir.")
+            restart_after_update()
+    if no.button("Vazgeç", width="stretch", key="axion_update_cancel"):
+        st.session_state.axion_confirm_update = False
+        st.rerun()
+
+
 def rendering() -> bool:
     """Arka planda video üretimi sürüyor mu (Video ya da Tasarım Stüdyosu)."""
     from apps.design_studio import jobs as design_jobs
@@ -122,10 +170,7 @@ def notify_finished_jobs() -> None:
 
 def sidebar_footer() -> None:
     with st.sidebar:
-        update = update_check.label(update_check.status())
-        if update:
-            st.caption(update, help="Bilgisayardaki Axion repodaki son sürümle karşılaştırılır (yarım saatte bir). "
-                                    "Güncellemek için bilgisayarda `C:\\Axion\\windows\\guncelle.bat`.")
+        update_controls()
         active_id = st.session_state.get("active_news_project")
         project = get_news_project(active_id) if active_id else None
         local = opened_on_this_computer()

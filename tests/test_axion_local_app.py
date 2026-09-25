@@ -757,3 +757,84 @@ def test_update_check_compares_local_and_remote_and_runs_in_background(monkeypat
     while update_check._state["running"] and time.monotonic() < deadline:
         time.sleep(0.01)
     assert len(calls) == 2
+
+
+def test_update_and_restart_from_the_app(local_env, monkeypatch):
+    """Editör: dükkândayken bilgisayara erişim yok — uygulamadan güncelle ve kendini yeniden başlatsın (bekçiyle)."""
+    import threading
+
+    from apps.axion_local import update_check
+
+    monkeypatch.setattr(update_check, "status", lambda now=None: "var")
+    restarts = []
+
+    real_timer = threading.Timer
+
+    def timer(delay, function, *args, **kwargs):  # yeniden başlatma yakalanır (test süreci kapanmasın)
+        if getattr(function, "__qualname__", "") == "restart_after_update.<locals>.stop":
+            restarts.append(delay)
+            idle = real_timer(3600, lambda: None)
+            idle.daemon = True
+            return idle
+        return real_timer(delay, function, *args, **kwargs)
+
+    monkeypatch.setattr(threading, "Timer", timer)
+    monkeypatch.delenv(update_check.SUPERVISOR_ENV, raising=False)
+    at = start()
+    assert not [b for b in at.sidebar.button if "Güncelle" in b.label]  # bekçisiz (sorun_giderme.bat) yeniden başlayamaz
+    assert any("masaüstündeki simgeyle" in c.value for c in at.sidebar.caption)
+
+    monkeypatch.setenv(update_check.SUPERVISOR_ENV, "1")
+    at.run()
+    button(at, "⬇️ Güncelle ve yeniden başlat").click().run()
+    monkeypatch.setattr(update_check, "apply_update", lambda: "Your local changes would be overwritten")
+    button(at, "Evet, güncelle").click().run()
+    assert any("Güncelleme olmadı" in e.value for e in at.error) and restarts == []
+
+    monkeypatch.setattr(update_check, "apply_update", lambda: None)
+    at.run()
+    button(at, "⬇️ Güncelle ve yeniden başlat").click().run()
+    button(at, "Evet, güncelle").click().run()
+    assert not at.exception and len(restarts) == 1
+    assert any("yeniden başlıyor" in s.value for s in at.success)
+
+
+def test_watchdog_restarts_after_in_app_update():
+    from pathlib import Path
+
+    watchdog = (Path(__file__).resolve().parents[1] / "windows" / "axion_calistir.ps1").read_text()
+    assert "$env:AXION_BEKCI = '1'" in watchdog and "if ($code -eq 3)" in watchdog
+    assert "pip install" in watchdog.split("if ($code -eq 3)")[1].split("continue")[0]
+
+
+def test_update_check_and_pull_with_real_git(tmp_path, monkeypatch):
+    """Gerçek git: repoda yeni commit → "var"; uygulamadan güncelle → dosya gelir, "guncel"."""
+    import shutil
+    import subprocess
+
+    from apps.axion_local import update_check
+
+    if shutil.which("git") is None:
+        pytest.skip("git yok")
+
+    def git(*args, cwd):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=cwd, check=True,
+                       capture_output=True)
+
+    origin, home, dev = tmp_path / "origin.git", tmp_path / "Axion", tmp_path / "dev"
+    git("init", "--bare", "-b", "main", str(origin), cwd=tmp_path)
+    git("clone", str(origin), str(dev), cwd=tmp_path)
+    (dev / "a.txt").write_text("1")
+    git("add", ".", cwd=dev)
+    git("commit", "-m", "ilk", cwd=dev)
+    git("push", "origin", "HEAD:main", cwd=dev)
+    git("clone", str(origin), str(home), cwd=tmp_path)
+    monkeypatch.setattr(update_check, "ROOT", home)
+    assert update_check.check() == "guncel"
+    (dev / "b.txt").write_text("2")
+    git("add", ".", cwd=dev)
+    git("commit", "-m", "yeni", cwd=dev)
+    git("push", "origin", "HEAD:main", cwd=dev)
+    assert update_check.check() == "var"
+    assert update_check.apply_update() is None
+    assert (home / "b.txt").read_text() == "2" and update_check.check() == "guncel"

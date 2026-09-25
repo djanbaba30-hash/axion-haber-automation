@@ -15,14 +15,17 @@ ROOT = Path(__file__).resolve().parents[2]
 BRANCH = "main"
 INTERVAL_SECONDS = 30 * 60
 TIMEOUT_SECONDS = 15
+PULL_TIMEOUT_SECONDS = 180
+RESTART_CODE = 3  # bekçiye: "güncellendi, paketleri kontrol et ve hemen yeniden başlat" (çökme sayılmaz)
+SUPERVISOR_ENV = "AXION_BEKCI"  # bekçi (windows/axion_calistir.ps1) Axion'u başlatırken koyar
 
 _lock = threading.Lock()
 _state: dict[str, object] = {"checked": 0.0, "status": None, "running": False}
 
 
-def _git(*args: str) -> str:
+def _git(*args: str, timeout: float = TIMEOUT_SECONDS) -> str:
     result = subprocess.run(
-        ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=timeout,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},  # şifre sorup beklemesin
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),  # Windows'ta konsol penceresi açılmasın
     )
@@ -41,6 +44,23 @@ def check() -> str | None:
     if not remote:
         return None
     return "guncel" if remote[0] == local else "var"
+
+
+def supervised() -> bool:
+    """Axion bekçiyle mi çalışıyor (masaüstü simgesi): ancak o zaman kendini yeniden başlatabilir."""
+    return os.environ.get(SUPERVISOR_ENV) == "1"
+
+
+def apply_update() -> str | None:
+    """Yeni sürümü indirir (`git pull --ff-only`, guncelle.bat'ın yaptığı gibi). Hata yoksa None, varsa hata metni.
+    Paketleri (pip) bekçi yeniden başlatmadan önce kurar: çalışan Python'un dosyaları Windows'ta kilitlidir."""
+    try:
+        _git("pull", "--ff-only", timeout=PULL_TIMEOUT_SECONDS)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        return str(error).strip()[-500:] or error.__class__.__name__
+    with _lock:
+        _state.update(status="guncel", checked=time.monotonic())
+    return None
 
 
 def _run(started: float) -> None:
@@ -68,5 +88,5 @@ def label(value: str | None) -> str | None:
     if value == "guncel":
         return "🟢 Axion güncel"
     if value == "var":
-        return "🔴 Güncelleme var: bilgisayarda `windows\\guncelle.bat`"
+        return "🔴 Güncelleme var"
     return None

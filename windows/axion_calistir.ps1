@@ -1,5 +1,6 @@
 # Axion baslatici bekcisi: Axion'u calistirir, cokerse 5 sn sonra yeniden baslatir (uzaktan kullanirken ise yarar).
 # Yeniden baslatmaz: "Axion'u kapat" (cikis kodu 0), Stop-Process ile durdurma (kod -1) ve guncelle.bat calisirken.
+# Kod 3 = uygulama icinden guncellendi: paketleri kurar, hemen yeniden baslatir (cokme sayilmaz).
 # 10 dakikada 3 kez cokerse durur (surekli coken bir hata dongusu olmasin). Kayit: data\axion.log
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
@@ -10,6 +11,7 @@ $log = Join-Path $data 'axion.log'
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 if (Test-Path $log) { Move-Item -Force $log (Join-Path $data 'axion.onceki.log') }
 $crashes = @()
+$env:AXION_BEKCI = '1'  # Axion bunu gorunce "Guncelle ve yeniden baslat" dugmesini gosterir
 function Test-Updating {
     $found = Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandLine -and $_.CommandLine -match 'guncelle\.bat' }
@@ -23,6 +25,12 @@ while ($true) {
     $process.WaitForExit()
     $code = $process.ExitCode
     if ($code -eq 0 -or $code -eq -1) { break }
+    if ($code -eq 3) {
+        # Uygulama yeni surumu indirdi (git pull); calisan Python kapaliyken paketleri kur, sonra yeniden baslat.
+        Add-Content -Path $log -Value "[$(Get-Date)] Axion guncellendi; paketler kontrol ediliyor, yeniden baslatiliyor."
+        & $python -m pip install --disable-pip-version-check -q -r requirements.txt *>> $log
+        continue
+    }
     # guncelle.bat calisiyorsa yeniden baslatma (cift tiklayinca komut satiri: cmd.exe /c ""...\guncelle.bat" ").
     if (Test-Updating) { break }
     $now = Get-Date

@@ -1,3 +1,15 @@
+# v3.4.2 — Uygulamadan güncelle ve yeniden başlat — 2026-09-25
+
+## Added
+- **"⬇️ Güncelle ve yeniden başlat"** (editör: "dükkândayken bilgisayara erişemem"): 🔴 Güncelleme var görünürken kenar
+  çubuğunda, tabletten de. Onay ister (video oluşturuluyorsa uyarır). Axion yeni sürümü kendisi indirir (`git pull
+  --ff-only`, guncelle.bat gibi), Brave'i kapatır ve 3 koduyla çıkar; bekçi (`axion_calistir.ps1`) bu kodda paketleri
+  kurar (`pip install -r requirements.txt`; çalışan Python kapalıyken, Windows dosya kilidi yüzünden) ve hemen yeniden
+  başlatır (çökme sayılmaz). Sayfa ~yarım dakikada kendiliğinden yeniden bağlanır. İndirme olmazsa (ör. yerel değişiklik)
+  hata metni gösterilir, Axion kapanmaz. Düğme yalnız Axion bekçiyle (masaüstü simgesi) çalışıyorsa görünür
+  (`AXION_BEKCI=1`); `sorun_giderme.bat` ile açıldıysa yeniden başlatacak kimse yok.
+- İlk kez: bu sürüm evde `guncelle.bat` ile alınıp Axion masaüstü simgesiyle açılmalı (yeni bekçi çalışsın).
+
 # v3.4.1 — Güncelleme göstergesi — 2026-09-25
 
 ## Added

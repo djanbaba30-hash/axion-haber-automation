@@ -53,7 +53,8 @@ apps/axion_local/
   copy_button.py               📋 Paylaşım metnini kopyala (components v2; http'de pano API'si yoksa execCommand yedeği)
   presence.py                  Aynı haber iki cihazda açık mı (oturum → haber; bağlı mı: Streamlit oturum yöneticisi)
   metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
-  update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 30 dk'da bir)
+  update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 30 dk'da bir);
+                               uygulamadan güncelleme (`git pull`, çıkış kodu 3 → bekçi pip + yeniden başlatır)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
                                İndirilenler'deki TXT'ler (DHA "TXT indir" → Haber Stüdyosu)
@@ -139,7 +140,8 @@ shared/                        Modüller arası sözleşmeler (Pydantic)
   text_layout.py               Başlık yerleşimi ve "2 satıra sığıyor mu" ölçümü (Haber + Tasarım stüdyosu ortak), ~~sansür~~
 
 windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı) → axion_calistir.ps1 (bekçi: çökerse
-                               5 sn sonra yeniden başlatır; kod 0 = Axion'u kapat, -1 = Stop-Process/güncelleme), guncelle.bat,
+                               5 sn sonra yeniden başlatır; kod 0 = Axion'u kapat, -1 = Stop-Process/güncelleme, 3 = uygulamadan
+                               güncellendi → pip + hemen yeniden başlat; AXION_BEKCI=1 koyar), guncelle.bat,
                                anahtarlar.bat, sorun_giderme.bat, testler.bat (make'siz test), kisayol.ps1, axion_x.ico
 tests/                         pytest; tests/test_axion_local_app.py uygulamayı AppTest ile uçtan uca sürer
 ```
@@ -186,9 +188,11 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.4.1
+## Nerede kaldık (2026-09-25) — Sürüm 3.4.2
 
-**3.4.1:** kenar çubuğunda güncelleme göstergesi (editör isteği; `apps/axion_local/update_check.py`).
+**3.4.1–3.4.2:** kenar çubuğunda güncelleme göstergesi + "⬇️ Güncelle ve yeniden başlat" (editör isteği; tabletten
+de): `update_check.apply_update` (git pull --ff-only) → çıkış kodu 3 → bekçi pip kurar, yeniden başlatır. Windows'ta
+denenmedi (ilk kez guncelle.bat + masaüstü simgesi gerekir).
 
 **3.4.0:** "Sıradaki: v3.4.0" planı yapıldı (aşağıdaki bölüm; ayrıntı CHANGELOG). Kurgu olay örgüsü (aralık bazlı
 kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır
