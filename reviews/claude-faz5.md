@@ -57,3 +57,52 @@ değil: piksel düzeyinde aynı olamaz, parametreleri JSON'dan gelir.
 - Gerçek FFprobe ile son video kontrolü (Windows kurulumu FFprobe'u zaten içerir; Video Stüdyosu da kullanır).
 - "🔁 Değişikliklerle yeniden başlat" düğmesi: bir başlık değiştirip "Yeniden oluştur"a bas, bitmeden başka bir şey
   değiştir, düğmeye bas.
+
+## GPT revizyonu (v2.9.0 incelemesi) ve v2.9.1
+
+GPT v2.9.0'ı statik inceledi (editör cevabı sohbete yapıştırdı). Claude'un "Katılmadım / Ertelendi / Zaten var"
+kararlarının hiçbirine itiraz etmedi. Bulguları çoğunlukla "gerçek FFmpeg / Windows ile doğrulanmadı" uyarısıydı.
+
+| GPT bulgusu | Karar | Ne yapıldı |
+|---|---|---|
+| 1, 7 (test): kenara taşan + dönen + yumuşak kenarlı blur gerçek FFmpeg'le doğrulanmamış | **Yapıldı** | `test_cropped_blur_matches_full_frame_blur_at_edges_and_rotation`: aynı blurlar bir kez kırpılmış bölgede, bir kez tüm karede gerçek FFmpeg ile üretilip karşılaştırılır; en kötü kare PSNR 52 dB (fark yalnız sıkıştırma gürültüsü) |
+| 2: `blur_region` her kareyi Python'da tarıyor | **Değiştirilmedi** | Ölçüldü: 3 blur × 546 kare < 0,01 sn (maske yazımıyla birlikte hareketli 3 blur 2,2 sn) |
+| 3, 4: kısa/uzun kurgu, zemin döngüsünün kare sayısı | **Yapıldı** | `test_final_video_has_exact_frames_when_rough_cut_is_shorter_or_longer`: 2 ve 4 sn'lik kurgu, 3 sn'lik tasarım → tam 90 kare, süre 3,0 sn, ses var |
+| 5: FFprobe yoksa kontrol sessizce atlanıyor | **Yapıldı** | Atlanınca `data/axion.log`'a uyarı yazılır; editöre hata gösterilmez |
+| 6: fps denetlenmiyor | Kabul (GPT de kabul etti) | — |
+| 8, 10: Windows'ta kill/communicate süresi; yeni iş eskisini bekliyor | **Windows'ta denenecek** | Bu ortamda gerçek FFmpeg <5 sn'de durduruluyor (test). Kenar çubuğundaki yeni "Son oluşturma N sn · kodlayıcı" satırı süreyi gösterir |
+| 9, 11, 12 | Hata yok (GPT) | — |
+| Sıradaki 1: Windows render doğrulama paketi | **Kısmen** | Kenar çubuğunda son oluşturmanın süresi ve kodlayıcısı görünür (AMD çalıştı mı, kaç sn sürdü). Aşağıda editör için deneme listesi |
+| Sıradaki 2: durum dilini birleştirmek | **Yapıldı** | Üst çubuk: "✓ Kaydedildi", "✓ Son video hazır", "⚠ Son videoya işlenmedi", "⏳ Son video oluşturuluyor" |
+| Sıradaki 3: blur sayısı/boyutuna göre ölçüm | **Yapıldı** | Aşağıdaki tablo |
+
+**Claude'un bu turda bulduğu hata (v2.8.0'dan beri):** sayfa ve arka plandaki üretim `tasarim.json`'a kilitsiz
+yazıyordu. Sayfanın elindeki eski kopya, biten üretimin imzasını ezebiliyordu ("işlenmedi" yanlış görünür). Nadiren
+üretim de editörün o anki değişikliğini ezebiliyordu. Bir test bir kez bu yüzden kırıldı. Düzeltme: tek kilit;
+sayfa `rendered`'a hiç dokunmaz, imzayı yalnızca `pipeline.mark_rendered` yazar. Regresyon testi eklendi.
+
+### Blur maliyeti (18,2 sn haber, sabit çerçeve, x264, bu ortam)
+
+| Blurlar | Son video |
+|---|---|
+| 0 | 9,8 sn |
+| 1 küçük (%15 × %10, sabit) | 9,4 sn |
+| 3 küçük | 12,4 sn |
+| 6 küçük | 15,6 sn |
+| 10 küçük | 20,0 sn |
+| 6 küçük mozaik | 12,5 sn |
+| 3 orta (%33 × %25) | 13,4 sn |
+| 3 büyük (%80 × %50) | 15,4 sn |
+| 3 küçük, tüm kareyi çaprazlama gezip 180° dönen | 22,9 sn |
+
+Maliyet kutunun **tüm süre boyunca taradığı alanla** büyür: çok gezen blurda bölge neredeyse tüm kare olur. Ölçüldü:
+bu durumda sürenin çoğu Gauss bulanıklığında (maske yazımı ~2 sn). Yarım çözünürlükte bulanıklaştırmak kazandırmadı.
+Olası sonraki adım: bölgeyi zamana bölmek (her saniye kendi küçük bölgesi). Canlı takipte kutu bu kadar gezmediği ve
+editör Windows'ta yavaşlık görmediği sürece yapılmayacak.
+
+### Editör için Windows deneme listesi
+1. Blursuz bir haberde **🎬 Yeniden oluştur** → kenar çubuğunda "Son oluşturma N sn · AMD donanım (h264_amf)" mı yazıyor?
+   (x264 yazıyorsa AMD kodlayıcı çalışmamış demektir.) N'yi not et.
+2. 3–6 blur (biri kenara taşan, biri döndürülmüş, bir mozaik) ekle, yeniden oluştur, videoyu izle ve süreyi not et.
+3. Oluşturma sürerken başlığı değiştir → **🔁 Değişikliklerle yeniden başlat** → yeni üretim hemen başlıyor mu?
+4. Son videoyu indirip telefonda aç: ses, süre ve görüntü tamam mı?

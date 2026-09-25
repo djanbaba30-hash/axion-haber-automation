@@ -145,6 +145,8 @@ def render_status() -> None:
             st.success("Son video hazır ve güncel.")
         else:
             st.warning("Değişiklikler son videoya işlenmedi.")
+        if job and job.finished and job.encoder and not job.error:  # hız ve AMD kodlayıcının çalıştığı görülsün
+            st.caption(f"Son oluşturma {job.elapsed:.0f} sn · {job.encoder}")
         if st.button("🎬 Yeniden oluştur" if final.exists() else "🎬 Oluştur", type="secondary" if current else "primary",
                      width="stretch"):
             jobs.start(project, current_design)
@@ -215,7 +217,7 @@ scene = template.build_scene(design, seconds)
 slot = {"x": VIDEO_SLOT["x"], "y": VIDEO_SLOT["y"], "w": VIDEO_SLOT["width"], "h": VIDEO_SLOT["height"]}
 data = {
     "project": pid,
-    "applied": ss.get(key("edits_v")),  # editörün son gönderdiği değişiklik kaydedildi mi ("Kaydedildi ✓")
+    "applied": ss.get(key("edits_v")),  # editörün son gönderdiği değişiklik kaydedildi mi ("✓ Kaydedildi")
     "final_state": final_state(),  # üst çubukta: son video güncel mi
     "video": media_url(preview, "video/mp4", "video"),
     "final": media_url(final, "video/mp4", "final") if final.exists() else None,

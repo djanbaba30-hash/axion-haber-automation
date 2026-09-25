@@ -461,3 +461,79 @@ def test_cancel_stops_running_ffmpeg_quickly():
     with pytest.raises(Cancelled):
         _run_cancellable(["ffmpeg", "-v", "error", "-re", "-f", "lavfi", "-i", "testsrc=duration=60", "-f", "null", "-"], 120, "Test", cancel)
     assert time.monotonic() - started < 5
+
+
+def _synthetic_rough(path: Path, seconds: float) -> Path:
+    subprocess.run([
+        "ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", f"testsrc2=size=960x1226:rate=30:duration={seconds}",
+        "-f", "lavfi", "-i", f"sine=duration={seconds}", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac",
+        "-shortest", str(path),
+    ], check=True)
+    return path
+
+
+def _frame_count(video: Path) -> int:
+    log = subprocess.run(["ffmpeg", "-i", str(video), "-map", "0:v", "-f", "null", "-"], capture_output=True, text=True).stderr
+    return int(re.findall(r"frame=\s*(\d+)", log)[-1])
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
+@pytest.mark.parametrize("rough_seconds", [2.0, 4.0])
+def test_final_video_has_exact_frames_when_rough_cut_is_shorter_or_longer(tmp_path, rough_seconds):
+    rough = _synthetic_rough(tmp_path / "kaba_kurgu.mp4", rough_seconds)
+    output = tmp_path / "son_video.mp4"
+    render_final(rough, load_design({"version": 2}, "Başlık", "İki", 3.0), assets.backgrounds()[0], 30, 3.0, output)
+    assert _frame_count(output) == 90  # zemin döngüsü tam 3 sn; kısa kurguda son kare sürer, uzunda kesilir
+    info = subprocess.run(["ffmpeg", "-i", str(output)], capture_output=True, text=True).stderr
+    assert "Duration: 00:00:03.0" in info and "Audio" in info
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
+def test_cropped_blur_matches_full_frame_blur_at_edges_and_rotation(tmp_path):
+    """Kırpılmış bölgede işlenen blur, tüm karede işlenenle aynı görünmeli (kenara taşan, dönen, yumuşak kenarlı)."""
+    from apps.design_studio.blur import render_mask as full_mask
+    from apps.design_studio.render import build_final_command
+    from apps.video_studio.modules.render import X264
+
+    seconds, fps, width, height = 2.0, 30, 960, 1226
+    rough = _synthetic_rough(tmp_path / "kaba.mp4", seconds)
+    edge = {"t": 0.0, "x": 0.8, "y": 0.85, "w": 0.35, "h": 0.2, "r": 0}
+    blurs = clean_blurs([
+        _blur(id="kenar", start=0.0, end=2.0, feather=1.0, strength=8, opacity=1.0, shape="dikdortgen",
+              keys=[edge, {**edge, "t": 2.0, "x": 0.75, "r": 90}]),
+        _blur(id="sol", start=0.5, end=1.5, feather=0.6, shape="elips",
+              keys=[{"t": 0.5, "x": -0.1, "y": 0.02, "w": 0.3, "h": 0.25, "r": 45}]),
+    ], seconds)
+    design = load_design({"version": 2, "blurs": blurs}, "Başlık", "İki", seconds)
+    layers = template.write_layers(tmp_path / "katman", design, assets.backgrounds()[0], fps, seconds)
+    total = round(seconds * fps)
+    (tmp_path / "kirpik").mkdir()
+    cropped = write_mask_sequences(tmp_path / "kirpik", blurs, fps, total, width, height)
+    assert all(p.region[2] < width or p.region[3] < height for p in cropped)
+    (tmp_path / "tam").mkdir()
+    full = [BlurPass(b, template.write_sequence(tmp_path / "tam", f"tam{i}", fps, total,
+                                                lambda t, f, b=b: mask_state(b, t, width, height),
+                                                lambda state, b=b: full_mask(b, state, width, height)), (0, 0, width, height))
+            for i, b in enumerate(blurs)]
+    outputs = []
+    for name, passes in (("kirpik", cropped), ("tam", full)):
+        out = tmp_path / f"{name}.mp4"
+        command = build_final_command(rough, layers, fps, seconds, out, X264, passes)
+        subprocess.run(command, check=True)
+        outputs.append(out)
+    log = subprocess.run(["ffmpeg", "-i", str(outputs[0]), "-i", str(outputs[1]), "-lavfi", "[0:v][1:v]psnr", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    worst = float(re.search(r"min:([\d.]+|inf)", log).group(1))
+    assert worst > 40, log[-400:]
+
+
+def test_skipped_final_check_is_logged(tmp_path, monkeypatch, caplog):
+    from apps.design_studio import render
+
+    def missing(*args, **kwargs):
+        raise FileNotFoundError("ffprobe")
+
+    monkeypatch.setattr(render, "run_ffmpeg", missing)
+    with caplog.at_level("WARNING"):
+        assert render.check_final(tmp_path / "son.mp4", 20.0, tmp_path / "kaba.mp4") is None
+    assert "Son video kontrolü atlandı" in caplog.text

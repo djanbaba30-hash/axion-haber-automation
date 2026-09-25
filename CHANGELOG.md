@@ -1,3 +1,25 @@
+# v2.9.1 — GPT incelemesinin ardından: doğrulama testleri, kayıt yarışı düzeltmesi — 2026-09-25
+
+GPT v2.9.0'ı inceledi (`reviews/claude-faz5.md` → "GPT revizyonu"); kararlarına itiraz etmedi.
+
+## Fixed
+- Tasarım sayfası ile arka plandaki son video üretimi `tasarim.json`'a aynı anda yazabiliyordu. Biten üretimin
+  "güncel" imzası silinebiliyor, nadiren editörün o anki değişikliği kaybolabiliyordu. Artık yazmalar sırayla yapılıyor ve
+  imzayı yalnızca üretim yazıyor.
+
+## Added
+- Kenar çubuğunda son oluşturmanın süresi ve kodlayıcısı ("Son oluşturma 9 sn · AMD donanım (h264_amf)").
+- FFprobe bulunamayınca son video kontrolünün atlandığı `data/axion.log`'a yazılır.
+- Gerçek FFmpeg testleri: kırpılmış bölgedeki blur tüm karedekiyle aynı (kenara taşan, dönen, yumuşak kenarlı;
+  en kötü kare PSNR 52 dB); kurgu kısa ya da uzun olsa da son video tam süre ve kare sayısında.
+- Blur sayısı/boyutuna göre süre ölçümü (`reviews/claude-faz5.md`).
+
+## Changed
+- Üst çubuk durum dili birleşti: "✓ Kaydedildi", "✓ Son video hazır", "⚠ Son videoya işlenmedi", "⏳ Son video oluşturuluyor".
+
+## Verification
+- `make test` geçti; FFmpeg'li testler ayrıca çalıştırıldı. Windows'ta (AMF, FFprobe, yeniden başlatma) denenmedi.
+
 # v2.9.0 — Son video daha hızlı ve güvenilir — 2026-09-25
 
 Editörün isteği: Tasarım Stüdyosu optimizasyonları. GPT'nin önerileri ve Claude'un ölçümleri karşılaştırıldı; kararlar

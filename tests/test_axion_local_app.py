@@ -249,6 +249,7 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
     at.run()
     assert len(calls) == 1 and calls[0].headline_1.text == "KAZA" and calls[0].headline_2.text == "B"
     assert any("güncel" in s.value for s in at.sidebar.success)
+    assert any(c.value.startswith("Son oluşturma") and c.value.endswith("· x264") for c in at.sidebar.caption)
     assert any(b.label == "⬇️ İndir" for b in at.sidebar.get("download_button"))
     assert not at.code  # paylaşım metni burada yok (yalnızca video tasarımı)
 
@@ -306,6 +307,27 @@ def test_design_studio_restarts_running_render_with_new_changes(local_env, monke
     assert rendered == ["YENİ BAŞLIK"]  # eski tasarım hiç bitirilmedi
     at.run()
     assert any("güncel" in s.value for s in at.sidebar.success)
+
+
+def test_editor_save_keeps_signature_written_by_background_render(local_env):
+    """Sayfanın elindeki eski kopya (rendered=None), arka planda biten üretimin imzasını ezmemeli; üretim de
+    editörün sonradan yaptığı değişikliği ezmemeli."""
+    from apps.design_studio.pipeline import final_is_current, load_project_design, mark_rendered, save_project_design
+
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    (project.folder / store.FINAL_VIDEO_FILENAME).write_bytes(b"mp4")
+    page_copy = load_project_design(project, 20.0)          # sayfa çalışması başında okundu
+    rendered_copy = page_copy.model_copy(deep=True)
+    mark_rendered(project, rendered_copy)                   # arka plandaki üretim bitti
+    save_project_design(project, page_copy)                 # sayfa aynı tasarımı yeniden kaydetti
+    assert final_is_current(project, load_project_design(project, 20.0))
+
+    page_copy.headline_1.text = "YENİ"
+    save_project_design(project, page_copy)                 # editör değiştirdi
+    mark_rendered(project, rendered_copy)                   # eski tasarımın üretimi şimdi bitti
+    stored = load_project_design(project, 20.0)
+    assert stored.headline_1.text == "YENİ" and not final_is_current(project, stored)
 
 
 def test_design_studio_waits_for_rough_cut(local_env):

@@ -12,10 +12,10 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from apps.axion_local.store import DESIGN_FILENAME, FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME, NewsProject, load_project_json, save_project_json
+from apps.axion_local.store import FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME, NewsProject
 
-from .design import Design, dump_design
-from .pipeline import background_path, project_timing, signature
+from .design import Design
+from .pipeline import background_path, mark_rendered, project_timing, signature
 from .render import Cancelled, render_final
 
 
@@ -51,11 +51,7 @@ def _run(project: NewsProject, design: Design, job: Job, previous: Job | None) -
         fps, seconds = project_timing(project)
         job.encoder = render_final(project.folder / ROUGH_CUT_FILENAME, design, background_path(project, design), fps, seconds,
                                    project.folder / FINAL_VIDEO_FILENAME, cancel=job.cancel)
-        stored = load_project_json(project, DESIGN_FILENAME)
-        if not isinstance(stored, dict) or stored.get("version") != 2:  # henüz kaydedilmemiş/eski belge: bu tasarım yazılır
-            stored = dump_design(design)
-        stored["rendered"] = signature(project, design)
-        save_project_json(project, DESIGN_FILENAME, stored)
+        mark_rendered(project, design)
     except Cancelled:
         job.cancelled = True
     except Exception as error:  # noqa: BLE001 — hata sayfada gösterilir

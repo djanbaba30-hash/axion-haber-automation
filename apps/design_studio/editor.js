@@ -246,9 +246,9 @@ function setup(root, S) {
   }
   function setSaved(state) {
     const el = $('.saved'); el.dataset.state = state;
-    el.textContent = state === 'saving' ? 'Kaydediliyor…' : state === 'saved' ? 'Kaydedildi ✓' : '';
+    el.textContent = state === 'saving' ? 'Kaydediliyor…' : state === 'saved' ? '✓ Kaydedildi' : '';
   }
-  const FINAL_LABELS = { current: '🎬 Son video güncel', stale: '⚠️ Son videoya işlenmedi', rendering: '⏳ Son video oluşturuluyor', missing: 'Son video yok' };
+  const FINAL_LABELS = { current: '✓ Son video hazır', stale: '⚠ Son videoya işlenmedi', rendering: '⏳ Son video oluşturuluyor', missing: 'Son video yok' };
   function setFinalState(state) {
     const el = $('.final-state'); el.dataset.state = state || ''; el.textContent = FINAL_LABELS[state] || '';
   }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import tempfile
 import threading
@@ -17,6 +18,8 @@ from shared.axion_template import VIDEO_SLOT
 from .blur import BlurPass, mosaic_block, sigma, write_mask_sequences
 from .design import Design
 from .template import Layers, frame_origin, write_layers
+
+logger = logging.getLogger(__name__)
 
 
 def _effect_filter(blur: dict[str, Any], width: int, height: int) -> str:
@@ -120,7 +123,9 @@ def _probe(path: Path) -> dict[str, Any] | None:
     command = ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,width,height:format=duration", "-of", "json", str(path)]
     try:
         result = run_ffmpeg(command, PROBE_TIMEOUT_SECONDS, "Son video kontrolü")
-    except (RuntimeError, OSError, subprocess.SubprocessError):
+    except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+        # Editöre hata gösterilmez (video büyük olasılıkla sağlam); atlandığı günlükte (data/axion.log) görünür.
+        logger.warning("Son video kontrolü atlandı (%s): %s", path.name, error)
         return None
     if result.returncode != 0:
         return {"error": result.stderr.strip()[-300:] or "okunamadı"}

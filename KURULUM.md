@@ -103,10 +103,11 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      bir anahtar kare olur (◆), kutu aralarda kendiliğinden kayar. **Canlı takip** açıkken kutuya basılı tut: video
      yavaş oynar, sen plakayı takip ettikçe yol kaydedilir.
    - **🎬 Son video** (üst çubukta) oluşturulmuş MP4'ü oynatır. Her değişiklik projeye kendiliğinden kaydedilir
-     (üst çubukta "Kaydedildi ✓"). **↶ ↷** ile geri al / yinele.
+     (üst çubukta "✓ Kaydedildi"). **↶ ↷** ile geri al / yinele.
    - **Yeniden oluştur** arka planda çalışır: kenar çubuğunda geçen süre görünür, bu sırada düzenlemeye devam edebilirsin.
      Bu arada bir şey değiştirirsen **🔁 Değişikliklerle yeniden başlat** çıkar: eski üretim durur, yenisi başlar.
-     Üst çubuktaki etiket son videonun durumunu söyler: "Son video güncel", "Son videoya işlenmedi", "oluşturuluyor".
+     Üst çubuktaki etiket son videonun durumunu söyler: "✓ Son video hazır", "⚠ Son videoya işlenmedi", "⏳ oluşturuluyor".
+     Bitince kenar çubuğunda ne kadar sürdüğü ve kodlayıcı yazar (ör. "Son oluşturma 9 sn · AMD donanım").
    - Son video bitince kendiliğinden kontrol edilir (1080x1920, süre, ses). AMD kodlayıcı bozuk video üretirse
      Axion işlemciyle (x264) yeniden dener.
    - **Kısayollar** (üst çubukta ⌨): Boşluk oynat/durdur · ← → bir kare (Shift ile 1 sn) · Ctrl+Z / Ctrl+Y geri al /

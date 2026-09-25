@@ -80,7 +80,8 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
                                kutunun tüm süredeki bölgesi (FFmpeg yalnız orayı işler)
   render.py                    Tek FFmpeg komutu: kurgu → blur/mozaik → arka plan/çerçeve/grafik → son_video.mp4;
                                FFprobe kontrolü (boyut, süre, ses), bozuksa x264 ile yeniden; iptal edilebilir
-  pipeline.py                  Projenin son videosu: tasarımı oku, üret, imzayı kaydet (Video Stüdyosu da çağırır)
+  pipeline.py                  Projenin son videosu: tasarımı oku, üret, imzayı kaydet (Video Stüdyosu da çağırır);
+                               tasarim.json yazmaları kilitli, `rendered` imzasını yalnız `mark_rendered` yazar
   jobs.py                      Son videoyu arka planda üretme (proje başına tek iş; bitince yalnız `rendered` imzası yazılır;
                                yeniden başlatılınca eski iş durdurulur)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
@@ -136,14 +137,15 @@ Varlıklar ──────────────────►   data/varl
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 
 
-## Nerede kaldık (2026-09-25) — Faz 5 (Tasarım Stüdyosu) çalışıyor; v2.9.0 son video hızı ve güvenilirliği
+## Nerede kaldık (2026-09-25) — Faz 5 (Tasarım Stüdyosu) çalışıyor; v2.9.x son video hızı ve güvenilirliği
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. Editör v2.6.0'ı Windows'ta açtı ("her şey çalışıyor
 gibi") ve düzen istedi; v2.7.0 Canva düzenini denedi ("sorunsuz çalıştı"). v2.8.0 (geri al/yinele, kısayollar,
 arka planda render, zaman çizelgesi mıknatısı) ve v2.9.0 (~3 kat hızlı son video, FFprobe kontrolü, yeniden başlatma)
 henüz denenmedi. v2.9.0 için GPT ve Claude önerileri karşılaştırıldı (`reviews/gpt-faz5.md`, `reviews/claude-faz5.md`);
-ertelenen ve reddedilen öneriler oradaki tabloda. Editörün isteği: arayüz, kullanım kolaylığı ve optimizasyon.
+ertelenen ve reddedilen öneriler oradaki tabloda. GPT v2.9.0'ı inceledi, itiraz etmedi; v2.9.1 doğrulama testleri ve
+`tasarim.json` yazma yarışı düzeltmesi. Editör için Windows deneme listesi `reviews/claude-faz5.md` sonunda. Editörün isteği: arayüz, kullanım kolaylığı ve optimizasyon.
 
 ### Şu an çalışan akış
 1. **Haber Stüdyosu:** ham haber → GPT/Claude (tek çağrı + gerekirse tek düzeltme çağrısı) → başlıklar, paylaşım
