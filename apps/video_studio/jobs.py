@@ -42,7 +42,7 @@ class Job:
 
 
 _JOBS: dict[str, Job] = {}
-_LOCK = threading.Lock()
+_LOCK = design_jobs.START_LOCK  # iki stüdyonun başlatması tek kilitte
 
 
 def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any], job: Job) -> None:

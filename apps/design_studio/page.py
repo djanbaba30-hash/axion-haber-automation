@@ -69,7 +69,7 @@ design = load_project_design(project, seconds)
 final = project.folder / FINAL_VIDEO_FILENAME
 
 # Editör geldiğinde video hazır olsun: eski projelerde (Video Stüdyosu'nun otomatik üretiminden önce) arka planda üretilir.
-if not final.exists() and jobs.get(project) is None and not video_jobs.busy(project):
+if not final.exists() and jobs.get(project) is None:  # Video Stüdyosu üretiyorsa `start` başlatmaz
     jobs.start(project, design)
 
 

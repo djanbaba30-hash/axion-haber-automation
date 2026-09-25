@@ -69,3 +69,5 @@ toplu olarak uygulanmadı.
 | G1 | `design_jobs.cancel` 60 sn beklemede döner, iş sürüyorsa Video Stüdyosu yine de son videoyu yazar: çakışma. | Doğru. `cancel` durup durmadığını döndürür; durmadıysa son video yazılmaz. Ayrıca tersi (video üretilirken Tasarım Stüdyosu'nun üretim başlatması) da kapatıldı. v3.0.1, testli. |
 | G2 | "Axion'u kapat" (`os._exit`) arka plan üretimini yarıda keser. | Bilinen borç; yarım dosya `.yaziliyor.mp4` olarak kalır, son videonun yerine geçmez. Ayrı işçi süreci bu ölçekte fazla; kapatma onayına "üretim sürüyor" uyarısı eklendi. |
 | G3 | Windows'ta `make` yok; `make test` çalışmıyor. | `windows/testler.bat` eklendi, README'de not. GPT'nin `.venv` bulamaması (Python yolunu görememesi) GPT'nin kendi korumalı ortamından; Axion'un kendisi aynı `.venv` ile çalışıyor. |
+| G4 | (2. tur) Tasarım sayfasındaki "video üretiliyor mu" kontrolü ile `jobs.start` ayrı adımlar; iki stüdyonun kilitleri de ayrı. | Doğru. Tek başlatma kilidi (`design_studio/jobs.START_LOCK`, Video Stüdyosu da kullanır); kontrol `start` içinde. Test. |
+| G5 | (2. tur) Kapatma uyarısının testi yok. | Eklendi (üretim varken / yokken). |

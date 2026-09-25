@@ -41,7 +41,8 @@ class Job:
 
 
 _JOBS: dict[str, Job] = {}
-_LOCK = threading.Lock()
+# Video Stüdyosu da bunu kullanır: iki stüdyonun "üretiyor mu → başlat" adımı tek kilitte (aynı haberde yarış olmasın).
+START_LOCK = threading.Lock()
 
 
 def _run(project: NewsProject, design: Design, job: Job, previous: Job | None) -> None:
@@ -61,8 +62,15 @@ def _run(project: NewsProject, design: Design, job: Job, previous: Job | None) -
 
 
 def start(project: NewsProject, design: Design, restart: bool = False) -> bool:
-    """İşi başlatır. Çalışan iş varsa: `restart` ile onu durdurup yenisini başlatır, yoksa False."""
-    with _LOCK:
+    """İşi başlatır. Çalışan iş varsa: `restart` ile onu durdurup yenisini başlatır, yoksa False.
+
+    Video Stüdyosu bu haberin videosunu üretiyorsa False (son videoyu o da yazacak).
+    """
+    from apps.video_studio import jobs as video_jobs  # döngüsel import olmasın diye burada
+
+    with START_LOCK:
+        if video_jobs.busy(project):  # Video Stüdyosu bu haberin son videosunu zaten üretecek
+            return False
         current = _JOBS.get(str(project.folder))
         previous = None
         if current and current.running:

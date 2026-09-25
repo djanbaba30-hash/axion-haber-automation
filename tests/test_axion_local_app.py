@@ -83,6 +83,19 @@ def test_shutdown_button_hidden_for_remote_access(local_env):
     assert not any(b.label == "Axion'u kapat" for b in at.button)
 
 
+@pytest.mark.parametrize("rendering", [False, True])
+def test_shutdown_confirmation_warns_while_rendering(local_env, monkeypatch, rendering):
+    from streamlit.runtime.context import ContextProxy
+
+    monkeypatch.setattr(ContextProxy, "headers", property(lambda self: {"Host": "localhost:8501"}))
+    monkeypatch.setattr("apps.video_studio.jobs.busy", lambda project=None: rendering)
+    at = start()
+    button(at, "Axion'u kapat").click().run()
+    assert not at.exception
+    assert any("kapatılsın mı" in w.value for w in at.warning)
+    assert any("yarıda kalır" in e.value for e in at.error) == rendering
+
+
 def test_save_and_continue_opens_project_in_video_studio(local_env):
     at = with_generated_news(start())
     button(at, "Kaydet ve Video Stüdyosu'na geç").click().run()
@@ -664,6 +677,10 @@ def test_design_page_waits_while_video_studio_renders(local_env, monkeypatch):
         assert not at.exception
         assert any("Video Stüdyosu bu haberin videosunu" in i.value for i in at.info)
         assert design_jobs.get(project) is None  # son video yok ama otomatik üretim başlamadı
+        # Başlatma tek kilitte: sayfa kontrolünden bağımsız olarak da ikinci üretim başlamaz.
+        from apps.design_studio.pipeline import load_project_design
+
+        assert not design_jobs.start(project, load_project_design(project, 20.0), restart=True)
     finally:
         release.set()
         video_jobs.wait(project)
