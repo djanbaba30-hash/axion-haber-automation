@@ -28,12 +28,15 @@ LOCAL_HOSTS = ("localhost", "127.0.0.1")
 
 # Logo renkleri: lacivert #123249, açık mavi #BEE1E8, yeşil #D0E491 (tema: .streamlit/config.toml)
 STYLE = """<style>
-[data-testid="stMainBlockContainer"], .block-container {padding-top: 2.5rem; max-width: 1080px;}
+[data-testid="stMainBlockContainer"], .block-container {padding: 2rem 1.5rem 3rem; max-width: 1240px;}
 h1 {color: #123249; font-weight: 800; letter-spacing: -0.02em;}
 h3 {color: #123249;}
 h1::after {content: ""; display: block; width: 56px; height: 4px; margin-top: .35rem;
            border-radius: 2px; background: linear-gradient(90deg, #D0E491, #BEE1E8);}
 [data-testid="stSidebar"] {border-right: 1px solid #E3EAF0;}
+/* Kenar çubuğu sabit 250 px (Streamlit: en dar 200, varsayılan 300; editör ortasını istedi), boyutlandırılamaz. */
+[data-testid="stSidebar"][aria-expanded="true"] {width: 250px !important; min-width: 250px !important; max-width: 250px !important;}
+[data-testid="stSidebarResizeHandle"] {display: none !important;}
 div[data-testid="stExpander"] details {border-radius: 10px;}
 </style>"""
 

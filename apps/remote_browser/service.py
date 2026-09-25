@@ -15,6 +15,7 @@ Girişler (logins.py): editör bir giriş formunu gönderirken (Giriş düğmesi
 from __future__ import annotations
 
 import asyncio
+import base64
 import os
 import re
 import shutil
@@ -29,7 +30,7 @@ from apps.axion_local.store import MEDIA_EXTENSIONS
 
 from .logins import Logins, site_of
 
-VIEWPORT = (1024, 640)  # tablet ekranına yakın oran; DHA paneli masaüstü düzeninde kalır
+VIEWPORT = (1024, 768)  # 4:3: yatay tabletin dikey alanını doldurur; DHA paneli masaüstü düzeninde kalır
 JPEG_QUALITY = 60
 IDLE_SECONDS = 20 * 60
 COMMAND_TIMEOUT = 30.0
@@ -170,7 +171,7 @@ class Screen:
     image: bytes
     url: str
     title: str
-    tabs: int
+    tabs: list[dict[str, Any]]  # [{title, url, active}]
 
 
 class RemoteBrowser:
@@ -184,6 +185,11 @@ class RemoteBrowser:
         self.last_used = time.monotonic()
         self.closed = False
         self._screen: Screen | None = None
+        # Canlı görüntü (CDP screencast): Chrome yalnız değişen kareyi yollar; ekran görüntüsü beklemekten hızlı.
+        self._cast: Any = None
+        self._cast_page: Any = None
+        self._frame: bytes | None = None
+        self.frame_count = 0  # gelen kare sayacı: bir işlemden sonra taze kare beklemek için
         self._page: Any = None
         self._context: Any = None
         self._playwright: Any = None
@@ -329,6 +335,33 @@ class RemoteBrowser:
 
         return bool(self._call(fill()))
 
+    async def _start_cast(self, page) -> None:
+        if self._cast_page is page:
+            return
+        old, self._cast, self._cast_page, self._frame = self._cast, None, None, None
+        if old is not None:
+            try:
+                await old.detach()
+            except Exception:  # noqa: BLE001 — sekme kapanmış olabilir
+                pass
+        try:
+            session = await self._context.new_cdp_session(page)
+            session.on("Page.screencastFrame", lambda frame: self._loop.create_task(self._on_frame(session, frame)))
+            await session.send("Page.startScreencast", {"format": "jpeg", "quality": JPEG_QUALITY,
+                                                        "maxWidth": VIEWPORT[0], "maxHeight": VIEWPORT[1]})
+            self._cast, self._cast_page = session, page
+        except Exception:  # noqa: BLE001 — akış yoksa ekran görüntüsüne düşülür
+            self._cast = self._cast_page = None
+
+    async def _on_frame(self, session, frame: dict[str, Any]) -> None:
+        if session is self._cast:
+            self._frame = base64.b64decode(frame["data"])
+            self.frame_count += 1
+        try:
+            await session.send("Page.screencastFrameAck", {"sessionId": frame["sessionId"]})
+        except Exception:  # noqa: BLE001
+            pass
+
     async def _active(self):
         if self._page is None or self._page.is_closed():
             self._page = await self._context.new_page()
@@ -358,8 +391,15 @@ class RemoteBrowser:
                 await page.go_forward(wait_until="commit", timeout=10000)
             elif action == "reload":
                 await page.reload(wait_until="commit", timeout=20000)
+            elif action == "tab" and 0 <= int(value) < len(self._context.pages):
+                self._page = self._context.pages[int(value)]
+                await self._page.bring_to_front()
             elif action == "close_tab" and len(self._context.pages) > 1:
-                await page.close()
+                pages = self._context.pages
+                target = pages[int(value)] if value is not None and 0 <= int(value) < len(pages) else page
+                if target is page:  # açık sekme kapanıyorsa bir öncekine geçilir
+                    self._page = pages[max(0, pages.index(page) - 1)]
+                await target.close()
         except Exception:  # noqa: BLE001 — zaman aşımı/gezinme hatası: ekran olduğu gibi kalır, editör yeniden dener
             pass
 
@@ -369,21 +409,32 @@ class RemoteBrowser:
 
     async def _capture(self) -> Screen:
         page = await self._active()
-        try:
-            image = await page.screenshot(type="jpeg", quality=JPEG_QUALITY, timeout=5000)
-        except Exception:  # noqa: BLE001 — sayfa yüklenirken: son görüntü kalır
-            if self._screen:
-                return self._screen
-            raise
-        try:
-            title = await page.title()
-        except Exception:  # noqa: BLE001
-            title = ""
-        self._screen = Screen(image, page.url, title, len(self._context.pages))
+        await self._start_cast(page)
+        image = self._frame if self._cast_page is page else None
+        if image is None:  # akışın ilk karesi gelmedi (ya da akış yok): ekran görüntüsü
+            try:
+                image = await page.screenshot(type="jpeg", quality=JPEG_QUALITY, timeout=5000)
+            except Exception:  # noqa: BLE001 — sayfa yüklenirken: son görüntü kalır
+                if self._screen:
+                    return self._screen
+                raise
+        tabs = []
+        for tab in self._context.pages:
+            try:
+                title = await tab.title()
+            except Exception:  # noqa: BLE001
+                title = ""
+            tabs.append({"title": title or tab.url, "url": tab.url, "active": tab is page})
+        self._screen = Screen(image, page.url, next((t["title"] for t in tabs if t["active"]), ""), tabs)
         return self._screen
 
-    def screen(self) -> Screen:
+    def screen(self, after_frame: int | None = None, wait: float = 0.15) -> Screen:
+        """Son kare. `after_frame` verilirse (tıklama/kaydırma sonrası) en fazla `wait` sn daha yeni kare beklenir:
+        tablet işlemin sonucunu bir sonraki yenilemeyi beklemeden görür."""
         self.last_used = time.monotonic()
+        deadline = time.monotonic() + wait
+        while after_frame is not None and self.frame_count <= after_frame and time.monotonic() < deadline:
+            time.sleep(0.01)
         return self._call(self._capture(), 15)
 
     def download_rows(self, limit: int = 6) -> list[dict[str, Any]]:

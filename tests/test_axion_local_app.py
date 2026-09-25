@@ -516,17 +516,18 @@ BROWSER_PAGE = "apps/remote_browser/page.py"
 
 class FakeBrowser:
     closed = False
+    frame_count = 0
 
     def __init__(self):
         from apps.remote_browser.service import Screen
 
         self.calls = []
-        self.screen_value = Screen(b"\xff\xd8jpeg", "about:blank", "", 1)
+        self.screen_value = Screen(b"\xff\xd8jpeg", "about:blank", "", [{"title": "", "url": "about:blank", "active": True}])
 
     def run(self, action, value=None):
         self.calls.append((action, value))
 
-    def screen(self):
+    def screen(self, after_frame=None):
         return self.screen_value
 
     def download_rows(self):
@@ -569,19 +570,18 @@ def test_browser_page_lists_and_deletes_saved_logins(local_env, monkeypatch):
     assert logins.sites() == []
 
 
-def test_browser_page_opens_home_page_and_remembers_it(local_env, monkeypatch):
-    from apps.axion_local.preferences import load_preferences
-
+def test_browser_page_opens_dha_news_panel(local_env, monkeypatch):
     fake = FakeBrowser()
     monkeypatch.setattr("apps.remote_browser.service.find_browser", lambda configured=None: Path("/brave"))
     monkeypatch.setattr("apps.remote_browser.service.shared", lambda executable, profile, inbox, logins=None: fake)
     at = start()
     at.switch_page(BROWSER_PAGE).run()
     assert not at.exception
-    assert fake.calls == [("goto", "https://www.dha.com.tr")]  # boş sekme: ana sayfa açılır
-    at.sidebar.text_input(key="tarayici_ana_sayfa").set_value("panel.dha.com.tr").run()
-    assert load_preferences()["tarayici_ana_sayfa"] == "panel.dha.com.tr"
-    assert fake.calls == [("goto", "https://www.dha.com.tr")]  # bir kez
+    # Editör: işi yalnız DHA abone paneli; ana sayfa ayarı ve açıklama kenar çubuğundan kalktı (yerine gezinme paneli).
+    assert fake.calls == [("goto", "https://dhaabone.dha.com.tr/news")]  # boş sekme: bir kez açılır
+    assert not at.sidebar.text_input and not at.sidebar.caption
+    at.run()
+    assert fake.calls == [("goto", "https://dhaabone.dha.com.tr/news")]
 
 
 def test_browser_events_are_validated_before_reaching_browser():
@@ -596,12 +596,14 @@ def test_browser_events_are_validated_before_reaching_browser():
         {"t": "key", "v": "Enter"}, {"t": "key", "v": "F12"},
         {"t": "password"}, {"t": "home"}, {"t": "goto", "v": "  "},
         {"t": "eval", "v": "alert(1)"}, "bozuk", {"t": "click", "v": ["a", 1]},
+        {"t": "tab", "v": "1"}, {"t": "tab", "v": "x"}, {"t": "close_tab", "v": 0}, {"t": "close_tab"},
     ]
-    assert apply_events(fake, events, "gizli", "dha.com.tr") == 6
+    assert apply_events(fake, events, "gizli", "dha.com.tr") == 9
     assert fake.calls == [
         ("click", (1023.0, 0.0)), ("wheel", (10.0, 10.0, 6000.0)), ("type", "ş" * 2000), ("key", "Enter"),
         ("fill_login", None), ("type", "gizli"), ("goto", "dha.com.tr"),
-    ]  # 🔑: önce kayıtlı giriş, yoksa DHA_SIFRE
+        ("tab", 1), ("close_tab", 0), ("close_tab", None),
+    ]  # 🔑: önce kayıtlı giriş, yoksa DHA_SIFRE; sekme seçme/kapatma sırayla
     fake.calls.clear()
     apply_events(fake, [{"t": "password"}, {"t": "save_login"}, {"t": "dismiss_login"}], None, "x")
     assert fake.calls == [("fill_login", None), ("answer", True), ("answer", False)]  # şifre yoksa hiçbir şey yazılmaz

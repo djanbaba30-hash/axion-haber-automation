@@ -107,7 +107,7 @@ def test_remote_browser_types_scrolls_downloads_and_follows_new_tab(tmp_path, si
         browser.run("goto", site)
         assert _wait(lambda: browser.screen().url.endswith("/"))
         screen = browser.screen()
-        assert screen.image[:2] == b"\xff\xd8" and screen.tabs == 1  # JPEG
+        assert screen.image[:2] == b"\xff\xd8" and len(screen.tabs) == 1  # JPEG
 
         browser.run("click", (150, 115))
         browser.run("type", "şifre")
@@ -125,10 +125,17 @@ def test_remote_browser_types_scrolls_downloads_and_follows_new_tab(tmp_path, si
         assert saved.read_bytes() == VIDEO and not list(saved.parent.glob("*.iniyor"))
         assert browser.download_rows()[0]["name"] == "video.mp4"
 
+        assert _wait(lambda: browser._frame is not None)  # canlı görüntü akışı (screencast) kare yolluyor
+
         browser.run("click", (110, 305))
-        assert _wait(lambda: browser.screen().tabs == 2 and browser.screen().url.endswith("/ikinci"))
+        assert _wait(lambda: len(browser.screen().tabs) == 2 and browser.screen().url.endswith("/ikinci"))
+        assert [t["active"] for t in browser.screen().tabs] == [False, True]
+        browser.run("tab", 0)  # sekme seçme (DHA haberi yeni sekmede açar)
+        assert _wait(lambda: browser.screen().url.endswith("/") and browser.screen().tabs[0]["active"])
+        browser.run("tab", 1)
+        assert _wait(lambda: browser.screen().url.endswith("/ikinci"))
         browser.run("close_tab")
-        assert _wait(lambda: browser.screen().tabs == 1 and browser.screen().url.endswith("/"))
+        assert _wait(lambda: len(browser.screen().tabs) == 1 and browser.screen().url.endswith("/"))
     finally:
         browser.close()
     assert browser.closed
