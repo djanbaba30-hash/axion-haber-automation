@@ -115,6 +115,20 @@ def test_saving_same_news_again_updates_project(local_env):
     assert len(store.list_news_projects()) == 1
 
 
+def test_audio_alignment_is_kept_as_plain_data_and_saved(local_env):
+    """Windows hatası: ses zamanları oturumda nesne olarak durunca, modül yeniden yüklenince NewsPackage reddediyordu."""
+    import json
+
+    at = start()
+    at.session_state["last_audio_alignment"] = {"characters": list(TTS), "start_seconds": [i / 10 for i in range(len(TTS))],
+                                                "end_seconds": [(i + 1) / 10 for i in range(len(TTS))]}
+    at = with_generated_news(at)
+    button(at, "Sadece kaydet").click().run()
+    assert not at.exception
+    saved = json.loads((store.list_news_projects()[0].folder / "news_package.json").read_text(encoding="utf-8"))
+    assert saved["tts_alignment"]["characters"] == list(TTS)
+
+
 def test_headline_regeneration_cost_is_counted(local_env, monkeypatch):
     from types import SimpleNamespace
 

@@ -28,7 +28,7 @@ from apps.news_studio.tts.calibration import update as update_calibration
 from apps.news_studio.tts.service import synthesize
 from apps.news_studio.validation.news import find_censorship_warnings, validate_news_output
 from apps.news_studio.validation.speakable import make_speakable
-from shared.news_package import NewsPackage
+from shared.news_package import NewsPackage, TTSAlignment
 from shared.text_layout import check_headline
 
 VIDEO_PAGE = "apps/video_studio/page.py"
@@ -44,6 +44,7 @@ PREFERENCES = {
     "ai_provider": "OpenAI", "openai_model": list(OPENAI_MODELS)[0], "thinking": THINKING_LEVELS[0], "voice_name": "",
     "speed": 1.11, "stability": 0.50, "similarity": 0.65, "style_strength": 0.10, "boost": True,
 }
+# Ses zamanları dict olarak tutulur: Streamlit modülü yeniden yüklerse eski sınıfın nesnesi NewsPackage'a girmez.
 AUDIO_STATE = {"last_audio_bytes": None, "last_audio_duration": None, "last_audio_text": None,
                "last_audio_alignment": None, "last_audio_filename": "axion_haber_ses.mp3"}
 USAGE_KEYS = ("input_tokens", "output_tokens", "cached_input_tokens", "cache_creation_input_tokens", "reasoning_tokens", "requests")
@@ -270,7 +271,7 @@ if ss.icerik:
                 except Exception:  # noqa: BLE001
                     duration = None
                 ss.tts_metni = tts_text
-                ss.update({"last_audio_bytes": audio, "last_audio_text": tts_text, "last_audio_alignment": alignment,
+                ss.update({"last_audio_bytes": audio, "last_audio_text": tts_text, "last_audio_alignment": alignment.model_dump() if alignment else None,
                            "last_audio_duration": duration})
                 if duration:
                     ss.tts_calibration = update_calibration(ss.tts_calibration, voice_id, speed, len(tts_text), duration)
@@ -332,7 +333,7 @@ if ss.icerik:
         if ss.last_correction_reason:
             st.caption(f"Düzeltme çağrısı nedeni: {ss.last_correction_reason}")
         if ss.last_audio_bytes:
-            alignment = ss.last_audio_alignment
+            alignment = TTSAlignment.model_validate(ss.last_audio_alignment) if ss.last_audio_alignment else None
             st.caption("Seslendirme zaman bilgisi: "
                        + (f"var ({len(alignment.characters)} karakter, {alignment.duration_seconds():.1f} sn)" if alignment else "yok"))
         if active:

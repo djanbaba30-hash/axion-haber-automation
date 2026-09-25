@@ -3,6 +3,9 @@
 port = 8501
 headless = true
 maxUploadSize = 4096
+# Kod değişince modülleri yeniden yükleme: bellekteki nesneler (ses zamanları, arka plan işleri) bozulmasın.
+# Güncelleme zaten Axion'u yeniden başlatır (guncelle.bat).
+fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false
