@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import os
 import re
@@ -23,9 +24,10 @@ import shutil
 import sys
 import threading
 import time
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from apps.axion_local.store import MEDIA_EXTENSIONS
 
@@ -155,9 +157,65 @@ def unique_path(folder: Path, name: str, taken: set[Path] = frozenset()) -> Path
     return path
 
 
-def fetch_file(url: str, target: Path, cookies: list[dict[str, Any]], user_agent: str, referer: str,
-               item: "Download | None" = None) -> None:
-    """Dosyayı tarayıcının çerezleriyle indirir (parça parça diske; büyük video belleği doldurmaz)."""
+# Sayfanın indirme bağlantılarını Brave'e bırakmadan Axion'a verir (Windows'ta Brave "Tüm Materyali İndir"de
+# çöküyordu, v3.3.2 günlüğü): bağlantıya tıklanınca (ya da betik `a.click()` deyince) http dosyası Axion'un kendi
+# indirmesine, sayfanın ürettiği dosya (blob:/data:, DHA'nın TXT'si) baytlarıyla doğrudan Axion'a gider.
+DOWNLOAD_HOOK = """
+(() => {
+  if (window.__axionIndir) return;
+  window.__axionIndir = true;
+  const blobs = new Map();
+  const create = URL.createObjectURL;
+  URL.createObjectURL = function (obj) {
+    const url = create.call(URL, obj);
+    if (obj instanceof Blob) blobs.set(url, obj);  // sayfa adresi hemen geri alsa (revoke) da dosya elde kalır
+    return url;
+  };
+  const base64 = async (blob) => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let text = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(text);
+  };
+  const take = (a) => {
+    if (typeof window.axionIndir !== 'function') return false;
+    const href = a.href || '';
+    const local = href.startsWith('blob:') || href.startsWith('data:');
+    if (!local && !(a.hasAttribute('download') && /^https?:/.test(href))) return false;
+    const name = a.getAttribute('download') || '';
+    if (!local) { window.axionIndir({ name, url: href }); return true; }
+    const blob = blobs.get(href);
+    (blob ? Promise.resolve(blob) : fetch(href).then((r) => r.blob()))
+      .then(base64).then((data) => window.axionIndir({ name, url: '', data })).catch(() => {});
+    return true;
+  };
+  const click = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function () { if (!take(this)) click.call(this); };
+  document.addEventListener('click', (event) => {
+    const a = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (a && take(a)) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+})();
+"""
+
+
+def disposition_name(header: str) -> str:
+    """Content-Disposition'daki dosya adı (filename*=UTF-8'' önce)."""
+    match = re.search(r"filename\*\s*=\s*(?:[\w-]+'[^']*')?([^;]+)", header, re.I)
+    if match:
+        return urllib.parse.unquote(match.group(1).strip().strip('"'))
+    match = re.search(r'filename\s*=\s*"?([^";]+)"?', header, re.I)
+    return match.group(1).strip() if match else ""
+
+
+def url_name(url: str) -> str:
+    return urllib.parse.unquote(Path(urllib.parse.urlparse(url).path).name) or "indirilen"
+
+
+def fetch_file(url: str, cookies: list[dict[str, Any]], user_agent: str, referer: str,
+               start: Callable[[str], "Download"]) -> "Download":
+    """Dosyayı tarayıcının çerezleriyle indirir (parça parça diske; büyük video belleği doldurmaz). `start(ad)`
+    sunucunun verdiği adla (yoksa "") indirme kaydını açar; yarım dosya `.iniyor` adıyla yazılır."""
     import httpx
 
     jar = httpx.Cookies()
@@ -170,13 +228,40 @@ def fetch_file(url: str, target: Path, cookies: list[dict[str, Any]], user_agent
     with httpx.stream("GET", url, cookies=jar, headers=headers, follow_redirects=True, timeout=timeout) as response:
         if response.status_code >= 400:
             raise RuntimeError(f"Sunucu indirmeyi reddetti (HTTP {response.status_code}).")
-        if item is not None:
-            item.total = int(response.headers.get("content-length") or 0)
-        with open(target, "wb") as out:
-            for chunk in response.iter_bytes(1 << 20):
-                out.write(chunk)
-                if item is not None:
+        item = start(disposition_name(response.headers.get("content-disposition", "")))
+        item.total = int(response.headers.get("content-length") or 0)
+        partial = item.path.with_name(item.path.name + ".iniyor")
+        try:
+            with open(partial, "wb") as out:
+                for chunk in response.iter_bytes(1 << 20):
+                    out.write(chunk)
                     item.received += len(chunk)
+            partial.replace(item.path)  # yarım dosya Video Stüdyosu'nun listesinde görünmesin
+        except BaseException:
+            partial.unlink(missing_ok=True)
+            raise
+    item.finished = time.monotonic()
+    return item
+
+
+def allow_multiple_downloads(profile: Path) -> None:
+    """Profilde "birden çok dosya indirme"ye sormadan izin (görünmez Brave'de izin sorusu takılmasın)."""
+    path = profile / "Default" / "Preferences"
+    try:
+        prefs = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        prefs = {}
+    values = prefs.setdefault("profile", {}).setdefault("default_content_setting_values", {})
+    download = prefs.setdefault("download", {})
+    if values.get("automatic_downloads") == 1 and download.get("prompt_for_download") is False:
+        return
+    values["automatic_downloads"] = 1
+    download["prompt_for_download"] = False
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(prefs), encoding="utf-8")
+    except OSError:
+        pass
 
 
 @dataclass
@@ -247,6 +332,7 @@ class RemoteBrowser:
         from playwright.async_api import async_playwright
 
         self.profile.mkdir(parents=True, exist_ok=True)
+        allow_multiple_downloads(self.profile)
         self._playwright = await async_playwright().start()
         options = dict(executable_path=str(self.executable), headless=True, accept_downloads=True, locale="tr-TR",
                        viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]}, device_scale_factor=SCALE,
@@ -257,6 +343,8 @@ class RemoteBrowser:
             await asyncio.to_thread(kill_orphans, self.profile)
             self._context = await self._playwright.chromium.launch_persistent_context(str(self.profile), **options)
         self._context.on("page", self._on_new_page)
+        await self._context.expose_binding("axionIndir", self._from_page)
+        await self._context.add_init_script(DOWNLOAD_HOOK)
         self._context.on("close", self._on_context_close)
         for page in self._context.pages:
             self._watch(page)
@@ -291,32 +379,76 @@ class RemoteBrowser:
             pages = [p for p in self._context.pages if p is not page]
             self._page = pages[-1] if pages else None
 
-    async def _save(self, download) -> None:
+    def _new_download(self, name: str) -> Download:
         self.inbox.mkdir(parents=True, exist_ok=True)
         busy = {d.path for d in self.downloads if d.state == "iniyor"}
-        item = Download(download.suggested_filename, unique_path(self.inbox, download.suggested_filename, busy))
+        item = Download(name, unique_path(self.inbox, name, busy))
         self.downloads.append(item)
+        return item
+
+    def _failed(self, item: Download, error: BaseException) -> None:
+        item.error = str(error).splitlines()[0][:200] if str(error) else error.__class__.__name__
+        logger.warning("İndirme olmadı: %s (%s)", item.name, item.error)
+
+    async def _fetch(self, url: str, hint: str, referer: str, item: Download | None = None) -> None:
+        """http(s) dosyasını Axion indirir (Brave'in indirme hattı kullanılmaz; aynı oturum çerezleri)."""
+        holder: dict[str, Download] = {}
+
+        def start(name: str) -> Download:
+            holder["item"] = item or self._new_download(name or hint or url_name(url))
+            return holder["item"]
+
+        try:
+            cookies = await self._context.cookies()
+            await asyncio.to_thread(fetch_file, url, cookies, self.user_agent, referer, start)
+        except Exception as error:  # noqa: BLE001 — indirilenlerde gösterilir
+            self._failed(holder.get("item") or item or self._new_download(hint or url_name(url)), error)
+
+    async def _from_page(self, source: dict[str, Any], payload: Any) -> None:
+        """Sayfadaki indirme bağlantısı (DOWNLOAD_HOOK): http ise Axion indirir, sayfanın ürettiği dosya baytlarıyla."""
+        if not isinstance(payload, dict):
+            return
+        name, url = str(payload.get("name") or ""), str(payload.get("url") or "")
+        page = source.get("page") if isinstance(source, dict) else None
+        referer = page.url if page is not None else ""
+        if url.startswith(("http://", "https://")):
+            self._loop.create_task(self._fetch(url, name, referer))
+            return
+        data = payload.get("data")
+        if not isinstance(data, str):
+            return
+        item = self._new_download(name or "indirilen")
         partial = item.path.with_name(item.path.name + ".iniyor")
         try:
-            url = download.url
-            if url.startswith(("http://", "https://")):
-                # Brave'in indirme hattı kullanılmaz: Windows'ta DHA indirmelerinde Brave çöküyordu (v3.3.1 günlüğü).
-                # İndirme hemen iptal edilir, dosyayı Axion aynı çerezlerle kendisi indirir.
-                try:
-                    await download.cancel()
-                except Exception:  # noqa: BLE001
-                    pass
-                cookies = await self._context.cookies()
-                referer = download.page.url if not download.page.is_closed() else ""
-                await asyncio.to_thread(fetch_file, url, partial, cookies, self.user_agent, referer, item)
-            else:  # blob:/data: (sayfanın kendi ürettiği dosya): yalnız tarayıcı kaydedebilir
-                await download.save_as(partial)
-            partial.replace(item.path)  # yarım dosya Video Stüdyosu'nun listesinde görünmesin
+            partial.write_bytes(base64.b64decode(data))
+            partial.replace(item.path)
+            item.received = item.path.stat().st_size
             item.finished = time.monotonic()
-        except Exception as error:  # noqa: BLE001 — ekranda gösterilir
-            item.error = str(error).splitlines()[0][:200] or error.__class__.__name__
-            logger.warning("İndirme olmadı: %s (%s)", item.name, item.error)
+        except Exception as error:  # noqa: BLE001
             partial.unlink(missing_ok=True)
+            self._failed(item, error)
+
+    async def _save(self, download) -> None:
+        """Brave'in kendi başlattığı indirme (bağlantı dışı yollar: yönlendirme, form, pencere)."""
+        url = download.url
+        if url.startswith(("http://", "https://")):
+            # Brave'in indirme hattı kullanılmaz: Windows'ta DHA indirmelerinde Brave çöküyordu (v3.3.1 günlüğü).
+            try:
+                await download.cancel()
+            except Exception:  # noqa: BLE001
+                pass
+            referer = download.page.url if not download.page.is_closed() else ""
+            await self._fetch(url, download.suggested_filename, referer)
+            return
+        item = self._new_download(download.suggested_filename)  # blob:/data: bağlantı dışı: tarayıcı kaydeder
+        partial = item.path.with_name(item.path.name + ".iniyor")
+        try:
+            await download.save_as(partial)
+            partial.replace(item.path)
+            item.finished = time.monotonic()
+        except Exception as error:  # noqa: BLE001
+            partial.unlink(missing_ok=True)
+            self._failed(item, error)
 
     async def _idle_watch(self) -> None:
         while not self.closed:

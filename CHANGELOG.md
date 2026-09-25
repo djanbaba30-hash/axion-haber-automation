@@ -1,3 +1,39 @@
+# v3.4.0 — Kurgu olay örgüsünü izler, kadraj bulanığın bittiği yerden, indirmeler Brave'siz — 2026-09-25
+
+Editörün "kadın polis arızalı midibüsü itti" denemesi (tam çözünürlüklü DHA videosu, oluşan video, `axion.log`,
+`media_library.json`, `edit_project.json`). Kurgu bu projenin gerçek Luna analiziyle sandbox'ta yeniden üretildi.
+
+## Fixed
+- **Kurgu tek uzun çekimde hep aynı pencereyi seçiyordu:** kullanım çekim başına tek imleçle tutuluyordu; geç bir
+  pencere bir kez seçilince öncekiler "tekrar" sayılıyordu. Sonuç: video yalnız 46–55. sn'den (boş yol), 46. sn iki
+  kez, ilk pencerenin açıklamasıyla 52. sn. Artık kullanım aralık aralık tutulur, görüntü seçilen pencereden gelir,
+  aynı an iki kez gösterilmez.
+- **Kadraj net görüntüyü yandan kesiyordu:** kenar tespiti bulunan alanı en yakın standart orana (9:16) daraltıyordu;
+  bu videodaki 3:4 dikey çekimin (net şerit %41,2) üçte biri kesilip ~1,5 kat fazla yakınlaştırılıyordu (%27,7).
+  Artık DHA'nın net görüntüyü bulanık kopyaya yapıştırdığı sınır çizgisi (iki yanda simetrik, her karede aynı yerde)
+  bulunur: kırpma tam bulanığın bittiği yerden (sandbox: 0,2954–0,7046; gerçek 0,2938–0,7063). Çizgi yoksa eski
+  yöntem yedek. Bu videoda üst+alttan kesilen %37 → %7.
+- **İndirme:** "Tüm Materyali İndir"de Brave yine çöktü (günlük: TXT `blob:` olduğu için hâlâ Brave kaydediyordu).
+  Artık sayfadaki indirme bağlantıları (tıklama ya da sayfanın `a.click()`'i) Brave'e hiç gitmez: http dosyası
+  Axion'un kendi indirmesine, sayfanın ürettiği dosya (TXT) baytlarıyla doğrudan Axion'a (adres hemen geri alınsa
+  da). Sunucunun verdiği dosya adı kullanılır. Brave profiline "birden çok dosya indirmeye sormadan izin" yazılır.
+  Diğer yollar (yönlendirme, pencere) v3.3.2'deki gibi: Brave iptal, Axion indirir.
+
+## Changed
+- **Tek uzun çekim (cep telefonu) olay örgüsüyle:** seslendirmenin başı çekimin başına, sonu sonuna yakın pencereden;
+  parça, Luna'nın gördüğü karenin çevresinden alınır (elde çekimde kamera pencere içinde başka yere dönebiliyor).
+  Öznesi olmayan pencereler (kutu net görüntünün tamamı: ağaçlık, boş yol) geride kalır. Bu projede: 0–35. sn
+  (midibüs, itme, yardım) + son parça trafiğin açılması; ağaçlık yok.
+- **Dikey (yanları dolgulu) görüntüde hiç kaydırma yok** (editör): ne klip içinde ne klipten klibe; net şeridin tam
+  genişliği, tüm video boyunca aynı yükseklik (özne merkezlerinin ortalaması). Kaydırma yalnız tam karede (yatay),
+  özne alandan genişse.
+- **Luna'ya yanları bulanık videoda yalnız net şerit gider:** özne daha büyük görünür, token daha az (kare ~231 →
+  ~154); özne kutusu tam kare koordinatına çevrilir.
+
+## Yapılmayan
+- Kaynak çözünürlüğü: önceki denemedeki 640x480 dosya yerine tam çözünürlüklü (1920x1080) dosya kullanılmalı —
+  editör bu kez onu gönderdi; net şerit 791 px, alan 960 px (~1,2x büyütme).
+
 # v3.3.2 — Tarayıcı: indirmeleri Axion yapar (Brave çöküyordu); tek çekim sırasıyla oynar — 2026-09-25
 
 ## Changed

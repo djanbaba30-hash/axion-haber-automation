@@ -17,6 +17,19 @@ PAGE = b"""<!doctype html><html><body style="margin:0">
 <input id="kutu" style="position:absolute;left:100px;top:100px;width:200px;height:30px">
 <a id="indir" href="/video.mp4" download style="position:absolute;left:100px;top:200px">indir</a>
 <a id="sekme" href="/ikinci" target="_blank" style="position:absolute;left:100px;top:300px">yeni sekme</a>
+<button id="tum" onclick="tum()" style="position:absolute;left:100px;top:400px;width:150px;height:30px">tum</button>
+<script>
+function tum() {  // DHA "Tum Materyali Indir" gibi: tek tikla sayfanin urettigi TXT + video; adres hemen geri alinir
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['haber metni \u00e7'], {type: 'text/plain'}));
+  a.download = 'haber.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  const v = document.createElement('a');
+  v.href = '/video.mp4'; v.download = 'kaynak.mp4';
+  v.click();
+}
+</script>
 <div style="height:3000px"></div></body></html>"""
 VIDEO = b"\x00\x00\x00\x18ftypmp42" + b"x" * 200_000
 LOGIN = b"""<!doctype html><html><body style="margin:0"><form action="/panel" method="get">
@@ -139,6 +152,15 @@ def test_remote_browser_types_scrolls_downloads_and_follows_new_tab(tmp_path, si
         assert _wait(lambda: browser.download_rows()[0]["state"] == "hata")
         assert "HTTP 403" in browser.download_rows()[0]["error"] and not list(saved.parent.glob("*.iniyor"))
 
+        # v3.4: "Tüm Materyali İndir" gibi tek tıkla birden çok dosya; Brave'in indirme yöneticisine hiç uğramaz.
+        browser._call(browser._page.goto(site))
+        events = []
+        browser._page.on("download", lambda download: events.append(download.url))
+        browser.run("click", (150, 415))
+        folder = tmp_path / "indirilenler"
+        assert _wait(lambda: (folder / "haber.txt").exists() and (folder / "kaynak.mp4").exists())
+        assert (folder / "haber.txt").read_text(encoding="utf-8") == "haber metni ç"  # adres geri alınsa da
+        assert (folder / "kaynak.mp4").read_bytes() == VIDEO and events == []
         assert _wait(lambda: browser._frame is not None)  # canlı görüntü akışı (screencast) kare yolluyor
 
         browser.run("click", (110, 305))

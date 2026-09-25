@@ -78,8 +78,10 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı; kareler 512 px, aynı görünen kareler elenir
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
-  modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi (API yok)
-  modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (analiz karelerinden, numpy/Pillow, API yok)
+  modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi (API yok);
+                               aynı çekim kaynak sırasıyla, tek uzun çekimde anlatım sırası, dikeyde sabit kadraj
+  modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
+                               numpy/Pillow, API yok)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); ses: parça
@@ -183,7 +185,14 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.3.2
+## Nerede kaldık (2026-09-25) — Sürüm 3.4.0
+
+**3.4.0:** "Sıradaki: v3.4.0" planı yapıldı (aşağıdaki bölüm; ayrıntı CHANGELOG). Kurgu olay örgüsü (aralık bazlı
+kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır
+çizgisi çiftiyle (`framing._edge_pair`), dikeyde sabit kadraj, Luna'ya net şerit, indirmeler sayfa betiğiyle
+(`service.DOWNLOAD_HOOK` + `axionIndir` bağlaması; Brave'in indirme yöneticisi kullanılmaz). Editörün denemesi
+bekleniyor: aynı haberi yeniden analiz et + oluştur; "Tüm Materyali İndir" (Downloads'taki eski GUID .tmp dosyaları
+Brave çökmesinden kalma, silinebilir).
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
 httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Kurgu: aynı çekimin parçaları kaynak sırasıyla
@@ -212,7 +221,7 @@ kalitesi, kesit aralığı gerçek DHA videolarında (özellikle güvenlik kamer
 (özne kutusu, yan dolgu), bekçi + `guncelle.bat` (çift tıkla). **Açık karar:** sistem komutunu kısaltmak (plan 5. adım)
 — önbellek tuttuğu için kazanç küçük; editör isterse gerçek haberle önce/sonra karşılaştırılarak yapılır.
 
-### Sıradaki: v3.4.0 kurgu ve kadraj (editörle konuşuldu, 2026-09-25; editörün yeni denemesi bekleniyor)
+### v3.4.0 kurgu ve kadraj planı (editörle konuşuldu, 2026-09-25; yapıldı)
 Örnek: "kadın polis arızalı midibüsü tek başına itti" (DHA 1524464.mp4: 640x480, ortada dikey telefon şeridi ~%37,
 yanları DHA'nın bulanık dolgusu; tek, 55 sn'lik gece elde çekimi). GPT editörün projesini okudu
 (`data/projects/20260925-215857_kadin-polis-...`): Luna 6 pencere (ekonomik, pencere başına 1 kare) — 0–37 sn beyaz
@@ -278,8 +287,8 @@ Editör için deneme listesi `reviews/claude-v3.md` sonunda. Editörün isteği:
      512 px (v3.3); dikey videoda kare başı ~173 token.
    - Kaynak sesli kesitler (isteğe bağlı): önce/sonra, 360p önizleme, kendi sesiyle, `loudnorm`.
    - Kurgu (API yok, `rough_cut.py`): kesmeler seslendirme duraklamalarında, sahneler 2–5 sn; sahne seçimi kelime
-     eşleşmesi + kavram grupları + rol; kadraj hep tam dolu (bulanık dolgu yok), özneye göre; özne büyükse yavaş
-     kaydırma (dikey çekimde yalnız yukarı/aşağı). Video en az 20 sn.
+     eşleşmesi + kavram grupları + rol; kadraj hep tam dolu (bulanık dolgu yok); dikey çekimde sabit (kaydırma yok),
+     tam karede özneye göre, özne büyükse yavaş kaydırma. Video en az 20 sn.
    - Render: tek FFmpeg komutu, 960x1226 (Canva şablonundaki video alanı), önce AMD `h264_amf`, olmazsa x264; ardından
      son video. İkisi de arka planda (`jobs.py`): sayfa beklemez, tablet kapansa da sürer.
 3. **Tasarım Stüdyosu (v2.7.0, sade Canva):** Video Stüdyosu kurguyla birlikte standart şablonlu `son_video.mp4`'ü de
