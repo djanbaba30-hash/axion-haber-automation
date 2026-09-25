@@ -151,4 +151,3 @@ videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa kurgu 20 sn'ye tamaml
 
 - Yazı tipi: Canva'daki Binate Bold yerine editörün seçtiği Google Sans Bold (SIL OFL, `assets/sablon/fontlar/`).
   Google Sans biraz daha dar; görünüm editörün Windows testinde değerlendirilecek.
-
