@@ -84,6 +84,22 @@ Sürüm 3.0.0 (2026-09-25): Faz 0–3 ve 5 tamam, Faz 6'nın temel akışı haz�
 | 5 ✅ (v2.5–v2.9; Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
 | 6 (3.0'da temel akış hazır) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. Dükkân başka ilçede, interneti yavaş (45/13 Mbps): büyük dosya tabletten yüklenmez, tablete de indirilmez. DHA videoları Axion'un **🌐 Tarayıcı** sayfasından indirilir (v2.10.0): evdeki bilgisayarda görünmez bir Brave (Axion'un kendi profili; editör Edge kullanmaz), tablete yalnızca ekran görüntüsü gelir, video evin internetiyle İndirilenler'e iner. Giriş bilgileri bir kez kaydedilir (Windows'ta şifreli), sonra kutular kendiliğinden dolar; inen video "🎬 Video Stüdyosu'nda kullan" ile seçili gelir (v3.0.0). Video ve son video arka planda üretilir: tablet kapansa da bilgisayarda sürer (v3.0.0). Uzak masaüstü yalnızca yedek (editör: iki monitör + gizli görev çubuğuyla pratik değil). Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Açık işler: Tarayıcı sayfasının gerçek DHA paneliyle denenmesi, tablet dokunmatiğinde Tasarım Stüdyosu denemesi, aynı haberin iki cihazda açılması uyarısı. | Evde olmadan haber → video |
 
+## Sıradaki işler (editörle konuşuldu, 2026-09-25)
+
+Hedef: DHA'da haberi gördükten sonra tabletten, en az dokunuşla paylaşıma hazır video. Asıl darboğaz otomasyon değil
+**kalite kontrolü**: editör başlıkları, paylaşım metnini ve seslendirmeyi her haberde kendisi kontrol eder; amaç bu
+kontrolü kaldırmak değil, hızlandırmak.
+
+1. **Windows testi** (`reviews/claude-v3.md` listesi) ve çıkan düzeltmeler.
+2. **Axion çökerse kendini yeniden başlatsın** (uzaktan kullanımda işe yarar). Windows açılışında otomatik başlatma
+   gerekmez: bilgisayar yalnızca elektrik kesilirse kapanır, güncellemeler kapalı (editör elle yapar).
+3. **Kalite kontrolünü hızlandırmak** (editörle netleşecek; API'siz öncelikli).
+4. **Ölçüm:** haber başına adım süreleri yerel olarak kaydedilir (geliştirici için; editörün görmesi gerekmez).
+5. Tablette Tasarım Stüdyosu ve Tarayıcı denemesi (editör yapacak), aynı haberin iki cihazda açılması uyarısı.
+
+Gerekmeyenler: haber metnini Tarayıcı'dan aktarma (DHA'nın kendi "metni kopyala" düğmesi var, tablette yapıştırmak
+yeterli); Windows açılışında otomatik başlatma.
+
 ## Ortam
 
 - Evdeki bilgisayar Windows; güçlü (AMD işlemci ve ekran kartı), 1000 Mbps internet, iş saatlerinde açık kalabilir.

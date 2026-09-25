@@ -217,9 +217,10 @@ Brave (editör Edge sevmiyor; Firefox Playwright ile sürülemiyor), Axion'un ke
 hâlâ çalışır). Gerçek DHA paneliyle henüz denenmedi (sandbox'ta yerel test siteleriyle denendi). Video üretimi arka
 planda (tablet kapansa da sürer).
 
-### Sıradaki: editörün Windows testi, GPT incelemesi
-Editör Windows'ta dener (liste: `reviews/claude-v3.md`). Faz 6'nın kalanı ROADMAP'te (tablet dokunmatiğinde Tasarım
-Stüdyosu, aynı haberin iki cihazda açılması uyarısı).
+### Sıradaki: editörün Windows testi, sonra ROADMAP → "Sıradaki işler"
+Editör Windows'ta dener (liste: `reviews/claude-v3.md`). Ardından sırayla: Axion çökerse kendini yeniden başlatsın,
+kalite kontrolünü hızlandırmak (editörün asıl darboğazı), haber başına adım süresi ölçümü (geliştirici için).
+Windows açılışında otomatik başlatma ve Tarayıcı'dan haber metni aktarma istenmiyor.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
