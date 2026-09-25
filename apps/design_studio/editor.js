@@ -14,8 +14,10 @@ const r3 = (t) => Math.round(t * 1000) / 1000;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
-// ================================================================ efektler (effects.py ile aynı)
-const MERGE = { stagger: 0.045, gap: 0.1, fade: 0.12, slide: 24, move: 0.6, exitSeconds: 0.26, exitSlide: 13 };
+// ================================================================ efektler (effects.py ile aynı; @efektler-başı)
+// Süre/mesafeler effects.json'dan: editor.py bileşeni kaydederken aşağıdaki `null`u dosyanın içeriğiyle değiştirir.
+const FX = /*FX*/null;
+const MERGE = FX.merge, IN = FX.enter, OUT = FX.exit;
 const word = (a = 1, dx = 0, dy = 0) => ({ a, dx, dy });
 const stagger = (n, step, limit) => Math.min(step, limit / Math.max(1, n));
 function mergeDelays(lines) {
@@ -24,44 +26,44 @@ function mergeDelays(lines) {
     const idx = lines.map((v, i) => (v === line ? i : -1)).filter((i) => i >= 0);
     order.push(...(line === 0 ? idx.reverse() : idx));
   });
-  const st = Math.min(MERGE.stagger, 0.55 / Math.max(1, order.length));
+  const st = Math.min(MERGE.stagger, MERGE.stagger_total / Math.max(1, order.length));
   const delays = new Array(lines.length).fill(0);
   let delay = 0, prev = order.length ? lines[order[0]] : 0;
-  for (const i of order) { if (lines[i] !== prev) { delay += MERGE.gap; prev = lines[i]; } delays[i] = delay; delay += st; }
+  for (const i of order) { if (lines[i] !== prev) { delay += MERGE.line_gap; prev = lines[i]; } delays[i] = delay; delay += st; }
   return delays;
 }
 function enterSeconds(e, lines) {
   const n = lines.length;
   if (e === 'merge') return Math.max(0, ...mergeDelays(lines)) + MERGE.move;
-  if (e === 'fade') return 0.4;
-  if (e === 'slide') return stagger(n, 0.06, 0.5) * Math.max(0, n - 1) + 0.45;
-  if (e === 'typewriter') return stagger(n, 0.11, 1.2) * n;
-  if (e === 'pop') return 0.35;
+  if (e === 'fade') return IN.fade.seconds;
+  if (e === 'slide') return stagger(n, IN.slide.step, IN.slide.step_total) * Math.max(0, n - 1) + IN.slide.seconds;
+  if (e === 'typewriter') return stagger(n, IN.typewriter.step, IN.typewriter.step_total) * n;
+  if (e === 'pop') return IN.pop.seconds;
   return 0;
 }
 function exitSeconds(e, lines) {
   const n = lines.length;
-  if (e === 'merge') return MERGE.exitSeconds;
-  if (e === 'fade') return 0.35;
-  if (e === 'slide') return stagger(n, 0.03, 0.2) * Math.max(0, n - 1) + 0.35;
-  if (e === 'pop') return 0.25;
+  if (e === 'merge') return MERGE.exit_seconds;
+  if (e === 'fade') return OUT.fade.seconds;
+  if (e === 'slide') return stagger(n, OUT.slide.step, OUT.slide.step_total) * Math.max(0, n - 1) + OUT.slide.seconds;
+  if (e === 'pop') return OUT.pop.seconds;
   return 0;
 }
 function enterState(e, lines, t) {
   const n = lines.length;
   if (e === 'merge') { const d = mergeDelays(lines); return { scale: 1, words: lines.map((line, i) => { const l = t - d[i]; return word(clamp(l / MERGE.fade), (line === 0 ? 1 : -1) * MERGE.slide * (1 - easeOut(l / MERGE.move))); }) }; }
-  if (e === 'fade') return { scale: 1, words: lines.map(() => word(easeOut(t / 0.4))) };
-  if (e === 'slide') { const s = stagger(n, 0.06, 0.5); return { scale: 1, words: lines.map((_, i) => word(clamp((t - i * s) / 0.2), 0, 36 * (1 - easeOut((t - i * s) / 0.45)))) }; }
-  if (e === 'typewriter') { const s = stagger(n, 0.11, 1.2); return { scale: 1, words: lines.map((_, i) => word(t >= i * s ? 1 : 0)) }; }
-  if (e === 'pop') return { scale: 0.6 + 0.4 * easeOutBack(t / 0.35), words: lines.map(() => word(clamp(t / 0.15))) };
+  if (e === 'fade') return { scale: 1, words: lines.map(() => word(easeOut(t / IN.fade.seconds))) };
+  if (e === 'slide') { const c = IN.slide, s = stagger(n, c.step, c.step_total); return { scale: 1, words: lines.map((_, i) => word(clamp((t - i * s) / c.fade), 0, c.distance * (1 - easeOut((t - i * s) / c.seconds)))) }; }
+  if (e === 'typewriter') { const s = stagger(n, IN.typewriter.step, IN.typewriter.step_total); return { scale: 1, words: lines.map((_, i) => word(t >= i * s ? 1 : 0)) }; }
+  if (e === 'pop') { const c = IN.pop; return { scale: c.from_scale + (1 - c.from_scale) * easeOutBack(t / c.seconds), words: lines.map(() => word(clamp(t / c.fade))) }; }
   return { scale: 1, words: lines.map(() => word()) };
 }
 function exitState(e, lines, t) {
   const n = lines.length;
-  if (e === 'merge') { const p = t / MERGE.exitSeconds, dx = -MERGE.exitSlide * easeIn(p); return { scale: 1, words: lines.map((line) => word(line === 0 ? 1 - clamp((p - 0.35) / 0.2) : 1 - easeIn((p - 0.55) / 0.45), dx)) }; }
-  if (e === 'fade') return { scale: 1, words: lines.map(() => word(1 - easeIn(t / 0.35))) };
-  if (e === 'slide') { const s = stagger(n, 0.03, 0.2); return { scale: 1, words: lines.map((_, i) => word(1 - clamp((t - i * s) / 0.35), 0, -30 * easeIn((t - i * s) / 0.35))) }; }
-  if (e === 'pop') { const p = t / 0.25; return { scale: 1 - 0.3 * easeIn(p), words: lines.map(() => word(1 - clamp(p))) }; }
+  if (e === 'merge') { const p = t / MERGE.exit_seconds, dx = -MERGE.exit_slide * easeIn(p); return { scale: 1, words: lines.map((line) => word(line === 0 ? 1 - clamp((p - 0.35) / 0.2) : 1 - easeIn((p - 0.55) / 0.45), dx)) }; }
+  if (e === 'fade') return { scale: 1, words: lines.map(() => word(1 - easeIn(t / OUT.fade.seconds))) };
+  if (e === 'slide') { const c = OUT.slide, s = stagger(n, c.step, c.step_total); return { scale: 1, words: lines.map((_, i) => word(1 - clamp((t - i * s) / c.seconds), 0, -c.distance * easeIn((t - i * s) / c.seconds))) }; }
+  if (e === 'pop') { const c = OUT.pop, p = t / c.seconds; return { scale: 1 - (1 - c.to_scale) * easeIn(p), words: lines.map(() => word(1 - clamp(p))) }; }
   return { scale: 1, words: lines.map(() => word(0)) };
 }
 function textState(enter, exit, lines, start, end, t) {
@@ -71,8 +73,7 @@ function textState(enter, exit, lines, start, end, t) {
   if (t - start < enterSeconds(enter, lines)) return enterState(enter, lines, t - start);
   return { scale: 1, words: lines.map(() => word()) };
 }
-const SLOGAN_IN = { old_tv: 0.56, fade: 0.3, pop: 0.35, yok: 0 };
-const SLOGAN_OUT = { old_tv: 0.23, fade: 0.3, pop: 0.2, yok: 0 };
+const SLOGAN_IN = FX.slogan.in, SLOGAN_OUT = FX.slogan.out;
 function oldTvScale(a) {
   a = clamp(a); let sx = clamp((a - 0.08) / 0.3); sx = sx * sx * (3 - 2 * sx);
   return [Math.max(sx, a > 0 ? 0.02 : 0), a < 0.38 ? 0.2 + 0.25 * a / 0.38 : 0.45 + 0.55 * easeOut((a - 0.38) / 0.3)];
@@ -98,10 +99,12 @@ function logoState(L, effect, t) {
     else { const top = H - rise * (1 - Math.exp(-(L.drop_start - L.start) / L.tau)); y = top + (H - top) * Math.pow(clamp((t - L.drop_start) / (L.end - L.drop_start)), 1.5); }
     return { a: 1, sx: 1, sy: 1, dy: y - L.rest_y, glint };
   }
-  if (effect === 'fade') return { a: Math.min(easeOut((t - L.start) / 0.4), 1 - easeIn((t - (L.end - 0.3)) / 0.3)), sx: 1, sy: 1, dy: 0, glint };
-  if (effect === 'pop') { const pin = (t - L.start) / 0.35, pout = (t - (L.end - 0.25)) / 0.25; const s = pin < 1 ? 0.3 + 0.7 * easeOutBack(pin) : (pout > 0 ? 1 - 0.7 * easeIn(pout) : 1); return { a: clamp(pin / 0.3) * (1 - clamp(pout)), sx: s, sy: s, dy: 0, glint }; }
+  const c = FX.logo;
+  if (effect === 'fade') return { a: Math.min(easeOut((t - L.start) / c.fade_in), 1 - easeIn((t - (L.end - c.fade_out)) / c.fade_out)), sx: 1, sy: 1, dy: 0, glint };
+  if (effect === 'pop') { const pin = (t - L.start) / c.pop_in, pout = (t - (L.end - c.pop_out)) / c.pop_out; const s = pin < 1 ? 0.3 + 0.7 * easeOutBack(pin) : (pout > 0 ? 1 - 0.7 * easeIn(pout) : 1); return { a: clamp(pin / 0.3) * (1 - clamp(pout)), sx: s, sy: s, dy: 0, glint }; }
   return { a: 1, sx: 1, sy: 1, dy: 0, glint };
 }
+// @efektler-sonu
 
 // ================================================================ çerçeve (üst ortadan saat yönünde s: 0..1)
 function frameGeom(G) {
@@ -245,10 +248,15 @@ function setup(root, S) {
     const el = $('.saved'); el.dataset.state = state;
     el.textContent = state === 'saving' ? 'Kaydediliyor…' : state === 'saved' ? 'Kaydedildi ✓' : '';
   }
+  const FINAL_LABELS = { current: '🎬 Son video güncel', stale: '⚠️ Son videoya işlenmedi', rendering: '⏳ Son video oluşturuluyor', missing: 'Son video yok' };
+  function setFinalState(state) {
+    const el = $('.final-state'); el.dataset.state = state || ''; el.textContent = FINAL_LABELS[state] || '';
+  }
   function send(immediate, record = true) {
     clearTimeout(S.timer);
     if (record) remember();
     setSaved('saving');
+    if ($('.final-state').dataset.state === 'current') setFinalState('stale');  // Python kaydedince kesin durumu yollar
     const go = () => {
       const patch = { headline_style: d().headline_style, headline_1: { enter: d().headline_1.enter, exit: d().headline_1.exit },
         headline_2: { enter: d().headline_2.enter, exit: d().headline_2.exit }, slogans: d().slogans, logo: d().logo,
@@ -799,6 +807,7 @@ function setup(root, S) {
     if (S.sel && S.sel.kind === 'text' && !d().texts.some((x) => x.id === S.sel.id)) S.sel = null;
     if (S.sel && S.sel.kind === 'blur' && !d().blurs.some((x) => x.id === S.sel.id)) S.sel = null;
     if (S.lastSent && data.applied === S.lastSent) setSaved('saved');
+    if (!S.lastSent || data.applied === S.lastSent) setFinalState(data.final_state);  // yolda değişiklik yoksa
     S.fromPython = true; renderAll(); S.fromPython = false; updateHistoryButtons();
   };
 

@@ -1,3 +1,38 @@
+# v2.9.0 — Son video daha hızlı ve güvenilir — 2026-09-25
+
+Editörün isteği: Tasarım Stüdyosu optimizasyonları. GPT'nin önerileri ve Claude'un ölçümleri karşılaştırıldı; kararlar
+`reviews/claude-faz5.md`'de.
+
+## Changed
+- **Son video yaklaşık 3 kat hızlı** (18 sn'lik haber, 4 çekirdek, x264; bu ortamda ölçüldü):
+  standart şablon 25,7 → 8,8 sn; 6 blur + kovalayan çerçeve 53,5 → 18,8 sn. Görüntü aynı (standart şablonda
+  bit bit aynı; blurlu videoda PSNR ≥ 44,8 dB, gözle fark yok).
+  - Zemin görseli her karede yeniden okunmuyor; bir kez okunup tekrarlanıyor.
+  - Çerçeve ve grafik katmanları kare çoğaltılmadan önce YUV'a çevriliyor (her farklı görsel bir kez).
+  - Blur/mozaik yalnızca kutunun geçtiği bölgede ve yalnızca görünür olduğu sürede hesaplanıyor (önce tüm kare
+    her an bulanıklaştırılıyordu). Hiç görünmeyen blur videoya eklenmiyor.
+- Efekt süre ve mesafeleri tek dosyada: `apps/design_studio/effects.json` (son video ve canlı önizleme aynı dosyayı okur).
+
+## Added
+- **Son video kontrolü:** oluşan video FFprobe ile denetlenir (açılıyor mu, 1080x1920 mi, süresi kurguyla aynı mı,
+  kurguda ses varsa seste var mı). AMD kodlayıcı bozuk video üretirse x264 ile yeniden denenir; yine bozuksa neden
+  kenar çubuğunda yazar. FFprobe yoksa kontrol atlanır.
+- **Değişikliklerle yeniden başlat:** son video oluşturulurken tasarım değişirse kenar çubuğunda bu düğme çıkar; eski
+  üretim hemen durdurulur (FFmpeg kapatılır), yenisi başlar. Eski tasarımın bitmesi beklenmez.
+- Editörün üst çubuğunda son video durumu: "Son video güncel" / "Son videoya işlenmedi" / "oluşturuluyor".
+- `tests/test_effects_parity.py`: editor.js'in efekt formüllerini Node'da çalıştırıp Python'la karşılaştırır
+  (yazı giriş/çıkış × satır düzenleri, slogan, logo; 0,01 sn adımla). Node yoksa atlanır.
+
+## Fixed
+- Eski TV slogan efektinde renk kayması, tam yarıma denk gelen karelerde önizlemeden 1 px farklıydı (Python ile JS
+  farklı yuvarlıyordu). Eşlik testi yakaladı.
+
+## Verification
+- `make test` geçti. Eski ve yeni son video aynı tasarımla üretilip kare kare karşılaştırıldı. Headless Chromium'da
+  üst çubuk durumu (işlenmedi → oluşturuluyor → güncel) denendi.
+- FFprobe bu ortamda yok: son video kontrolü sahte FFprobe çıktılarıyla test edildi, gerçek FFprobe ile denenmedi.
+  AMD kodlayıcı (h264_amf) ile hız Windows'ta ölçülmedi.
+
 # v2.8.0 — Tasarım Stüdyosu: akıcılık — 2026-09-24
 
 Editör v2.7.0'ı denedi ("sorunsuz çalıştı") ve yalnızca arayüz / kullanım kolaylığı iyileştirmesi istedi.

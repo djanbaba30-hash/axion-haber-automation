@@ -105,6 +105,10 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    - **🎬 Son video** (üst çubukta) oluşturulmuş MP4'ü oynatır. Her değişiklik projeye kendiliğinden kaydedilir
      (üst çubukta "Kaydedildi ✓"). **↶ ↷** ile geri al / yinele.
    - **Yeniden oluştur** arka planda çalışır: kenar çubuğunda geçen süre görünür, bu sırada düzenlemeye devam edebilirsin.
+     Bu arada bir şey değiştirirsen **🔁 Değişikliklerle yeniden başlat** çıkar: eski üretim durur, yenisi başlar.
+     Üst çubuktaki etiket son videonun durumunu söyler: "Son video güncel", "Son videoya işlenmedi", "oluşturuluyor".
+   - Son video bitince kendiliğinden kontrol edilir (1080x1920, süre, ses). AMD kodlayıcı bozuk video üretirse
+     Axion işlemciyle (x264) yeniden dener.
    - **Kısayollar** (üst çubukta ⌨): Boşluk oynat/durdur · ← → bir kare (Shift ile 1 sn) · Ctrl+Z / Ctrl+Y geri al /
      yinele · Ctrl+D seçiliyi çoğalt · Delete sil · Esc seçimi bırak · S sansür · K blura anahtar kare · L döngü.
      Zaman çizelgesinde kliplerin kenarları oynatma çizgisine ve diğer kliplere yapışır; klibe çift tıklayınca başına gider.

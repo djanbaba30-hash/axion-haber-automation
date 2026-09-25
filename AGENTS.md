@@ -72,13 +72,17 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
                                ana alanda tek editör bileşeni (tasarımın geri kalanı orada)
   design.py                    tasarim.json v2 (Pydantic): başlık stili, başlıklar+efektler, yazı katmanları, slogan/logo,
                                çerçeve, arka plan, blurlar; v1 (v2.5.0) otomatik yükseltilir
-  effects.py                   Efekt kütüphanesi: yazı giriş/çıkış, slogan, logo, çerçeve stilleri (numpy alanı)
+  effects.py, effects.json     Efekt kütüphanesi: yazı giriş/çıkış, slogan, logo, çerçeve stilleri (numpy alanı);
+                               süre/mesafeler effects.json'da (editor.js de okur; eşlik: tests/test_effects_parity.py)
   template.py                  Katmanlar (Pillow): kelime sprite'ları (parıltı, sansür çizgisi), sahne zaman çizelgesi,
                                yalnız farklı kareler PNG (paralel), FFmpeg concat listeleri
-  blur.py                      Elle blur/mozaik: doğrulama, anahtar kareler (konum, boyut, açı), yumuşak kenarlı maske
-  render.py                    Tek FFmpeg komutu: kurgu → blur/mozaik → arka plan/çerçeve/grafik → son_video.mp4
+  blur.py                      Elle blur/mozaik: doğrulama, anahtar kareler (konum, boyut, açı), yumuşak kenarlı maske,
+                               kutunun tüm süredeki bölgesi (FFmpeg yalnız orayı işler)
+  render.py                    Tek FFmpeg komutu: kurgu → blur/mozaik → arka plan/çerçeve/grafik → son_video.mp4;
+                               FFprobe kontrolü (boyut, süre, ses), bozuksa x264 ile yeniden; iptal edilebilir
   pipeline.py                  Projenin son videosu: tasarımı oku, üret, imzayı kaydet (Video Stüdyosu da çağırır)
-  jobs.py                      Son videoyu arka planda üretme (proje başına tek iş; bitince yalnız `rendered` imzası yazılır)
+  jobs.py                      Son videoyu arka planda üretme (proje başına tek iş; bitince yalnız `rendered` imzası yazılır;
+                               yeniden başlatılınca eski iş durdurulur)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
   editor.py, editor.js         Canva benzeri tarayıcı editörü (components v2): üst araç çubuğu (yazı stili, sansür),
                                sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
@@ -132,13 +136,14 @@ Varlıklar ──────────────────►   data/varl
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 
 
-## Nerede kaldık (2026-09-24) — Faz 5 (Tasarım Stüdyosu) çalışıyor; v2.8.0 akıcılık iyileştirmeleri
+## Nerede kaldık (2026-09-25) — Faz 5 (Tasarım Stüdyosu) çalışıyor; v2.9.0 son video hızı ve güvenilirliği
 
 Faz 0–3 bitti ve editör her birini gerçek Windows'ta, gerçek DHA haberleriyle doğruladı (Bayrampaşa, Manavgat,
 Kayseri, İnegöl, Kars). Sürüm ayrıntıları `CHANGELOG.md`'de. Editör v2.6.0'ı Windows'ta açtı ("her şey çalışıyor
 gibi") ve düzen istedi; v2.7.0 Canva düzenini denedi ("sorunsuz çalıştı"). v2.8.0 (geri al/yinele, kısayollar,
-arka planda render, zaman çizelgesi mıknatısı) henüz denenmedi. Editörün isteği: şimdilik yalnızca arayüz ve kullanım
-kolaylığı iyileştirmeleri.
+arka planda render, zaman çizelgesi mıknatısı) ve v2.9.0 (~3 kat hızlı son video, FFprobe kontrolü, yeniden başlatma)
+henüz denenmedi. v2.9.0 için GPT ve Claude önerileri karşılaştırıldı (`reviews/gpt-faz5.md`, `reviews/claude-faz5.md`);
+ertelenen ve reddedilen öneriler oradaki tabloda. Editörün isteği: arayüz, kullanım kolaylığı ve optimizasyon.
 
 ### Şu an çalışan akış
 1. **Haber Stüdyosu:** ham haber → GPT/Claude (tek çağrı + gerekirse tek düzeltme çağrısı) → başlıklar, paylaşım
@@ -187,7 +192,8 @@ Faz 6 planı ROADMAP'te: tablette kullanım (DHA videoları uzak masaüstüyle b
 - `edit_plan.py` ve `media_library.py` isimleri tarihsel (Faz 2 öncesi); davranışları shared 2.1 sözleşmesine uyar.
 - Arayüz testleri AppTest ile; tarayıcıya özgü davranışlar (ör. v2.2.0'daki metin kutusu hatası) AppTest'te görünmeyebilir.
   Tasarım editörü (JS) AppTest'te çalışmaz; Playwright/Chromium ile elle denendi (test paketinde değil). Efekt
-  formülleri `effects.py` ile `editor.js`'te iki kez yazılı: birini değiştiren ötekini de değiştirmeli.
+  formülleri `effects.py` ile `editor.js`'te iki kez yazılı (parametreler tek: `effects.json`); birini değiştiren
+  ötekini de değiştirmeli, `tests/test_effects_parity.py` farkı yakalar (Node gerekir; çerçeve çizimi kapsamda değil).
 - Editör tasarımı tarayıcıda tutar (başlık metinleri hariç: kenar çubuğu); Python yalnızca haber değişince yükler.
   Yazı stili/metni değişince atlas PNG'leri Python'da yeniden çizilir (tek yeniden çalıştırma gecikmesi).
 - Tasarım önizlemesi videoyu Streamlit'in medya sunucusuyla verir (`runtime.media_file_mgr`, iç API; streamlit sürümü

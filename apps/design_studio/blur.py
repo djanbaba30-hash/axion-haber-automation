@@ -3,11 +3,14 @@
 Editör Tasarım Stüdyosu'nda kutu ekler: efekt (bulanık/mozaik), şekil (dikdörtgen–kare, yuvarlak köşeli, elips–daire),
 güç, opaklık ve kenar yumuşaklığı. Videoyu bir ana getirip kutuyu taşır, boyutlandırır, döndürür: o an bir anahtar
 kare olur; kutu anahtar kareler arasında doğrusal hareket eder (konum, boyut, açı). Koordinatlar video alanına göre 0–1.
-Son videoda her kutu için maske kareleri yazılır; FFmpeg videonun bulanık/mozaik kopyasını maskeyle bindirir.
+Son videoda her kutu için maske kareleri yazılır; FFmpeg videonun yalnızca kutunun geçtiği bölgesini (tüm süre
+boyunca kapladığı alan + bulanıklık payı) bulanıklaştırır/mozaikler ve maskeyle bindirir (tüm kareyi işlemek çok yavaş).
 """
 
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -121,7 +124,8 @@ def shape_mask(shape: str, w: int, h: int, value: int, feather: float) -> Image.
     return mask.filter(ImageFilter.GaussianBlur(radius))
 
 
-def render_mask(blur: dict[str, Any], state: tuple | None, width: int, height: int) -> Image.Image:
+def render_mask(blur: dict[str, Any], state: tuple | None, width: int, height: int, origin: tuple[int, int] = (0, 0)) -> Image.Image:
+    """Maske (width x height); `origin` maskenin video alanındaki sol üstü (bölge kırpılınca)."""
     mask = Image.new("L", (width, height), 0)
     if state is None:
         return mask
@@ -129,19 +133,70 @@ def render_mask(blur: dict[str, Any], state: tuple | None, width: int, height: i
     local = shape_mask(blur["shape"], w, h, round(255 * blur["opacity"]), feather_px(blur, w, h))
     if angle:
         local = local.rotate(-angle, resample=Image.BICUBIC, expand=True)  # açı saat yönünde
-    cx, cy = x + w / 2, y + h / 2
+    cx, cy = x + w / 2 - origin[0], y + h / 2 - origin[1]
     mask.paste(local, (round(cx - local.width / 2), round(cy - local.height / 2)))
     return mask
 
 
-def write_mask_sequences(folder: Path, blurs: list[dict[str, Any]], fps: int, total_frames: int, width: int, height: int) -> list[Path]:
+def _margin(blur: dict[str, Any]) -> int:
+    """Bölgenin kutudan taşma payı: bulanıklık kenardan içeri görüntü çeker; mozaikte bir kare."""
+    return mosaic_block(blur) if blur["effect"] == "mozaik" else math.ceil(3 * sigma(blur))
+
+
+def blur_region(blur: dict[str, Any], fps: int, total_frames: int, width: int, height: int) -> tuple[int, int, int, int] | None:
+    """Kutunun görünür olduğu tüm kareleri kapsayan bölge (x, y, w, h; çift sayılar, mozaikte kare ızgarasına oturur).
+
+    Kutu hiç görünmüyorsa None (o blur son videoya hiç eklenmez).
+    """
+    left = top = math.inf
+    right = bottom = -math.inf
+    for frame in range(total_frames):
+        state = mask_state(blur, frame / fps, width, height)
+        if state is None:
+            continue
+        x, y, w, h, angle = state
+        a = math.radians(angle)
+        half_w = (w * abs(math.cos(a)) + h * abs(math.sin(a))) / 2 + 1
+        half_h = (w * abs(math.sin(a)) + h * abs(math.cos(a))) / 2 + 1
+        cx, cy = x + w / 2, y + h / 2
+        left, right = min(left, cx - half_w), max(right, cx + half_w)
+        top, bottom = min(top, cy - half_h), max(bottom, cy + half_h)
+    if left == math.inf:
+        return None
+    margin = _margin(blur)
+    step = mosaic_block(blur) if blur["effect"] == "mozaik" else 2  # mozaik kareleri video alanının ızgarasında kalsın
+    x0 = max(0, int(left - margin) // step * step)
+    y0 = max(0, int(top - margin) // step * step)
+    x1 = min(width, -(-math.ceil(right + margin) // step) * step)
+    y1 = min(height, -(-math.ceil(bottom + margin) // step) * step)
+    x1, y1 = x1 - (x1 - x0) % 2, y1 - (y1 - y0) % 2  # 4:2:0 çift boyut ister
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        return None
+    return x0, y0, x1 - x0, y1 - y0
+
+
+@dataclass
+class BlurPass:
+    """Son videoda tek blur/mozaik: ayarları, maske kareleri (bölge boyutunda) ve video alanındaki bölgesi."""
+
+    blur: dict[str, Any]
+    mask: Path
+    region: tuple[int, int, int, int]
+
+
+def write_mask_sequences(folder: Path, blurs: list[dict[str, Any]], fps: int, total_frames: int, width: int, height: int) -> list[BlurPass]:
     from .template import write_sequence  # döngüsel içe aktarmayı önle
 
-    paths = []
+    passes = []
     for number, blur in enumerate(blurs):
-        paths.append(write_sequence(
+        region = blur_region(blur, fps, total_frames, width, height)
+        if region is None:
+            continue
+        rx, ry, rw, rh = region
+        path = write_sequence(
             folder, f"blur{number}", fps, total_frames,
             lambda t, f, b=blur: mask_state(b, t, width, height),
-            lambda state, b=blur: render_mask(b, state, width, height),
-        ))
-    return paths
+            lambda state, b=blur: render_mask(b, state, rw, rh, (rx, ry)),
+        )
+        passes.append(BlurPass(blur, path, region))
+    return passes

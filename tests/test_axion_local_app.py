@@ -234,7 +234,7 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
     (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
     calls = []
 
-    def fake_render(rough, design, background, fps, seconds, output):
+    def fake_render(rough, design, background, fps, seconds, output, cancel=None):
         calls.append(design.model_copy(deep=True))
         output.write_bytes(b"final")
         return "x264"
@@ -264,6 +264,47 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
     jobs.wait(project)
     at.run()
     assert calls[-1].headline_1.text == "KAZA\nYERİ"
+    assert any("güncel" in s.value for s in at.sidebar.success)
+
+
+def test_design_studio_restarts_running_render_with_new_changes(local_env, monkeypatch):
+    import threading
+
+    from apps.design_studio import jobs
+    from apps.design_studio.pipeline import load_project_design
+    from apps.design_studio.render import Cancelled
+
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    (project.folder / store.FINAL_VIDEO_FILENAME).write_bytes(b"eski")
+    release, rendered = threading.Event(), []
+
+    def slow_render(rough, design, background, fps, seconds, output, cancel=None):
+        while not release.is_set():  # gerçek FFmpeg gibi: iptal gelene kadar sürer
+            if cancel.wait(0.01):
+                raise Cancelled
+        rendered.append(design.headline_1.text)
+        output.write_bytes(b"yeni")
+        return "x264"
+
+    monkeypatch.setattr("apps.design_studio.jobs.render_final", slow_render)
+    design = load_project_design(project, 20.0)
+    jobs.start(project, design)
+    first = jobs.get(project)
+    at = open_page(project, DESIGN_PAGE, "design_project_id")
+    assert any(b.label == "🎬 Oluşturuluyor…" and b.disabled for b in at.sidebar.button)
+
+    at.sidebar.text_area(key=f"ds_{project.id}_h1_text").set_value("YENİ BAŞLIK").run()  # üretim sürerken değiştirdi
+    restart = next(b for b in at.sidebar.button if b.label == "🔁 Değişikliklerle yeniden başlat")
+    restart.click().run()
+    assert not at.exception
+    second = jobs.get(project)
+    assert second is not first and first.cancel.is_set()
+    release.set()
+    jobs.wait(project)
+    assert first.cancelled and not first.error
+    assert rendered == ["YENİ BAŞLIK"]  # eski tasarım hiç bitirilmedi
+    at.run()
     assert any("güncel" in s.value for s in at.sidebar.success)
 
 

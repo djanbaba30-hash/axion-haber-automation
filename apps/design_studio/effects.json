@@ -1,0 +1,25 @@
+{
+  "_": "Efekt süreleri (sn) ve mesafeleri (1080x1920 kanvas px). effects.py (son video) ve editor.js (canlı önizleme) bu dosyayı okur.",
+  "merge": {"stagger": 0.045, "stagger_total": 0.55, "line_gap": 0.1, "fade": 0.12, "slide": 24, "move": 0.6,
+            "exit_seconds": 0.26, "exit_slide": 13},
+  "enter": {
+    "fade": {"seconds": 0.4},
+    "slide": {"step": 0.06, "step_total": 0.5, "fade": 0.2, "seconds": 0.45, "distance": 36},
+    "typewriter": {"step": 0.11, "step_total": 1.2},
+    "pop": {"seconds": 0.35, "fade": 0.15, "from_scale": 0.6}
+  },
+  "exit": {
+    "fade": {"seconds": 0.35},
+    "slide": {"step": 0.03, "step_total": 0.2, "seconds": 0.35, "distance": 30},
+    "pop": {"seconds": 0.25, "to_scale": 0.7}
+  },
+  "slogan": {
+    "in": {"old_tv": 0.56, "fade": 0.3, "pop": 0.35, "yok": 0},
+    "out": {"old_tv": 0.23, "fade": 0.3, "pop": 0.2, "yok": 0}
+  },
+  "logo": {"fade_in": 0.4, "fade_out": 0.3, "pop_in": 0.35, "pop_out": 0.25},
+  "frame": {
+    "period": {"kovalayan": 3.5, "nefes": 2.4, "akis": 6.0},
+    "comet_tail": 0.22, "comet_head": 8.0, "comet_cap": 0.004
+  }
+}

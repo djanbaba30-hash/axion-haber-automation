@@ -2,6 +2,8 @@
 
 Her proje için en fazla bir iş. İş, başladığı andaki tasarımın kopyasını üretir; bitince yalnızca `rendered` imzasını
 güncel `tasarim.json`'a yazar (bu sırada yapılan düzenlemeler ezilmez; imza tutmadığı için "işlenmedi" görünür).
+Editör iş sürerken tasarımı değiştirip yeniden başlatırsa eski iş durdurulur (FFmpeg öldürülür), yenisi onun
+bitmesini bekleyip başlar: eski tasarımın bitmesi beklenmez.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from apps.axion_local.store import DESIGN_FILENAME, FINAL_VIDEO_FILENAME, ROUGH_
 
 from .design import Design, dump_design
 from .pipeline import background_path, project_timing, signature
-from .render import render_final
+from .render import Cancelled, render_final
 
 
 @dataclass
@@ -24,6 +26,9 @@ class Job:
     error: str | None = None
     encoder: str | None = None
     seen: bool = False  # sayfa bitişi gördü mü (bir kez yenilemek için)
+    signature: str | None = None  # üretilen tasarımın imzası (editör sonradan değiştirdi mi)
+    cancelled: bool = False
+    cancel: threading.Event = field(default_factory=threading.Event)
     thread: threading.Thread | None = None
 
     @property
@@ -39,30 +44,38 @@ _JOBS: dict[str, Job] = {}
 _LOCK = threading.Lock()
 
 
-def _run(project: NewsProject, design: Design, job: Job) -> None:
+def _run(project: NewsProject, design: Design, job: Job, previous: Job | None) -> None:
     try:
+        if previous and previous.thread:
+            previous.thread.join()  # aynı geçici dosyaya iki FFmpeg yazmasın; eski iş durdurulduğu için kısa sürer
         fps, seconds = project_timing(project)
         job.encoder = render_final(project.folder / ROUGH_CUT_FILENAME, design, background_path(project, design), fps, seconds,
-                                   project.folder / FINAL_VIDEO_FILENAME)
+                                   project.folder / FINAL_VIDEO_FILENAME, cancel=job.cancel)
         stored = load_project_json(project, DESIGN_FILENAME)
         if not isinstance(stored, dict) or stored.get("version") != 2:  # henüz kaydedilmemiş/eski belge: bu tasarım yazılır
             stored = dump_design(design)
         stored["rendered"] = signature(project, design)
         save_project_json(project, DESIGN_FILENAME, stored)
+    except Cancelled:
+        job.cancelled = True
     except Exception as error:  # noqa: BLE001 — hata sayfada gösterilir
         job.error = str(error) or error.__class__.__name__
     finally:
         job.finished = time.monotonic()
 
 
-def start(project: NewsProject, design: Design) -> bool:
-    """İşi başlatır; zaten çalışan varsa False."""
+def start(project: NewsProject, design: Design, restart: bool = False) -> bool:
+    """İşi başlatır. Çalışan iş varsa: `restart` ile onu durdurup yenisini başlatır, yoksa False."""
     with _LOCK:
         current = _JOBS.get(str(project.folder))
+        previous = None
         if current and current.running:
-            return False
-        job = Job()
-        job.thread = threading.Thread(target=_run, args=(project, design.model_copy(deep=True), job), daemon=True,
+            if not restart:
+                return False
+            current.cancel.set()
+            previous = current
+        job = Job(signature=signature(project, design))
+        job.thread = threading.Thread(target=_run, args=(project, design.model_copy(deep=True), job, previous), daemon=True,
                                       name=f"axion-son-video-{project.id}")
         _JOBS[str(project.folder)] = job
         job.thread.start()

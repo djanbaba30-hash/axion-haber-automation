@@ -10,7 +10,7 @@ import pytest
 
 from apps.axion_local import store
 from apps.design_studio import assets, effects as fx, template
-from apps.design_studio.blur import box_at, clean_blurs, mask_state, render_mask
+from apps.design_studio.blur import BlurPass, blur_region, box_at, clean_blurs, mask_state, render_mask, write_mask_sequences
 from apps.design_studio.design import Design, dump_design, load_design
 from apps.design_studio.render import build_final_command, render_final, timeline_seconds
 from shared.axion_template import HEADLINE_MAX_WIDTH, SLOGANS
@@ -275,12 +275,46 @@ def test_layers_write_only_distinct_frames(tmp_path):
 def test_final_command_applies_blur_and_mosaic_before_template(tmp_path):
     layers = template.Layers(*(tmp_path / n for n in ["zemin.png", "cerceve.ffconcat", "grafik.ffconcat"]))
     blurs = clean_blurs([_blur(), _blur(id="m", effect="mozaik", strength=4)], 20.0)
-    command = build_final_command(tmp_path / "kaba.mp4", layers, 30, 20.0, tmp_path / "son.mp4", ["-c:v", "libx264"],
-                                  blurs, [tmp_path / "blur0.ffconcat", tmp_path / "blur1.ffconcat"])
+    passes = [BlurPass(blurs[0], tmp_path / "blur0.ffconcat", (40, 60, 300, 200)),
+              BlurPass(blurs[1], tmp_path / "blur1.ffconcat", (44, 66, 330, 220))]
+    command = build_final_command(tmp_path / "kaba.mp4", layers, 30, 20.0, tmp_path / "son.mp4", ["-c:v", "libx264"], passes)
     graph = command[command.index("-filter_complex") + 1]
     assert "gblur=sigma=20.0" in graph and "flags=neighbor" in graph and graph.count("alphamerge") == 2
     assert graph.index("alphamerge") < graph.index("[base][slot]overlay")
+    assert "crop=300:200:40:60" in graph and "overlay=40:60:enable='between(t,1.000,4.000)'" in graph  # yalnız kutunun bölgesi
+    assert "scale=15:10:flags=area" in graph                                                         # 22 px mozaik kareleri
     assert command.count("concat") == 4
+    assert "-loop" not in command and "loop=loop=599:size=1" in graph  # zemin bir kez okunur
+
+
+def test_blur_region_covers_moving_rotated_box_with_margin():
+    blur = clean_blurs([_blur(feather=0.5)], 20.0)[0]
+    region = blur_region(blur, 30, 600, 960, 1226)
+    x, y, w, h = region
+    assert x % 2 == y % 2 == w % 2 == h % 2 == 0
+    margin = 3 * 20
+    # ilk kutu (96,123) ve son kutu (döndürülmüş 384x245, merkez 672,490) bölgede, bulanıklık payıyla
+    assert x <= 96 - margin + 2 and y <= max(0, 123 - margin) + 2
+    assert x + w >= min(960, 672 + 245 / 2 + margin - 2) and y + h >= 490 + 384 / 2 + margin - 2
+    assert w < 960 or h < 1226  # tüm kare değil
+    mosaic = clean_blurs([_blur(effect="mozaik", strength=4)], 20.0)[0]
+    mx, my, _, _ = blur_region(mosaic, 30, 600, 960, 1226)
+    assert mx % 22 == 0 and my % 22 == 0  # mozaik kareleri video alanının ızgarasında
+    assert blur_region(clean_blurs([_blur(start=19.99, end=20.0)], 20.0)[0], 30, 599, 960, 1226) is None
+
+
+def test_mask_sequences_are_cropped_to_region(tmp_path):
+    from PIL import Image
+
+    blur = clean_blurs([_blur(end=2.0)], 20.0)[0]
+    passes = write_mask_sequences(tmp_path, [blur, clean_blurs([_blur(id="x", start=19.99, end=20.0)], 20.0)[0]], 30, 599, 960, 1226)
+    assert len(passes) == 1  # hiç görünmeyen blur atlanır
+    x, y, w, h = passes[0].region
+    first = Image.open(next(tmp_path.glob("blur0_*.png")))
+    assert first.size == (w, h)
+    full = render_mask(blur, mask_state(blur, 1.0, 960, 1226), 960, 1226)
+    cropped = render_mask(blur, mask_state(blur, 1.0, 960, 1226), w, h, (x, y))
+    assert full.crop((x, y, x + w, y + h)).tobytes() == cropped.tobytes()
 
 
 def test_timeline_seconds_from_edit_project():
@@ -362,3 +396,68 @@ def test_strike_toggle_by_word_index_keeps_lines():
     assert toggle_strike("Bir iki\nüç", 1) == "Bir ~~iki~~\nüç"
     assert toggle_strike("Bir ~~iki~~\nüç", 1) == "Bir iki\nüç"
     assert toggle_strike("Bir iki", 9) == "Bir iki"
+
+
+def _probe_result(width=1080, height=1920, duration="20.02", audio=True):
+    streams = [{"codec_type": "video", "width": width, "height": height}] + ([{"codec_type": "audio"}] if audio else [])
+    return {"streams": streams, "format": {"duration": duration}}
+
+
+def test_check_final_catches_broken_output(tmp_path, monkeypatch):
+    from apps.design_studio import render
+
+    rough, output = tmp_path / "kaba.mp4", tmp_path / "son.mp4"
+    results = {}
+    monkeypatch.setattr(render, "_probe", lambda path: results.get(path.name))
+    results.update({"kaba.mp4": _probe_result(960, 1226), "son.mp4": _probe_result()})
+    assert render.check_final(output, 20.0, rough) is None
+    results["son.mp4"] = _probe_result(audio=False)
+    assert "ses yok" in render.check_final(output, 20.0, rough)
+    results["son.mp4"] = _probe_result(width=720, height=1280)
+    assert "1080x1920" in render.check_final(output, 20.0, rough)
+    results["son.mp4"] = _probe_result(duration="12.5")
+    assert "12.5 sn" in render.check_final(output, 20.0, rough)
+    results["son.mp4"] = {"error": "moov atom not found"}
+    assert "açılamıyor" in render.check_final(output, 20.0, rough)
+    results["kaba.mp4"] = _probe_result(960, 1226, audio=False)
+    results["son.mp4"] = _probe_result(audio=False)
+    assert render.check_final(output, 20.0, rough) is None  # kurguda ses yoksa ses aranmaz
+    results.clear()
+    assert render.check_final(output, 20.0, rough) is None  # FFprobe yoksa kontrol atlanır
+
+
+def test_render_final_falls_back_to_x264_when_amf_output_is_broken(tmp_path, monkeypatch):
+    from apps.design_studio import render
+
+    rough = tmp_path / "kaba_kurgu.mp4"
+    rough.write_bytes(b"x")
+    calls = []
+
+    def fake_run(command, timeout, label):
+        calls.append(command[command.index("-c:v") + 1])
+        Path(command[-1]).write_bytes(b"video")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(render, "amd_encoder_available", lambda: True)
+    monkeypatch.setattr(render, "run_ffmpeg", fake_run)
+    monkeypatch.setattr(render, "write_layers", lambda folder, *a: template.Layers(folder / "z.png", folder / "c", folder / "g"))
+    monkeypatch.setattr(render, "check_final", lambda path, seconds, source: "Videoda ses yok (kurguda var)." if calls[-1] == "h264_amf" else None)
+    output = tmp_path / "son_video.mp4"
+    name = render.render_final(rough, load_design({}, "Başlık", "İkinci", 3.0), assets.backgrounds()[0], 30, 3.0, output)
+    assert calls == ["h264_amf", "libx264"] and name.startswith("x264") and output.exists()
+    assert not (tmp_path / "son_video.yaziliyor.mp4").exists()
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
+def test_cancel_stops_running_ffmpeg_quickly():
+    import threading
+    import time
+
+    from apps.design_studio.render import Cancelled, _run_cancellable
+
+    cancel = threading.Event()
+    threading.Timer(0.5, cancel.set).start()
+    started = time.monotonic()
+    with pytest.raises(Cancelled):
+        _run_cancellable(["ffmpeg", "-v", "error", "-re", "-f", "lavfi", "-i", "testsrc=duration=60", "-f", "null", "-"], 120, "Test", cancel)
+    assert time.monotonic() - started < 5

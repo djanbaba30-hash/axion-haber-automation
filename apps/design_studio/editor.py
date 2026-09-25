@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ HTML = """
     <div class="hist"><button class="undo" type="button" title="Geri al (Ctrl+Z)" disabled>↶</button><button class="redo" type="button" title="Yinele (Ctrl+Y)" disabled>↷</button></div>
     <div class="ctx"></div>
     <span class="saved" data-state=""></span>
+    <span class="final-state" data-state="" title="Son video (kenar çubuğunda oluştur / indir)"></span>
     <button class="help" type="button" title="Klavye kısayolları (?)">⌨</button>
     <div class="keys"><b>Kısayollar</b>
       <span><kbd>Boşluk</kbd> oynat / durdur</span><span><kbd>←</kbd> <kbd>→</kbd> 1 kare · <kbd>Shift</kbd> ile 1 sn</span>
@@ -93,6 +95,11 @@ button.on { background: var(--sky); border-color: var(--navy); }
 .hist { display: inline-flex; gap: 2px; } .hist button { min-width: 32px; } .hist button:disabled { opacity: .35; cursor: default; }
 .saved { font-size: 12px; color: #6b7c8c; min-width: 90px; text-align: right; }
 .saved[data-state=saved] { color: #2f8f5b; }
+.final-state { font-size: 12px; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: #eef2f5; color: #6b7c8c; }
+.final-state:empty { display: none; }
+.final-state[data-state=current] { background: #e6f4ec; color: #2f8f5b; }
+.final-state[data-state=stale] { background: #fdf1dc; color: #9a6212; }
+.final-state[data-state=rendering] { background: #e7f1fb; color: #2b6cb0; }
 .help { min-width: 32px; }
 .keys { display: none; position: absolute; right: 8px; top: 46px; z-index: 20; background: #fff; border: 1px solid var(--line);
   border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(18,50,73,.18); flex-direction: column; gap: 5px; font-size: 12px; }
@@ -181,7 +188,8 @@ textarea { width: 100%; box-sizing: border-box; border: 1px solid #cfd8e2; borde
 @container (max-width: 860px) { .main { grid-template-columns: 1fr; } .center { order: -1; } .panel { max-height: none; } }
 """
 
-JS = Path(__file__).with_name("editor.js").read_text(encoding="utf-8")
+# Efekt süre/mesafeleri effects.py ile aynı kaynaktan (effects.json) gelir; tek JSON satırı olarak gömülür.
+JS = Path(__file__).with_name("editor.js").read_text(encoding="utf-8").replace("/*FX*/null", json.dumps(fx.FX, ensure_ascii=False), 1)
 
 _MOUNTS: dict[str, Any] = {}
 

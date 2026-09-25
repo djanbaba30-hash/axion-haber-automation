@@ -1,18 +1,24 @@
 """Tasarım Stüdyosu efekt kütüphanesi: yazı giriş/çıkış animasyonları, slogan ve logo efektleri, çerçeve stilleri.
 
-Her efekt seçilebilir veya "Yok" ile kapatılabilir. Aynı formüller tarayıcı önizlemesinde (editor.py, JS) de var;
-son video bu dosyadaki Python hesabıyla üretilir. Süreler saniye, mesafeler 1080x1920 kanvas pikseli.
+Her efekt seçilebilir veya "Yok" ile kapatılabilir. Aynı formüller tarayıcı önizlemesinde (editor.js) de var;
+son video bu dosyadaki Python hesabıyla üretilir. Süre ve mesafeler iki tarafın da okuduğu `effects.json`'dadır;
+formüllerin eşliğini tests/test_effects_parity.py denetler (JS Node'da çalıştırılıp Python'la karşılaştırılır).
 """
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 
 from shared.axion_template import FRAME_BORDER, FRAME_RADIUS, VIDEO_SLOT
+
+FX = json.loads((Path(__file__).with_name("effects.json")).read_text(encoding="utf-8"))
+_M, _IN, _OUT = FX["merge"], FX["enter"], FX["exit"]
 
 TEXT_ENTER = {"merge": "Birleşerek", "fade": "Belirerek", "slide": "Alttan kayarak", "typewriter": "Daktilo", "pop": "Büyüyerek", "yok": "Yok"}
 TEXT_EXIT = {"merge": "Birleşerek", "fade": "Solarak", "slide": "Yukarı kayarak", "pop": "Küçülerek", "yok": "Yok"}
@@ -54,8 +60,6 @@ class BlockState:
 
 # --- Yazı giriş/çıkış ---------------------------------------------------------------------------------------------
 
-MERGE_STAGGER, MERGE_LINE_GAP, MERGE_FADE, MERGE_SLIDE, MERGE_MOVE = 0.045, 0.1, 0.12, 24.0, 0.6
-MERGE_EXIT_SECONDS, MERGE_EXIT_SLIDE = 0.26, 13.0
 
 
 def _merge_delays(lines: list[int]) -> list[float]:
@@ -64,12 +68,12 @@ def _merge_delays(lines: list[int]) -> list[float]:
     for line in sorted(set(lines)):
         indexes = [i for i, value in enumerate(lines) if value == line]
         order += list(reversed(indexes)) if line == 0 else indexes
-    stagger = min(MERGE_STAGGER, 0.55 / max(1, len(order)))
+    stagger = min(_M["stagger"], _M["stagger_total"] / max(1, len(order)))
     delays = [0.0] * len(lines)
     delay, previous = 0.0, (lines[order[0]] if order else 0)
     for index in order:
         if lines[index] != previous:
-            delay += MERGE_LINE_GAP
+            delay += _M["line_gap"]
             previous = lines[index]
         delays[index] = delay
         delay += stagger
@@ -83,28 +87,30 @@ def _stagger(count: int, step: float, limit: float) -> float:
 def enter_seconds(effect: str, lines: list[int]) -> float:
     n = len(lines)
     if effect == "merge":
-        return max(_merge_delays(lines), default=0.0) + MERGE_MOVE
+        return max(_merge_delays(lines), default=0.0) + _M["move"]
     if effect == "fade":
-        return 0.4
+        return _IN["fade"]["seconds"]
     if effect == "slide":
-        return _stagger(n, 0.06, 0.5) * max(0, n - 1) + 0.45
+        c = _IN["slide"]
+        return _stagger(n, c["step"], c["step_total"]) * max(0, n - 1) + c["seconds"]
     if effect == "typewriter":
-        return _stagger(n, 0.11, 1.2) * n
+        return _stagger(n, _IN["typewriter"]["step"], _IN["typewriter"]["step_total"]) * n
     if effect == "pop":
-        return 0.35
+        return _IN["pop"]["seconds"]
     return 0.0
 
 
 def exit_seconds(effect: str, lines: list[int]) -> float:
     n = len(lines)
     if effect == "merge":
-        return MERGE_EXIT_SECONDS
+        return _M["exit_seconds"]
     if effect == "fade":
-        return 0.35
+        return _OUT["fade"]["seconds"]
     if effect == "slide":
-        return _stagger(n, 0.03, 0.2) * max(0, n - 1) + 0.35
+        c = _OUT["slide"]
+        return _stagger(n, c["step"], c["step_total"]) * max(0, n - 1) + c["seconds"]
     if effect == "pop":
-        return 0.25
+        return _OUT["pop"]["seconds"]
     return 0.0
 
 
@@ -116,20 +122,24 @@ def enter_state(effect: str, lines: list[int], t: float) -> BlockState:
         for line, delay in zip(lines, _merge_delays(lines)):
             local = t - delay
             direction = 1 if line == 0 else -1
-            states.append(WordState(clamp(local / MERGE_FADE), direction * MERGE_SLIDE * (1 - ease_out(local / MERGE_MOVE))))
+            states.append(WordState(clamp(local / _M["fade"]), direction * _M["slide"] * (1 - ease_out(local / _M["move"]))))
         return BlockState(states)
     if effect == "fade":
-        return BlockState([WordState(ease_out(t / 0.4)) for _ in range(n)])
+        return BlockState([WordState(ease_out(t / _IN["fade"]["seconds"])) for _ in range(n)])
     if effect == "slide":
-        step = _stagger(n, 0.06, 0.5)
+        c = _IN["slide"]
+        step = _stagger(n, c["step"], c["step_total"])
         return BlockState([
-            WordState(clamp((t - i * step) / 0.2), 0.0, 36 * (1 - ease_out((t - i * step) / 0.45))) for i in range(n)
+            WordState(clamp((t - i * step) / c["fade"]), 0.0, c["distance"] * (1 - ease_out((t - i * step) / c["seconds"])))
+            for i in range(n)
         ])
     if effect == "typewriter":
-        step = _stagger(n, 0.11, 1.2)
+        step = _stagger(n, _IN["typewriter"]["step"], _IN["typewriter"]["step_total"])
         return BlockState([WordState(1.0 if t >= i * step else 0.0) for i in range(n)])
     if effect == "pop":
-        return BlockState([WordState(clamp(t / 0.15)) for _ in range(n)], 0.6 + 0.4 * ease_out_back(t / 0.35))
+        c = _IN["pop"]
+        return BlockState([WordState(clamp(t / c["fade"])) for _ in range(n)],
+                          c["from_scale"] + (1 - c["from_scale"]) * ease_out_back(t / c["seconds"]))
     return BlockState([WordState() for _ in range(n)])
 
 
@@ -137,21 +147,24 @@ def exit_state(effect: str, lines: list[int], t: float) -> BlockState:
     """Çıkışın t. saniyesi (0 = çıkış başı) için kelime durumları."""
     n = len(lines)
     if effect == "merge":
-        p = t / MERGE_EXIT_SECONDS
-        dx = -MERGE_EXIT_SLIDE * ease_in(p)
+        p = t / _M["exit_seconds"]
+        dx = -_M["exit_slide"] * ease_in(p)
         return BlockState([
             WordState(1 - clamp((p - 0.35) / 0.2) if line == 0 else 1 - ease_in((p - 0.55) / 0.45), dx) for line in lines
         ])
     if effect == "fade":
-        return BlockState([WordState(1 - ease_in(t / 0.35)) for _ in range(n)])
+        return BlockState([WordState(1 - ease_in(t / _OUT["fade"]["seconds"])) for _ in range(n)])
     if effect == "slide":
-        step = _stagger(n, 0.03, 0.2)
+        c = _OUT["slide"]
+        step = _stagger(n, c["step"], c["step_total"])
         return BlockState([
-            WordState(1 - clamp((t - i * step) / 0.35), 0.0, -30 * ease_in((t - i * step) / 0.35)) for i in range(n)
+            WordState(1 - clamp((t - i * step) / c["seconds"]), 0.0, -c["distance"] * ease_in((t - i * step) / c["seconds"]))
+            for i in range(n)
         ])
     if effect == "pop":
-        p = t / 0.25
-        return BlockState([WordState(1 - clamp(p)) for _ in range(n)], 1 - 0.3 * ease_in(p))
+        c = _OUT["pop"]
+        p = t / c["seconds"]
+        return BlockState([WordState(1 - clamp(p)) for _ in range(n)], 1 - (1 - c["to_scale"]) * ease_in(p))
     return BlockState([WordState(0.0) for _ in range(n)])
 
 
@@ -176,8 +189,7 @@ def state_key(state: BlockState | None) -> tuple | None:
 
 # --- Sloganlar -----------------------------------------------------------------------------------------------------
 
-SLOGAN_IN = {"old_tv": 0.56, "fade": 0.3, "pop": 0.35, "yok": 0.0}
-SLOGAN_OUT = {"old_tv": 0.23, "fade": 0.3, "pop": 0.2, "yok": 0.0}
+SLOGAN_IN, SLOGAN_OUT = FX["slogan"]["in"], FX["slogan"]["out"]
 
 
 def old_tv_scale(openness: float) -> tuple[float, float]:
@@ -212,7 +224,7 @@ def slogan_state(effect: str, start: float, end: float, t: float, frame: int) ->
         return SpriteState()
     if effect == "old_tv":
         sx, sy = old_tv_scale(p)
-        return SpriteState(1.0, sx, sy, split=round(7 * (1 - p)) + 1 if p < 0.97 else 0, flicker=bool(frame % 2) and p < 0.97)
+        return SpriteState(1.0, sx, sy, split=math.floor(7 * (1 - p) + 0.5) + 1 if p < 0.97 else 0, flicker=bool(frame % 2) and p < 0.97)
     if effect == "fade":
         return SpriteState(ease_out(p) if entering else ease_in(p))
     if effect == "pop":
@@ -237,11 +249,12 @@ def logo_state(effect: str, start: float, end: float, rest_y: float, height: flo
             top = 1920 - rise * (1 - math.exp(-(drop_start - start) / tau))
             y = top + (1920 - top) * clamp((t - drop_start) / (end - drop_start)) ** 1.5
         return SpriteState(dy=y - rest_y, glint=glint_p)
+    c = FX["logo"]
     if effect == "fade":
-        alpha = min(ease_out((t - start) / 0.4), 1 - ease_in((t - (end - 0.3)) / 0.3))
+        alpha = min(ease_out((t - start) / c["fade_in"]), 1 - ease_in((t - (end - c["fade_out"])) / c["fade_out"]))
         return SpriteState(alpha, glint=glint_p)
     if effect == "pop":
-        p_in, p_out = (t - start) / 0.35, (t - (end - 0.25)) / 0.25
+        p_in, p_out = (t - start) / c["pop_in"], (t - (end - c["pop_out"])) / c["pop_out"]
         scale = (0.3 + 0.7 * ease_out_back(p_in)) if p_in < 1 else (1 - 0.7 * ease_in(p_out) if p_out > 0 else 1.0)
         return SpriteState(clamp(p_in / 0.3) * (1 - clamp(p_out)), scale, scale, glint=glint_p)
     return SpriteState(glint=glint_p)
@@ -250,10 +263,10 @@ def logo_state(effect: str, start: float, end: float, rest_y: float, height: flo
 # --- Çerçeve (video alanının çizgisi) -------------------------------------------------------------------------------
 
 FRAME_PAD = 24  # parıltı için çerçeve katmanının video alanından taşma payı
-FRAME_PERIOD = {"kovalayan": 3.5, "nefes": 2.4, "akis": 6.0}
-COMET_TAIL = 0.22
-COMET_HEAD = 8.0
-COMET_CAP = 0.004  # baş ucunun yumuşaklığı (çevrenin oranı)
+FRAME_PERIOD = FX["frame"]["period"]
+COMET_TAIL = FX["frame"]["comet_tail"]
+COMET_HEAD = FX["frame"]["comet_head"]
+COMET_CAP = FX["frame"]["comet_cap"]  # baş ucunun yumuşaklığı (çevrenin oranı)
 
 
 def _hex(color: str) -> np.ndarray:

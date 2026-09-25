@@ -25,6 +25,7 @@ from apps.design_studio.pipeline import (
     load_project_design,
     project_timing,
     save_project_design,
+    signature,
 )
 from apps.design_studio.render import filmstrip, preview_video
 from shared.axion_template import (
@@ -122,8 +123,15 @@ def render_status() -> None:
         job = jobs.get(project)
         current_design = load_project_design(project, seconds)
         if job and job.running:
-            st.info(f"⏳ Son video oluşturuluyor… {job.elapsed:.0f} sn. Bu sırada düzenlemeye devam edebilirsin.")
-            st.button("🎬 Oluşturuluyor…", disabled=True, width="stretch")
+            if job.signature == signature(project, current_design):
+                st.info(f"⏳ Son video oluşturuluyor… {job.elapsed:.0f} sn. Bu sırada düzenlemeye devam edebilirsin.")
+                st.button("🎬 Oluşturuluyor…", disabled=True, width="stretch")
+                return
+            # Editör üretim sürerken değiştirdi: eskisinin bitmesini beklemeden yenisiyle baştan başlatabilir.
+            st.info(f"⏳ Son video oluşturuluyor… {job.elapsed:.0f} sn. Son değişikliklerin bu videoda yok.")
+            if st.button("🔁 Değişikliklerle yeniden başlat", type="primary", width="stretch"):
+                jobs.start(project, current_design, restart=True)
+                st.rerun()
             return
         if job and job.error and not job.seen:
             job.seen = True
@@ -183,6 +191,16 @@ with st.sidebar:
 
 
 # ---------------------------------------------------------------- ana alan: editör
+def final_state() -> str:
+    job = jobs.get(project)
+    if job and job.running:
+        return "rendering"
+    if not final.exists():
+        return "missing"
+    return "current" if final_is_current(project, design) else "stale"
+
+
+
 @st.cache_data(show_spinner=False, max_entries=24)
 def _background_jpeg(path: str, mtime: float, width: int) -> bytes:
     return image_bytes(template.background_image(Path(path)).resize((width, width * 16 // 9)), "JPEG", quality=85)
@@ -198,6 +216,7 @@ slot = {"x": VIDEO_SLOT["x"], "y": VIDEO_SLOT["y"], "w": VIDEO_SLOT["width"], "h
 data = {
     "project": pid,
     "applied": ss.get(key("edits_v")),  # editörün son gönderdiği değişiklik kaydedildi mi ("Kaydedildi ✓")
+    "final_state": final_state(),  # üst çubukta: son video güncel mi
     "video": media_url(preview, "video/mp4", "video"),
     "final": media_url(final, "video/mp4", "final") if final.exists() else None,
     "filmstrip": media_url(strip, "image/jpeg", "strip") if strip else None,
