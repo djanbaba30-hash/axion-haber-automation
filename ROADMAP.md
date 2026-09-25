@@ -103,7 +103,9 @@ kontrolü kaldırmak değil, hızlandırmak.
 6. **v3.3.0 planı** (2026-09-25, editörle konuşuldu): GPT bulguları, kesitin kaza anından başlaması (API'siz),
    Haber/Video Stüdyosu token tasarrufu (başlık önizlemesi kalkar, başlık hatasında küçük çağrı, uzun önbellek +
    önbellek sayacı + haber başına maliyet, benzer kare eleme + düşük ayrıntı), komut kısaltma. Ayrıntı: AGENTS.md →
-   "Sıradaki: v3.3.0 planı".
+   "Sıradaki: v3.3.0 planı". GPT plan notları: Claude sandbox video yolunun sonraki oturumda erişimini doğrula; kesit aralığı
+   için güven eşiği/sınır geri dönüşü tanımla; teknik sayaç ve maliyeti AGENTS kural 10'a göre Geliştirici bilgileri altında
+   tut; API'siz başlık önizlemesini token tasarrufu sayma; kare azaltırken zaman kapsamı ve kadraj kalitesini koru.
 
 Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
 gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)
@@ -149,3 +151,4 @@ videonun sonuna kadar uzar. Seslendirme 20 sn'den kısaysa kurgu 20 sn'ye tamaml
 
 - Yazı tipi: Canva'daki Binate Bold yerine editörün seçtiği Google Sans Bold (SIL OFL, `assets/sablon/fontlar/`).
   Google Sans biraz daha dar; görünüm editörün Windows testinde değerlendirilecek.
+
