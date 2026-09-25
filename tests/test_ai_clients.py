@@ -56,7 +56,7 @@ def test_claude_news_call_caches_system_prompt_and_maps_thinking():
     fake = FakeClaude(NEWS)
     _, usage = clients.generate(None, fake, "Claude", "", "haber", "Kapalı (Tasarruflu)")
     call = fake.calls[0]
-    assert call["system"][0]["cache_control"] == {"type": "ephemeral"} and call["thinking"] == {"type": "disabled"}
+    assert call["system"][0]["cache_control"] == {"type": "ephemeral", "ttl": "1h"} and call["thinking"] == {"type": "disabled"}
     assert "output_config" not in call and call["model"] == CLAUDE_MODEL
     clients.generate(None, fake, "Claude", "", "haber", "Yüksek")
     assert fake.calls[1]["output_config"] == {"effort": "high"} and "thinking" not in fake.calls[1]

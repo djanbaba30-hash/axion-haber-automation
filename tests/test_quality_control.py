@@ -142,3 +142,22 @@ def test_headline_only_error_uses_the_small_headline_call(local_env, monkeypatch
     assert calls[0] == "haber" and calls[1][0] == "başlık" and "2. başlık" in calls[1][1] and len(calls) == 2
     assert (at.session_state["baslik1"], at.session_state["baslik2"]) == ("OTOMOBİL DURAĞA DALDI", "3 KİŞİ YARALANDI")
     assert at.session_state["last_usage"]["input_tokens"] == 3400
+
+
+def test_cache_counter_and_cost_after_a_news(local_env, monkeypatch):
+    from apps.news_studio.models.news import NewsOutput
+
+    news = NewsOutput(baslik1="OTOMOBİL DURAĞA DALDI", baslik2="3 KİŞİ YARALANDI",
+                      icerik="Antalya'da kontrolden çıkan otomobil yayaya çarptı ve durağa daldı. " * 20,
+                      tts_plani=["olay"], tts="Kontrolden çıkan otomobil yayaya çarptı ve durağa daldı. " * 7)
+    usage = {"input_tokens": 3000, "cached_input_tokens": 1800, "output_tokens": 900, "requests": 1,
+             "provider": "OpenAI", "model": "gpt-5.6-luna"}
+    monkeypatch.setattr("apps.news_studio.ai.clients.generate", lambda *args, **kwargs: (news, usage))
+    at = start()
+    assert any("Önbellek soğuk" in c.value for c in at.sidebar.caption)
+    at.session_state["raw_text"] = RAW
+    at.run()
+    button(at, "Haberi işle").click().run()
+    assert not at.exception
+    assert any("Önbellek sıcak, ~" in c.value for c in at.sidebar.caption)
+    assert any("tahmini maliyeti: $0.0014" in c.value and "%60'i" in c.value for c in at.caption)

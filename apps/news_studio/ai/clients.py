@@ -2,7 +2,7 @@
 çağrısı) ve başlık yenileme.
 
 SDK'ların kendi retry'ı kapalı; tek retry katmanı `retry_transient`. Sistem prompt'ları önbelleğe alınır
-(OpenAI `prompt_cache_key`, Claude `cache_control`).
+(OpenAI `prompt_cache_key`, GPT-5.6'da en az 30 dk; Claude `cache_control` 1 saat). Fiyat/süre: `cost.py`.
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ EFFORTS = {"Kapalı (Tasarruflu)": "none", "Düşük": "low", "Orta": "medium", 
 NEWS_CACHE_KEY = "axion-haber-studio-v7"
 HEADLINE_CACHE_KEY = "axion-haber-headline-v7"
 NEWS_MAX_TOKENS = 2600
+# Haberler arası 10–20 dk: 5 dk'lık önbellek her haberde yeniden yazılırdı (1,25x); 1 saatlik yazma 2x, sonra okuma 0,1x.
+CLAUDE_CACHE = {"type": "ephemeral", "ttl": "1h"}
 HEADLINE_MAX_TOKENS = {"OpenAI": 450, "Claude": 500}
 HEADLINE_REQUEST = (
     "<HABER_ICERIGI>\n{content}\n</HABER_ICERIGI>\nİki YENİ başlık üret. Yeni bilgi ekleme. baslik1 olayın nasıl "
@@ -51,7 +53,8 @@ def _usage_openai(response) -> dict[str, int]:
     details_out = getattr(usage, "output_tokens_details", None)
     return {
         "input_tokens": getattr(usage, "input_tokens", 0), "output_tokens": getattr(usage, "output_tokens", 0),
-        "cached_input_tokens": getattr(details_in, "cached_tokens", 0), "cache_creation_input_tokens": 0,
+        "cached_input_tokens": getattr(details_in, "cached_tokens", 0) or 0,
+        "cache_creation_input_tokens": getattr(details_in, "cache_write_tokens", 0) or 0,
         "reasoning_tokens": getattr(details_out, "reasoning_tokens", 0), "requests": 1,
     }
 
@@ -87,7 +90,7 @@ def _parse_openai(client, model: str, system: str, prompt: str, schema, reasonin
 def _parse_claude(client, system: str, prompt: str, schema, reasoning: str, max_tokens: int) -> tuple[Any, dict[str, Any]]:
     kwargs: dict[str, Any] = {
         "model": CLAUDE_MODEL, "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}],
-        "output_format": schema, "system": [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+        "output_format": schema, "system": [{"type": "text", "text": system, "cache_control": CLAUDE_CACHE}],
     }
     if reasoning == "none":
         kwargs["thinking"] = {"type": "disabled"}

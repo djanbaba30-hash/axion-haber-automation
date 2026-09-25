@@ -15,11 +15,13 @@ from apps.axion_local.preferences import load_preferences, persist, remember, sa
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     NEWS_IMPORT_KEY,
+    data_dir,
     get_news_project,
     list_inbox_texts,
     read_text_file,
     save_news_project,
 )
+from apps.news_studio.ai import cost
 from apps.news_studio.ai.clients import generate, make_anthropic, make_openai, regenerate_headlines
 from apps.news_studio.config import (
     CLAUDE_MODEL,
@@ -124,6 +126,16 @@ def accumulate(total: dict | None, usage: dict) -> dict:
     return out
 
 
+@st.fragment(run_every=60)
+def cache_status(provider: str, model_id: str) -> None:
+    """Sistem komutu önbellekte mi (tahmin: son haber + önbellek süresi). Sıcakken sistem komutu ~%10 fiyatına gider."""
+    left = cost.minutes_left(data_dir(), provider, model_id)
+    st.caption(f"🟢 Önbellek sıcak, ~{left} dk (tahmini)" if left else "⚪ Önbellek soğuk",
+               help="İlk haberde yapay zekânın kuralları (sistem komutu) önbelleğe yazılır; süre dolmadan gelen haberde "
+                    f"bu kısım ~%10 fiyatına okunur. Süre her haberde baştan başlar (Luna {cost.CACHE_MINUTES['OpenAI']} dk, "
+                    f"Claude {cost.CACHE_MINUTES['Claude']} dk). Gerçek ölçüm: Geliştirici bilgileri.")
+
+
 def reset_state() -> None:
     keep = {"examples", "tts_calibration", *PREFERENCES}
     for key in list(ss.keys()):
@@ -176,6 +188,8 @@ with st.sidebar:
     else:
         openai_model = ss.openai_model
         st.caption(f"Claude modeli: `{CLAUDE_MODEL}`")
+    model_id = OPENAI_MODELS.get(openai_model, "") if provider == "OpenAI" else CLAUDE_MODEL
+    cache_status(provider, model_id)
     thinking = st.selectbox("Düşünme seviyesi", THINKING_LEVELS, key="thinking", help="Yüksek seviye daha pahalıdır.")
     if names:
         voice_name = st.selectbox("Spiker", names, key="voice_name")
@@ -264,6 +278,7 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                     ss.pop("active_news_project", None)
                 ss.baslik1, ss.baslik2, ss.icerik, ss.tts_metni = result.baslik1, result.baslik2, result.icerik, result.tts
                 ss.last_usage = total
+                cost.touch(data_dir(), total)
                 ss.last_validation = check.errors
                 ss.last_warnings = check.warnings + find_censorship_warnings(result.tts + "\n" + result.icerik)
                 ss.last_correction_reason = correction_reason
@@ -402,8 +417,13 @@ if ss.icerik:
         cols[1].metric("Girdi token", f"{usage.get('input_tokens', 0):,}")
         cols[2].metric("Çıktı token", f"{usage.get('output_tokens', 0):,}")
         cols[3].metric("API çağrısı", usage.get("requests", 0))
-        st.caption(f"Model: {usage.get('model', '-')} · Önbellek: {usage.get('cached_input_tokens', 0):,} · "
+        st.caption(f"Model: {usage.get('model', '-')} · Önbellekten: {usage.get('cached_input_tokens', 0):,} · "
+                   f"Önbelleğe yazılan: {usage.get('cache_creation_input_tokens', 0):,} · "
                    f"Reasoning: {usage.get('reasoning_tokens', 0):,}")
+        price = cost.cost_usd(usage) if usage else None
+        if price is not None:
+            st.caption(f"Bu haberin tahmini maliyeti: ${price:.4f} · girdinin %{cost.cache_share(usage) * 100:.0f}'i "
+                       f"önbellekten (fiyatlar {cost.PRICES_CHECKED})")
         if ss.last_correction_reason:
             st.caption(f"Düzeltme çağrısı nedeni: {ss.last_correction_reason}")
         if ss.last_audio_bytes:
