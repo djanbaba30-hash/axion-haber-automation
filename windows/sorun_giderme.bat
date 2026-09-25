@@ -11,5 +11,5 @@ if not exist ".venv\Scripts\python.exe" (
 echo Adres: http://localhost:8501
 echo Axion zaten aciksa once uygulamadaki "Axion'u kapat" dugmesini kullan.
 echo.
-".venv\Scripts\python.exe" -m streamlit run axion_local.py
+".venv\Scripts\python.exe" -m streamlit run axion_app.py
 pause

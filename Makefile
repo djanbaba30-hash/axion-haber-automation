@@ -2,4 +2,4 @@ test:
 	python -m pytest
 
 run:
-	streamlit run axion_local.py
+	streamlit run axion_app.py

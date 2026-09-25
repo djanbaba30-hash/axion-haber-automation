@@ -2,7 +2,8 @@
 bilgisayara, evin internetiyle iner (İndirilenler → "Video Stüdyosu'nda kullan"). Giriş bilgileri bir kez kaydedilir,
 sonra kutular kendiliğinden dolar. API yok.
 
-Düzen (editör, v3.1): kenar çubuğunda gezinme, adres, sekmeler ve indirilenler; ortada ekran; sağda yazı paneli.
+Düzen (editör, v3.1–3.2): kenar çubuğunda gezinme, adres ve sekmeler; ortada ekran; sağda yazı ve indirilenler.
+Ekran önce doğrudan akış kanalıyla (stream.py) taşınır; yoksa bu sayfanın fragment'ı kareleri yollar.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import streamlit as st
 from apps.axion_local.media import media_url
 from apps.axion_local.settings import secret
 from apps.axion_local.store import NEWS_IMPORT_KEY, data_dir, inbox_dir, read_text_file
-from apps.remote_browser import service
+from apps.remote_browser import service, stream
 from apps.remote_browser.logins import FILENAME as LOGINS_FILENAME
 from apps.remote_browser.logins import Logins, site_of
 from apps.remote_browser.viewer import apply_events, browser_view, panel_view
@@ -87,8 +88,7 @@ def side_panel() -> None:
     screen = current_screen()
     if screen is None:
         return
-    panel_view({"url": screen.url, "tabs": screen.tabs, "downloads": browser.download_rows(),
-                "applied": ss.get(PANEL_KEY + "_seq")}, key=PANEL_KEY)
+    panel_view({"url": screen.url, "tabs": screen.tabs, "applied": ss.get(PANEL_KEY + "_seq")}, key=PANEL_KEY)
 
 
 @st.fragment(run_every=SCREEN_SECONDS)
@@ -104,7 +104,10 @@ def live() -> None:
         ss["tarayici_acildi"] = True
         browser.run("goto", HOME)
     browser_view({
-        "img": media_url(screen.image, "image/jpeg", "tarayici"),
+        # Akış kanalı açıksa kareler oradan gider; aynı kare Streamlit'ten ikinci kez yollanmaz.
+        "img": None if stream.streaming() else media_url(screen.image, "image/jpeg", "tarayici"),
+        "stream": {"path": stream.PATH, "token": stream.TOKEN},
+        "downloads": browser.download_rows(),
         "password": bool(secret("DHA_SIFRE")) or site_of(screen.url) in dict(logins.sites()),
         "login": browser.login_state(),
         "applied": ss.get(VIEW_KEY + "_seq"),

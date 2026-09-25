@@ -17,7 +17,8 @@ End If
 If Not IsRunning() Then
   If Not fso.FolderExists(root & "\data") Then fso.CreateFolder root & "\data"
   sh.CurrentDirectory = root
-  sh.Run "cmd /c """"" & python & """ -m streamlit run axion_local.py > ""data\axion.log"" 2>&1""", 0, False
+  ' Bekci (axion_calistir.ps1) Axion'u calistirir ve cokerse yeniden baslatir.
+  sh.Run "powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & root & "\windows\axion_calistir.ps1""", 0, False
   For i = 1 To 60
     WScript.Sleep 1000
     If IsRunning() Then Exit For

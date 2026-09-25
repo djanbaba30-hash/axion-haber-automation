@@ -1,6 +1,8 @@
 // Uzak tarayıcının tabletteki görünümü. Python ekran görüntüsünü (JPEG) yollar; bu dosya dokunuşları tarayıcının
 // koordinatlarına çevirip olay olarak geri yollar (`input`). Dokun = tıkla, sürükle / tekerlek = kaydır.
-// İki parça: "screen" (ortada ekran + sağda yazı paneli) ve "panel" (kenar çubuğunda gezinme, adres, sekmeler, indirilenler).
+// İki parça: "screen" (ortada ekran + sağda yazı ve indirilenler) ve "panel" (kenar çubuğunda gezinme, adres, sekmeler).
+// Ekran önce doğrudan akış kanalını (WebSocket, stream.py) dener: kareler anında gelir, dokunuşlar anında gider.
+// Kanal yoksa kareler ve olaylar Streamlit üzerinden gider (daha yavaş ama her zaman çalışır).
 
 const STATE = new WeakMap();
 const KEYS = ['Enter', 'Backspace', 'Tab', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End', 'PageUp', 'PageDown'];
@@ -26,12 +28,57 @@ function buttons(box, S) {
   });
 }
 
+const FAST = new Set(['click', 'wheel', 'type', 'key']);
+
+function downloadRows(list) {
+  const rows = (list || []).map((x) => {
+    const icon = x.state === 'bitti' ? '✅' : x.state === 'hata' ? '⚠️' : '⏳';
+    const info = x.state === 'bitti' ? `${x.mb} MB · bilgisayarda` : x.state === 'hata' ? `inmedi: ${esc(x.error || '')}` : `iniyor… ${x.seconds} sn`;
+    const use = x.state !== 'bitti' ? ''
+      : x.video ? `<button type="button" class="primary" data-t="use_download" data-v="${esc(x.name)}" title="Video Stüdyosu'nda seçili açılır">🎬 Videoda kullan</button>`
+      : x.text ? `<button type="button" class="primary" data-t="use_text" data-v="${esc(x.name)}" title="Haber Stüdyosu'nda ham haber olarak açılır">📰 Habere aktar</button>` : '';
+    return `<div class="dl ${x.state}"><div class="name">${icon} <b title="${esc(x.name)}">${esc(x.name)}</b></div><div class="info">${info}</div>${use}</div>`;
+  }).join('');
+  return rows || '<div class="empty">Henüz indirme yok. İndirilenler bilgisayarın <b>İndirilenler</b> klasörüne iner.</div>';
+}
+
 function setupScreen(root, S) {
   const $ = (s) => root.querySelector(s);
   const img = $('.screen'), wrap = $('.screen-wrap'), text = $('.text'), wait = $('.wait');
   channel(S);
   S.wheel = null;
   S.onSend = () => wait.classList.add('on');
+  // Doğrudan akış: gelen her kare gösterilince "ack" (en fazla 2 kare yolda; yavaş internette gecikme birikmez).
+  const show = (url, done) => {
+    const next = new Image();
+    next.onload = () => {
+      img.src = url; done();
+      if (!press) { S.shift = 0; img.style.transform = ''; }
+    };
+    next.onerror = done;
+    next.src = url;
+  };
+  const connect = () => {
+    const info = S.data.stream;
+    if (!info || S.ws || S.gone) return;
+    let ws;
+    try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${info.path}?t=${encodeURIComponent(info.token)}`); }
+    catch (e) { return; }
+    ws.binaryType = 'blob'; S.ws = ws;
+    ws.onmessage = (m) => {
+      if (!img.isConnected) { S.gone = true; ws.close(); return; }  // sayfadan çıkıldı: akış dursun
+      S.live = true;
+      const url = URL.createObjectURL(m.data);
+      show(url, () => { if (S.blob) URL.revokeObjectURL(S.blob); S.blob = url; if (ws.readyState === 1) ws.send('{"t":"ack"}'); });
+    };
+    ws.onclose = () => { S.ws = null; S.live = false; if (!S.gone) setTimeout(connect, 3000); };
+  };
+  S.connect = connect;
+  const streamlitSend = S.send;
+  S.send = (event) => {  // dokunuş/kaydırma/yazı akıştan; giriş kaydı, indirme gibi uygulama işleri Streamlit'ten
+    if (S.live && S.ws && S.ws.readyState === 1 && FAST.has(event.t)) S.ws.send(JSON.stringify({ events: [event] }));
+    else streamlitSend(event);
+  };
   const toView = (e) => {
     const r = img.getBoundingClientRect(), [w, h] = S.data.viewport;
     return [Math.round((e.clientX - r.left) * w / r.width), Math.round((e.clientY - r.top) * h / r.height)];
@@ -41,13 +88,13 @@ function setupScreen(root, S) {
     dot.className = 'ripple'; dot.style.left = `${e.clientX - r.left}px`; dot.style.top = `${e.clientY - r.top}px`;
     wrap.appendChild(dot); setTimeout(() => dot.remove(), 500);
   };
-  // Kaydırma: parmak hareketi birikir, en fazla ~10 kez/sn gönderilir. Görüntü o sırada parmakla birlikte kayar
+  // Kaydırma: parmak hareketi birikir; akış kanalında ~30 kez/sn, Streamlit yolunda ~10 kez/sn gönderilir. Görüntü o sırada parmakla birlikte kayar
   // (yeni kare gelene kadar): uzaktaki tarayıcıyı beklemeden anında tepki hissi.
   const nudge = (px) => { S.shift = Math.max(-240, Math.min(240, (S.shift || 0) + px)); img.style.transform = `translateY(${S.shift}px)`; };
   const addWheel = (point, delta) => {
     if (!S.wheel) {
       S.wheel = { point, delta: 0 };
-      setTimeout(() => { const w = S.wheel; S.wheel = null; if (w && Math.abs(w.delta) >= 1) S.send({ t: 'wheel', v: [...w.point, Math.round(w.delta)] }); }, 90);
+      setTimeout(() => { const w = S.wheel; S.wheel = null; if (w && Math.abs(w.delta) >= 1) S.send({ t: 'wheel', v: [...w.point, Math.round(w.delta)] }); }, S.live ? 30 : 90);
     }
     S.wheel.delta += delta;
   };
@@ -88,19 +135,18 @@ function setupScreen(root, S) {
   $('.typebar').addEventListener('submit', (e) => { e.preventDefault(); if (text.value) { S.send({ t: 'type', v: text.value }); text.value = ''; } });
   buttons($('.side'), S);
   buttons($('.login'), S);
+  const downloads = $('.downloads');
 
   S.apply = () => {
     const d = S.data;
     wrap.style.setProperty('--ar', `${d.viewport[0]} / ${d.viewport[1]}`);
-    if (d.img && d.img !== S.shown) {  // yeni kare önce yüklenir: titreme olmasın
-      const next = new Image();
-      next.onload = () => {
-        if (S.data.img !== d.img) return;
-        img.src = d.img; S.shown = d.img;
-        if (!press) { S.shift = 0; img.style.transform = ''; }
-      };
-      next.src = d.img;
+    if (!S.ws) S.connect();
+    if (!S.live && d.img && d.img !== S.shown) {  // akış yoksa: Streamlit'in yolladığı kare (önce yüklenir, titreme olmasın)
+      const url = d.img;
+      show(url, () => { S.shown = url; });
     }
+    const rows = downloadRows(d.downloads);
+    if (downloads.dataset.html !== rows) { downloads.innerHTML = rows; downloads.dataset.html = rows; }
     $('.pw').style.display = d.password ? '' : 'none';
     const login = d.login || {}, box = $('.login');
     const loginHtml = login.offer
@@ -119,7 +165,6 @@ function setupPanel(root, S) {
   channel(S);
   buttons($('.nav'), S);
   buttons($('.tabs'), S);
-  buttons($('.downloads'), S);
   $('.go').addEventListener('submit', (e) => { e.preventDefault(); if (url.value.trim()) { S.send({ t: 'goto', v: url.value.trim() }); url.blur(); } });
   const html = (box, markup) => { if (box.dataset.html !== markup) { box.innerHTML = markup; box.dataset.html = markup; } };
 
@@ -130,15 +175,6 @@ function setupPanel(root, S) {
     html($('.tabs'), tabs.map((tab, i) => `<div class="tab${tab.active ? ' on' : ''}">
         <button type="button" class="pick" data-t="tab" data-v="${i}" title="${esc(tab.url)}">${esc(tab.title || tab.url || 'Yeni sekme')}</button>
         ${tabs.length > 1 ? `<button type="button" class="x" data-t="close_tab" data-v="${i}" title="Sekmeyi kapat">✕</button>` : ''}</div>`).join(''));
-    const rows = (d.downloads || []).map((x) => {
-      const icon = x.state === 'bitti' ? '✅' : x.state === 'hata' ? '⚠️' : '⏳';
-      const info = x.state === 'bitti' ? `${x.mb} MB · bilgisayarda` : x.state === 'hata' ? `inmedi: ${esc(x.error || '')}` : `iniyor… ${x.seconds} sn`;
-      const use = x.state !== 'bitti' ? ''
-        : x.video ? `<button type="button" class="primary" data-t="use_download" data-v="${esc(x.name)}" title="Video Stüdyosu'nda seçili açılır">🎬 Videoda kullan</button>`
-        : x.text ? `<button type="button" class="primary" data-t="use_text" data-v="${esc(x.name)}" title="Haber Stüdyosu'nda ham haber olarak açılır">📰 Habere aktar</button>` : '';
-      return `<div class="dl ${x.state}"><div class="name">${icon} <b title="${esc(x.name)}">${esc(x.name)}</b></div><div class="info">${info}</div>${use}</div>`;
-    }).join('');
-    html($('.downloads'), rows || '<div class="empty">Henüz indirme yok. İndirilenler bilgisayarın <b>İndirilenler</b> klasörüne iner.</div>');
   };
 }
 

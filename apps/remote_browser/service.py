@@ -31,7 +31,10 @@ from apps.axion_local.store import MEDIA_EXTENSIONS
 from .logins import Logins, site_of
 
 VIEWPORT = (1024, 768)  # 4:3: yatay tabletin dikey alanını doldurur; DHA paneli masaüstü düzeninde kalır
-JPEG_QUALITY = 60
+# Tablet ekranı yoğun (2x): 1024 px'lik görüntü büyütülünce yazılar bulanıklaşıyordu. Sayfa 1,5 kat çözünürlükte çizilir
+# (yerleşim ve dokunuş koordinatları aynı: 1024x768); kare biraz büyür, evin interneti (1000 Mbps) sorun değil.
+SCALE = 1.5
+JPEG_QUALITY = 70
 IDLE_SECONDS = 20 * 60
 COMMAND_TIMEOUT = 30.0
 
@@ -213,7 +216,7 @@ class RemoteBrowser:
         self.profile.mkdir(parents=True, exist_ok=True)
         self._playwright = await async_playwright().start()
         options = dict(executable_path=str(self.executable), headless=True, accept_downloads=True, locale="tr-TR",
-                       viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]},
+                       viewport={"width": VIEWPORT[0], "height": VIEWPORT[1]}, device_scale_factor=SCALE,
                        args=["--no-first-run", "--no-default-browser-check"])
         try:
             self._context = await self._playwright.chromium.launch_persistent_context(str(self.profile), **options)
@@ -348,7 +351,8 @@ class RemoteBrowser:
             session = await self._context.new_cdp_session(page)
             session.on("Page.screencastFrame", lambda frame: self._loop.create_task(self._on_frame(session, frame)))
             await session.send("Page.startScreencast", {"format": "jpeg", "quality": JPEG_QUALITY,
-                                                        "maxWidth": VIEWPORT[0], "maxHeight": VIEWPORT[1]})
+                                                        "maxWidth": round(VIEWPORT[0] * SCALE),
+                                                        "maxHeight": round(VIEWPORT[1] * SCALE)})
             self._cast, self._cast_page = session, page
         except Exception:  # noqa: BLE001 — akış yoksa ekran görüntüsüne düşülür
             self._cast = self._cast_page = None
@@ -437,6 +441,10 @@ class RemoteBrowser:
             time.sleep(0.01)
         return self._call(self._capture(), 15)
 
+    def latest_frame(self) -> bytes | None:
+        """Canlı akışın son karesi (akış sayfası için; yoksa None)."""
+        return self._frame if self._cast_page is self._page else None
+
     def download_rows(self, limit: int = 6) -> list[dict[str, Any]]:
         return [d.summary() for d in self.downloads[-limit:]][::-1]
 
@@ -470,6 +478,12 @@ def shared(executable: Path, profile: Path, inbox: Path, logins: Logins | None =
                 _SHARED.close()
             _SHARED = RemoteBrowser(executable, profile, inbox, logins)
         return _SHARED
+
+
+def current() -> RemoteBrowser | None:
+    """Açık tarayıcı (akış uç noktası için); yoksa None, başlatmaz."""
+    browser = _SHARED
+    return browser if browser is not None and not browser.closed else None
 
 
 def close_shared() -> None:

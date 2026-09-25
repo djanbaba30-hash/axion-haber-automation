@@ -22,7 +22,7 @@ ICONS = {
     "home": ICON.format('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>'),
 }
 
-# Ortada ekran (4:3), sağda yazı paneli; tablet dik tutulursa panel ekranın altına iner.
+# Ortada ekran (4:3), sağda yazı ve indirilenler; tablet dik tutulursa panel ekranın altına iner.
 SCREEN_HTML = """
 <div class="rb">
   <div class="screen-wrap"><img class="screen" alt="Tarayıcı" tabindex="0" draggable="false"><span class="wait"></span>
@@ -38,6 +38,7 @@ SCREEN_HTML = """
       <button type="button" data-k="Tab" title="Sonraki kutu">⇥</button>
     </div>
     <button type="button" class="pw" data-t="password" title="Bu sitenin kayıtlı kullanıcı adı ve şifresini giriş kutularına yazar">🔑 Girişi doldur</button>
+    <div class="h">İndirilenler</div><div class="downloads"></div>
   </aside>
 </div>
 """
@@ -53,7 +54,6 @@ PANEL_HTML = f"""
   <form class="go"><input class="url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
     placeholder="Adres veya arama"><button type="submit" class="primary">Git</button></form>
   <div class="h">Sekmeler</div><div class="tabs"></div>
-  <div class="h">İndirilenler</div><div class="downloads"></div>
 </div>
 """
 
@@ -72,7 +72,7 @@ input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(190, 225, 23
 """
 
 SCREEN_CSS = BASE_CSS + """
-.rb { display: grid; grid-template-columns: minmax(0, 1fr) 156px; gap: 12px; align-items: start; }
+.rb { display: grid; grid-template-columns: minmax(0, 1fr) 196px; gap: 12px; align-items: start; }
 .screen-wrap { position: relative; width: 100%; max-width: calc((100vh - 36px) * 4 / 3); justify-self: center;
   border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(18, 50, 73, .08), 0 6px 20px rgba(18, 50, 73, .10);
   background: var(--soft); }
@@ -89,7 +89,7 @@ SCREEN_CSS = BASE_CSS + """
 .side { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 8px; }
 .typebar { display: flex; flex-direction: column; gap: 8px; }
 .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.keys button { padding: 0; font-size: 18px; }
+.keys button { padding: 0; font-size: 18px; min-width: 44px; }
 /* Giriş çubuğu görüntünün üstüne biner (alt kenar): belirince görüntü kaymaz, dokunuşlar yanlış yere gitmez. */
 .login:empty { display: none; }
 .login { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 8px; align-items: center;
@@ -98,12 +98,21 @@ SCREEN_CSS = BASE_CSS + """
 .login.filled { background: #E6F4EC; }
 .login span { flex: 1; min-width: 200px; }
 .login button { min-height: 36px; }
+.downloads { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.dl { padding: 8px 10px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); display: flex;
+  flex-direction: column; gap: 4px; }
+.dl .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl .info { font-size: 12px; color: #6B7C8C; }
+.dl.bitti { background: #EEF7F1; border-color: #CBE7D5; } .dl.hata { background: #FDECEA; border-color: #F4C7C1; }
+.dl button { min-height: 34px; font-size: 13px; padding: 0 8px; }
+.empty { font-size: 13px; color: #6B7C8C; padding: 2px; }
 @media (orientation: portrait) {
   .rb { grid-template-columns: 1fr; }
   .screen-wrap { max-width: 100%; }
   .side { position: static; display: grid; grid-template-columns: 1fr auto auto; align-items: end; }
   .side .h { display: none; }
   .typebar { flex-direction: row; }
+  .downloads { grid-column: 1 / -1; }
 }
 """
 
@@ -123,14 +132,6 @@ PANEL_CSS = BASE_CSS + """
   text-overflow: ellipsis; padding: 0 10px; }
 .tab.on .pick { font-weight: 700; }
 .tab .x { width: 36px; padding: 0; color: #6B7C8C; font-size: 14px; }
-.downloads { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
-.dl { padding: 8px 10px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); display: flex;
-  flex-direction: column; gap: 4px; }
-.dl .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dl .info { font-size: 12px; color: #6B7C8C; }
-.dl.bitti { background: #EEF7F1; border-color: #CBE7D5; } .dl.hata { background: #FDECEA; border-color: #F4C7C1; }
-.dl button { min-height: 34px; font-size: 13px; padding: 0 8px; }
-.empty { font-size: 13px; color: #6B7C8C; padding: 2px; }
 """
 
 JS = Path(__file__).with_name("viewer.js").read_text(encoding="utf-8")
