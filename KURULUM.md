@@ -58,6 +58,12 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
 
 1. **Haber Stüdyosu:** Ham haberi yapıştır (ya da üstteki **📄 İndirilenler'deki haber metni** → DHA'dan indirdiğin TXT →
    **Aktar**) → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
+   Kontrolü hızlandıranlar:
+   - **🟡 Kaynakta yok:** çıktıda olup ham haberde geçmeyen sayı ve isimler (yapay zekâ uydurmuş ya da farklı yazmış
+     olabilir; "iki" ↔ "2" gibi yazım farkları da çıkabilir).
+   - **🖼️ Başlıklar videoda böyle görünür:** gerçek yazı tipi, satır kırılımı ve günün arka planıyla.
+   - **Okuyarak dinle:** ses çalarken söylenen kelime yeşil yanar; bir kelimeye dokununca oradan çalar.
+   - **🔁 Düzeltme çağrısı neyi değiştirdi:** ilk sonuç düzeltildiyse silinenler kırmızı, eklenenler yeşil.
 2. Sayfanın altında **Kaydet ve Video Stüdyosu'na geç**. Haber, ses ve metin projeye kaydedilir; Video Stüdyosu bu projeyle açılır.
    - Seslendirmede saat, tarih ve ondalık sayılar okunabilir biçime çevrilir ("18.00'de" → "akşam 6'da").
    - Seslendirme metnini ses ürettikten sonra değiştirdiysen önce sesi yeniden üretmen istenir (yanlış ses videoya gitmesin diye).
@@ -87,7 +93,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      - Ses: seslendirme ve kaynak sesli kesitler aynı dengeye getirilir (kesit spikerin biraz altında), hiçbir yerde ses
        patlamaz (tepe -2 dB); kesitlerin başı/sonu yumuşak.
      - Kurgu bitince Axion şablonu (arka plan, başlıklar, sloganlar, logo) hemen uygulanır: **Son videoyu indir**.
-       Yanında **📋 Paylaşım metnini kopyala** (Tasarım Stüdyosu'nda da, İndir'in altında).
+       Yanında **📋 Paylaşım metnini kopyala** (Tasarım Stüdyosu'nda da, İndir'in altında). İnen dosyanın adı haber
+       başlığıdır. Video bitince hangi sayfadaysan kısa bir "✅ … videosu hazır" bildirimi çıkar.
+     - Aynı haber başka bir cihazda da açıksa (bilgisayar + tablet) üstte uyarı çıkar: ikisinden aynı anda değiştirme.
      - Üretim arka planda, bilgisayarda sürer (geçen süre görünür): sayfadan ayrılabilir, tableti kapatabilirsin;
        dönünce video hazırdır.
      - Haber Stüdyosu'nda başlıkları değiştirip projeyi yeniden kaydedersen Tasarım Stüdyosu da yeni başlıkları alır
@@ -160,8 +168,8 @@ bilgisayardaki dosyaları görmez. Bu yüzden büyük DHA videolarını tablete 
 Axion'un menüsündeki **🌐 Tarayıcı** sayfası, evdeki bilgisayarda görünmeden çalışan bir **Brave** penceresini tablete
 getirir. Bilgisayarın ekranına, iki monitöre ya da görev çubuğuna dokunmaz; uzak masaüstü gerekmez.
 
-- **Düzen:** solda (kenar çubuğu) geri/ileri/yenile/⌂, adres çubuğu, **sekmeler** ve **indirilenler**; ortada sayfa;
-  sağda yazı paneli. Tablet dik tutulursa yazı paneli sayfanın altına iner.
+- **Düzen:** solda (kenar çubuğu) geri/ileri/yenile/⌂, adres çubuğu ve **sekmeler**; ortada sayfa; sağda yazı paneli ve
+  **indirilenler**. Tablet dik tutulursa sağ panel sayfanın altına iner.
 - **Dokun** = tıkla. **Parmakla sürükle** = sayfayı kaydır (görüntü parmakla hemen kayar, yeni görüntü arkadan gelir).
 - **⌂** DHA abone panelini açar (`dhaabone.dha.com.tr/news`); sayfa da açılışta onu açar.
 - **Sekmeler:** DHA haberi yeni sekmede açar; soldaki listeden sekmeye dokunarak geçilir, ✕ ile kapatılır.
@@ -173,13 +181,13 @@ getirir. Bilgisayarın ekranına, iki monitöre ya da görev çubuğuna dokunmaz
   çubuğunda (**🔑 Kayıtlı girişler** → Sil).
 - Oturum bilgisayarda kalır. Bu, Axion'un kendi Brave profilidir: normal Brave'ine, sekmelerine ve kayıtlı şifrelerine
   dokunmaz.
-- **İndir**'e bastığında video bilgisayarın **İndirilenler** klasörüne iner; solda "✅ … bilgisayarda" yazar.
+- **İndir**'e bastığında video bilgisayarın **İndirilenler** klasörüne iner; sağda "✅ … bilgisayarda" yazar.
   **🎬 Videoda kullan** seni Video Stüdyosu'na götürür, video 2. adımda seçili gelir.
 - **Haber metni:** DHA'nın "metni kopyala" düğmesi evdeki bilgisayarın panosuna kopyalar, tablete gelmez. Onun yerine
-  **TXT indir** → solda **📰 Habere aktar**: metin Haber Stüdyosu'nda ham haber olarak açılır. Haber Stüdyosu'nun
+  **TXT indir** → sağda **📰 Habere aktar**: metin Haber Stüdyosu'nda ham haber olarak açılır. Haber Stüdyosu'nun
   üstündeki **📄 İndirilenler'deki haber metni** listesinden de seçilebilir.
-- Dükkân internetinden yalnızca sayfanın görüntüsü geçer (değiştikçe, saniyede birkaç küçük resim). Video oynatmak için değil, haber
-  bulup indirmek için tasarlandı.
+- Görüntü doğrudan akışla gelir: sayfa değiştikçe saniyede 15–20 kareye kadar, dokunuşlar anında gider. İnternet
+  yavaşlarsa kare sayısı düşer ama gecikme birikmez. Video oynatmak için değil, haber bulup indirmek için tasarlandı.
 - Brave bulunamazsa sayfa söyler: Brave'i kur ya da `anahtarlar.bat` ile `TARAYICI_YOLU`'na `brave.exe`'nin yolunu yaz.
 - 20 dakika kullanılmazsa tarayıcı kendiliğinden kapanır (indirme sürerken kapanmaz); sayfayı açınca yeniden açılır.
 
@@ -194,6 +202,10 @@ Tailscale'deki `100.x.x.x`); Windows Home ise **Chrome Uzaktan Masaüstü** ya d
 Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çift tıkla.
 Çalışan Axion'u durdurur, yeni sürümü indirir ve Axion'u yeniden başlatır.
 
+Axion bir hatayla çökerse 5 saniye sonra kendiliğinden yeniden başlar (uzaktan çalışırken işe yarar). **Axion'u kapat**
+düğmesi ve güncelleme yeniden başlatmaz. 10 dakikada 3 kez çökerse durur; o zaman `data\axion.log`'u Claude'a/GPT'ye gönder
+(bir önceki çalışmanın kaydı `data\axion.onceki.log`).
+
 ## 6. Sorun giderme
 
 - Axion açılmazsa bir uyarı çıkar ve hata kaydı (`C:\Axion\data\axion.log`) Not Defteri'nde açılır.
@@ -204,6 +216,7 @@ Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çif
 
 - Projeler (haber, seslendirme, görüntü analizi, kesitler, kurgu ve video): `C:\Axion\data\projects\` — 3 günden eski projeler otomatik silinir.
 - Seslendirme hız ayarı (kalibrasyon), üretim geçmişi ve ayarlar (üslup örnekleri dahil): `C:\Axion\data\`
+- Adım süreleri (geliştirici için; haber yazımı, seslendirme, analiz, kurgu, son video): `C:\Axion\data\olcumler.jsonl`
 - Tarayıcı sayfasının profili (DHA oturumu): `C:\Axion\data\tarayici\`; kayıtlı girişler (şifreli):
   `C:\Axion\data\tarayici_girisler.json`. Silersen DHA'ya yeniden giriş yaparsın.
 

@@ -90,19 +90,15 @@ Hedef: DHA'da haberi gördükten sonra tabletten, en az dokunuşla paylaşıma h
 **kalite kontrolü**: editör başlıkları, paylaşım metnini ve seslendirmeyi her haberde kendisi kontrol eder; amaç bu
 kontrolü kaldırmak değil, hızlandırmak.
 
-1. **Windows testi** (`reviews/claude-v3.md` listesi) ve çıkan düzeltmeler. İlk gerçek gün denemesi (4 haber) yapıldı,
-   geri bildirimi v3.1.0'da; editör 3.1.0'ı yeniden deneyecek (istem, ses, Tarayıcı hızı ve düzeni).
-2. **Axion çökerse kendini yeniden başlatsın** (uzaktan kullanımda işe yarar). Windows açılışında otomatik başlatma
-   gerekmez: bilgisayar yalnızca elektrik kesilirse kapanır, güncellemeler kapalı (editör elle yapar).
-3. **Kalite kontrolünü hızlandırmak** (API'siz; editör "mantıklı" dedi, sırası Windows testinden sonra netleşecek):
-   - "Kaynakta yok" işaretleri: çıktıdaki sayı, isim, yer, saat/tarih ham haberde yoksa sarı.
-   - Seslendirmeyi okuyarak dinleme: çalan kelime vurgulanır (zaman bilgisi var), kelimeye dokununca oradan çalar.
-   - Başlıkların videodaki gibi (2 satır, gerçek yazı tipi) görsel önizlemesi.
-   - Düzeltme çağrısının neyi değiştirdiği.
-   - Küçük kolaylıklar: son video dosya adı haber başlığı olsun; video bitince hangi sayfadaysan kısa bildirim
-     ("✅ … videosu hazır"). (Paylaşım metnini tek dokunuşla kopyalama v3.1.0'da yapıldı.)
-4. **Ölçüm:** haber başına adım süreleri yerel olarak kaydedilir (geliştirici için; editörün görmesi gerekmez).
-5. Tablette Tasarım Stüdyosu ve Tarayıcı denemesi (editör yapacak), aynı haberin iki cihazda açılması uyarısı.
+1. **Windows testi** (`reviews/claude-v3.md` listesi) ve çıkan düzeltmeler: ilk gerçek gün denemesi (4 haber) yapıldı,
+   geri bildirimi v3.1.0'da. ✅
+2. **Axion çökerse kendini yeniden başlatsın**: bekçi betiği `windows/axion_calistir.ps1` (v3.2.0). ✅
+3. **Kalite kontrolünü hızlandırmak** (API'siz, v3.2.0): 🟡 kaynakta yok işaretleri, başlıkların videodaki gibi
+   önizlemesi, seslendirmeyi okuyarak dinleme, düzeltme çağrısının farkı, son video dosya adı = başlık, her sayfada
+   "✅ … videosu hazır" bildirimi, paylaşım metnini tek dokunuşla kopyalama (v3.1.0). ✅
+4. **Ölçüm:** adım süreleri `data/olcumler.jsonl` (v3.2.0). ✅ Birkaç günlük kullanımdan sonra okunup en yavaş adım seçilecek.
+5. Tablette Tasarım Stüdyosu ve Tarayıcı denemesi (editör yapacak); aynı haberin iki cihazda açılması uyarısı (v3.2.0 ✅).
+   Tarayıcı akıcılığı: doğrudan akış kanalı (v3.2.0), editörün Tailscale üzerinden denemesi bekleniyor.
 
 Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
 gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)

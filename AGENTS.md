@@ -38,7 +38,9 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
 ## Kod haritası
 
 ```text
-axion_local.py                 Ana giriş: menü, isteğe bağlı şifre, stil (CSS), "Axion'u kapat" (sadece localhost)
+axion_app.py                   Başlatma noktası (`streamlit run axion_app.py`): st.App(axion_local.py) + Tarayıcı akış kanalı
+axion_local.py                 Uygulama: menü, isteğe bağlı şifre, stil (CSS), "Axion'u kapat" (sadece localhost),
+                               "✅ … videosu hazır" bildirimi (her sayfada); testler (AppTest) bunu çalıştırır
 .streamlit/config.toml         Port 8501, headless, 4 GB yükleme sınırı, beyaz Axion teması (lacivert #123249)
 assets/                        axion_mark.png (tarayıcı sekmesi ikonu); windows/axion_x.ico aynı X işareti (masaüstü).
   sablon/                      Faz 5 şablon dosyaları (arka planlar, logo kutusu, örnek Canva videosu; README)
@@ -49,6 +51,8 @@ apps/axion_local/
   settings.py                  secret(), require_secrets(): anahtar okuma
   media.py                     media_url(): dosya/görseli tarayıcıya Streamlit medya sunucusuyla verir (Tasarım, Tarayıcı)
   copy_button.py               📋 Paylaşım metnini kopyala (components v2; http'de pano API'si yoksa execCommand yedeği)
+  presence.py                  Aynı haber iki cihazda açık mı (oturum → haber; bağlı mı: Streamlit oturum yöneticisi)
+  metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
                                İndirilenler'deki TXT'ler (DHA "TXT indir" → Haber Stüdyosu)
@@ -59,6 +63,9 @@ apps/news_studio/              HABER STÜDYOSU
   prompts/news.py              Sistem prompt'u (viral Türkçe sosyal medya kuralları)
   validation/news.py           Deterministik kontroller: tekrar, plaka temizleme, uzunluk
   validation/speakable.py      Seslendirmede saat/tarih/sayı → okunuş ("18.00'de" → "akşam 6'da")
+  validation/source_check.py   🟡 Kaynakta yok: çıktıda olup ham haberde geçmeyen sayı/isim (API yok)
+  validation/diff.py           Düzeltme çağrısı neyi değiştirdi (kelime farkı)
+  read_along.py                Seslendirmeyi okuyarak dinleme (karakter zamanlarından kelime vurgusu; components v2)
   ai/clients.py, ai/retry.py   OpenAI/Claude çağrıları (tek retry katmanı; SDK retry kapalı)
   tts/service.py, calibration.py  ElevenLabs sesi, karakter/saniye kalibrasyonu
   integration/history.py       SQLite üretim geçmişi (data/history.sqlite3)
@@ -94,21 +101,26 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
                                tasarim.json yazmaları kilitli, `rendered` imzasını yalnız `mark_rendered` yazar
   jobs.py                      Son videoyu arka planda üretme (proje başına tek iş; bitince yalnız `rendered` imzası yazılır;
                                yeniden başlatılınca eski iş durdurulur)
+  preview.py                   Başlıkların videodaki görünümü (Haber Stüdyosu'nda; template.py ile aynı çizim)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
   editor.py, editor.js         Canva benzeri tarayıcı editörü (components v2): üst araç çubuğu (yazı stili, sansür),
                                sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
                                zaman çizelgesi; tasarımı kendisi tutar, her değişiklikte `edits` ile Python'a gönderir
 
 apps/remote_browser/           TARAYICI (Faz 6; API yok): tabletten evdeki bilgisayarın görünmez tarayıcısını kullanma
-  service.py                   Playwright (async, kendi iş parçacığında) ile Brave/Chrome'u sürer (Edge kasıtlı yok); 1024x768;
+  service.py                   Playwright (async, kendi iş parçacığında) ile Brave/Chrome'u sürer (Edge kasıtlı yok); 1024x768
+                               CSS, 1,5x çözünürlük (tablette net yazı), JPEG 70;
                                ekran CDP screencast ile (yalnız değişen kare; yoksa ekran görüntüsü), sekme listesi/seçme;
                                Axion'un kendi profili data/tarayici; indirmeler İndirilenler'e (.iniyor → ad); 20 dk boşta kapanır;
                                giriş formu gönderilirken bilgileri okur ("kaydedilsin mi?"), kayıtlı sitede kutuları doldurur;
                                profil kilitliyse (Axion zorla kapatılmış) artık süreci kapatıp yeniden dener
+  stream.py                    Doğrudan akış (WebSocket, axion_app.py ekler): kareler anında, dokunuşlar anında; jetonlu;
+                               ack ile en fazla 2 kare yolda (yavaş internette gecikme birikmez); yoksa fragment yolu
   logins.py                    Kayıtlı girişler data/tarayici_girisler.json (şifre Windows DPAPI ile; tablete gitmez)
-  viewer.py, viewer.js         Tabletteki görünüm (components v2, iki bileşen tek JS): ekran + sağda yazı paneli (dokun=tıkla,
-                               sürükle=kaydır, giriş kaydı çubuğu, 🔑) ve kenar çubuğu paneli (◀ ▶ ⟳ ⌂, adres, sekmeler,
-                               indirilenler: 🎬 Videoda kullan / 📰 Habere aktar); `apply_events` olayları doğrular
+  viewer.py, viewer.js         Tabletteki görünüm (components v2, iki bileşen tek JS): ekran + sağda yazı paneli ve indirilenler
+                               (dokun=tıkla, sürükle=kaydır, giriş kaydı çubuğu, 🔑, 🎬 Videoda kullan / 📰 Habere aktar) ve
+                               kenar çubuğu paneli (◀ ▶ ⟳ ⌂, adres, sekmeler); önce akış kanalına bağlanır;
+                               `apply_events` olayları doğrular
   page.py                      Sayfa: ⌂ = DHA abone paneli; iki fragment: ekran 0,25 sn (işlemden sonra taze kare bekler),
                                kenar çubuğu paneli 1 sn
 
@@ -120,7 +132,8 @@ shared/                        Modüller arası sözleşmeler (Pydantic)
   fonts.py                     Yazı tipi kaydı (repo + data/varliklar/fontlar; değişken fontların kalınlıkları)
   text_layout.py               Başlık yerleşimi ve "2 satıra sığıyor mu" ölçümü (Haber + Tasarım stüdyosu ortak), ~~sansür~~
 
-windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı), guncelle.bat,
+windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı) → axion_calistir.ps1 (bekçi: çökerse
+                               5 sn sonra yeniden başlatır; kod 0 = Axion'u kapat, -1 = Stop-Process/güncelleme), guncelle.bat,
                                anahtarlar.bat, sorun_giderme.bat, testler.bat (make'siz test), kisayol.ps1, axion_x.ico
 tests/                         pytest; tests/test_axion_local_app.py uygulamayı AppTest ile uçtan uca sürer
 ```
@@ -167,7 +180,16 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.1.0
+## Nerede kaldık (2026-09-25) — Sürüm 3.2.0
+
+**3.2.0:** ROADMAP'teki "Sıradaki işler"in hepsi yapıldı (editörün Windows testinden sonraya bıraktıkları dahil):
+Axion çökerse kendini yeniden başlatır (bekçi betiği), kalite kontrolü araçları (kaynakta yok, başlık önizlemesi,
+okuyarak dinleme, düzeltme farkı, dosya adı = başlık, "video hazır" bildirimi), adım süresi ölçümü
+(`data/olcumler.jsonl`), aynı haber iki cihazda uyarısı. Tarayıcı doğrudan akış kanalıyla (st.App + WebSocket):
+sandbox'ta ~19 kare/sn ve 0,15 sn (v3.1: ~4 kare/sn, 0,27 sn); indirilenler sağ panele taşındı. Ölü kod/verimsizlik
+temizliği. Windows'ta denenmedi: bekçi betiği, akış kanalı (Tailscale üzerinden), yeni başlatma noktası.
+
+### 3.1.0
 
 **3.1.0:** editör bir günün 4 haberini baştan sona Axion'la yaptı (Windows + tablet); geri bildiriminin hepsi bu
 sürümde (`CHANGELOG.md`): çökme düzeltmesi, ses dengesi/sınırlayıcı, istem (başlıkta yer adı yok, spiker dili, röportajda
@@ -236,10 +258,10 @@ Brave (editör Edge sevmiyor; Firefox Playwright ile sürülemiyor), Axion'un ke
 hâlâ çalışır). Gerçek DHA paneliyle henüz denenmedi (sandbox'ta yerel test siteleriyle denendi). Video üretimi arka
 planda (tablet kapansa da sürer).
 
-### Sıradaki: editörün Windows testi, sonra ROADMAP → "Sıradaki işler"
-Editör Windows'ta dener (liste: `reviews/claude-v3.md`). Ardından sırayla: Axion çökerse kendini yeniden başlatsın,
-kalite kontrolünü hızlandırmak (editörün asıl darboğazı), haber başına adım süresi ölçümü (geliştirici için).
-Windows açılışında otomatik başlatma istenmiyor. (Haber metni DHA'nın TXT'siyle aktarılıyor, v3.1.0.)
+### Sıradaki: editörün 3.2.0 denemesi
+Editör Windows'ta ve tablette dener: Tarayıcı'nın akıcılığı (Tailscale), yeni kalite kontrol araçları, bekçi (çökme
+sonrası yeniden başlama), ses dengesi, istem. `data/olcumler.jsonl` birkaç günlük kullanımdan sonra okunup en yavaş
+adım optimize edilir. Windows açılışında otomatik başlatma istenmiyor.
 
 ### Bilinen borçlar
 - Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
@@ -251,8 +273,10 @@ Windows açılışında otomatik başlatma istenmiyor. (Haber metni DHA'nın TXT
   ötekini de değiştirmeli, `tests/test_effects_parity.py` farkı yakalar (Node gerekir; çerçeve çizimi kapsamda değil).
 - Editör tasarımı tarayıcıda tutar (başlık metinleri hariç: kenar çubuğu); Python yalnızca haber değişince yükler.
   Yazı stili/metni değişince atlas PNG'leri Python'da yeniden çizilir (tek yeniden çalıştırma gecikmesi).
-- Tarayıcı ekranı Streamlit fragment'larıyla taşınır (kare başına bir tur): yerel ağda ~4 kare/sn, işlemden kareye
-  ~0,3 sn. Daha akıcısı ayrı bir akış kanalı (MJPEG/WebSocket) ister; gerekirse sonra.
+- Tarayıcı akış kanalı `st.App` (Streamlit'in resmi ASGI yolu) ile eklenir; Axion `axion_app.py` ile başlatılmazsa
+  (eski kısayol) ekran fragment yoluna düşer (~4 kare/sn). Akış jetonu süreç başına; yalnız Axion'a girmiş sayfa alır.
+- Aynı haber iki cihazda uyarısı ve akış kanalı Streamlit iç API'lerine dayanır (`_session_mgr`, `media_file_mgr` gibi);
+  streamlit sürümü sabit, yükseltmede kontrol et.
 - Tasarım önizlemesi ve Tarayıcı ekranı Streamlit'in medya sunucusuyla verilir (`runtime.media_file_mgr`, iç API;
   streamlit sürümü sabit; `apps/axion_local/media.py`). Olmazsa gömülü veriye (data URL) düşer.
 - Arka plan işleri (tasarım ve video üretimi) Streamlit sürecinin iş parçacıklarıdır: Axion kapanırsa yarıda kalır
@@ -264,7 +288,7 @@ Windows açılışında otomatik başlatma istenmiyor. (Haber metni DHA'nın TXT
 ```bash
 pip install -r requirements-dev.txt   # geliştirme bağımlılıkları (pytest dahil)
 make test                             # tüm testler
-make run                              # uygulamayı başlat: http://localhost:8501
+make run                              # uygulamayı başlat (axion_app.py): http://localhost:8501
 ```
 
 Test ortamında FFmpeg yoksa `tests/test_media_pipeline.py` atlanır.

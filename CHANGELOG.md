@@ -1,3 +1,48 @@
+# v3.2.0 — "Sonraya" bırakılanlar, akıcı Tarayıcı, temizlik — 2026-09-25
+
+Editörün Windows testinden sonraya bıraktığı işler ve Claude'un QoL notları (ROADMAP → Sıradaki işler) bu sürümde.
+
+## Added
+- **Axion çökerse kendini yeniden başlatır:** başlatıcı artık bir bekçi betiği çalıştırır (`windows/axion_calistir.ps1`):
+  hata koduyla kapanırsa 5 sn sonra yeniden başlatır; **Axion'u kapat** (kod 0) ve güncelleme (Stop-Process, kod -1)
+  yeniden başlatmaz; 10 dakikada 3 çöküşte durur. Brave alt süreçleri beklenmez (yalnız ana süreç). Önceki kayıt
+  `data/axion.onceki.log`. `guncelle.bat`'ın `git pull` öncesine dokunulmadı (çalışırken okunduğu için).
+- **Kalite kontrolünü hızlandıranlar (Haber Stüdyosu, API yok):**
+  - 🟡 **Kaynakta yok:** paylaşım metni ve seslendirmede ham haberde geçmeyen sayılar ve isimler; başlıklarda sayılar.
+    Okunuşa çevrilmiş saat/tarih ("akşam 6'da") kaynak sayılır.
+  - 🖼️ **Başlıklar videoda böyle görünür:** Tasarım Stüdyosu'nun çizimiyle (yazı tipi, parıltı, satır kırılımı, günün
+    arka planı).
+  - **Okuyarak dinleme:** ses çalarken söylenen kelime vurgulanır, kelimeye dokununca oradan çalar (ElevenLabs'in
+    karakter zamanlarıyla; ek çağrı yok).
+  - 🔁 **Düzeltme çağrısı neyi değiştirdi:** kelime farkı (silinen kırmızı, eklenen yeşil).
+- İnen son videonun **dosya adı haber başlığı**; video bitince **hangi sayfadaysan "✅ … videosu hazır" bildirimi**.
+- **Aynı haber iki cihazda açıksa uyarı** (Video/Tasarım Stüdyosu; bağlantısı kopmuş oturum sayılmaz).
+- **Adım süreleri** `data/olcumler.jsonl` (haber yazımı, seslendirme, analiz, kurgu, son video, tasarım; geliştirici için).
+- `axion_app.py`: yeni başlatma noktası (`st.App` = Streamlit'in resmi ASGI yolu) + Tarayıcı'nın akış kanalı.
+
+## Changed
+- **Tarayıcı doğrudan akışla:** kareler Chrome ürettiği anda WebSocket'ten gider, dokunuş/kaydırma/yazı doğrudan gelir
+  (jetonlu; yalnız Axion'a girmiş sayfa). Tablet her kareyi gösterince onaylar, en fazla 2 kare yolda: yavaş internette
+  gecikme birikmez. Kanal yoksa eski yola düşer. Ölçüm (sandbox, headless Chromium): sürekli kaydırmada ~4 → ~19 kare/sn,
+  kaydırmadan yeni kareye 0,27 → 0,15 sn; 10 Mbps/80 ms taklidinde ~17 kare/sn, kaydırma bitince son kare 0,25 sn.
+- **Tarayıcı görüntüsü daha net:** sayfa 1,5 kat çözünürlükte çizilir (tablette yazılar büyütülünce bulanıklaşmıyor),
+  JPEG 60 → 70 (basit sayfada kare ~67 KB).
+- **Tarayıcı düzeni dengelendi:** indirilenler sağ panele (yazının altına) taşındı; solda gezinme, adres ve sekmeler.
+
+## Removed / temizlik
+- Okunurluk: `validation/news.py` ve `tts/calibration.py`'deki noktalı virgülle sıkıştırılmış kod açıldı (davranış aynı).
+- Başlık yerleşiminde satır dengelemesi her aday için iki kez hesaplanıyordu; bir kez.
+- Kayıtlı girişler dosyası Tarayıcı'da saniyede birkaç kez okunuyordu; dosya değişmedikçe bellekten.
+- Test ortak hazırlığı `tests/conftest.py`'de; lint artıkları. Sahipsiz modül yok (tarandı).
+
+## Verification
+- `make test`: 282 geçti (FFmpeg ve Chromium'la). Yeni testler: akış kanalı (jeton, ack, yalnız hızlı olaylar),
+  Windows betikleri ASCII+CRLF ve başlatıcı zinciri, kalite kontrol araçları (uçtan uca Haber Stüdyosu dahil), bildirim,
+  iki cihaz uyarısı, ölçüm kaydı.
+- Gerçek tarayıcıda: Tarayıcı akışı (kare sayısı, gecikme, yavaş ağ taklidi), okuyarak dinleme (dokun → oradan çal,
+  vurgu ilerliyor).
+- Windows'ta denenmedi: bekçi betiği (PowerShell), `axion_app.py` ile başlatma, Tailscale üzerinden akış.
+
 # v3.1.0 — Editörün ilk gerçek gün denemesi (4 haber, Windows + tablet) — 2026-09-25
 
 Editör bir günün haberlerini baştan sona Axion'la hazırladı ve geri bildirim yazdı. Hepsi bu sürümde; editörün

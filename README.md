@@ -40,7 +40,7 @@ Ayrıntılar: [KURULUM.md](KURULUM.md).
 ```bash
 pip install -r requirements-dev.txt
 make test    # pytest
-make run     # http://localhost:8501
+make run     # http://localhost:8501 (streamlit run axion_app.py)
 ```
 
 Windows'ta `make` yok: testler için `windows\testler.bat` (ya da `.venv\Scripts\python.exe -m pytest`).
