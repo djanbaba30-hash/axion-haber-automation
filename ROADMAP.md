@@ -93,7 +93,13 @@ kontrolü kaldırmak değil, hızlandırmak.
 1. **Windows testi** (`reviews/claude-v3.md` listesi) ve çıkan düzeltmeler.
 2. **Axion çökerse kendini yeniden başlatsın** (uzaktan kullanımda işe yarar). Windows açılışında otomatik başlatma
    gerekmez: bilgisayar yalnızca elektrik kesilirse kapanır, güncellemeler kapalı (editör elle yapar).
-3. **Kalite kontrolünü hızlandırmak** (editörle netleşecek; API'siz öncelikli).
+3. **Kalite kontrolünü hızlandırmak** (API'siz; editör "mantıklı" dedi, sırası Windows testinden sonra netleşecek):
+   - "Kaynakta yok" işaretleri: çıktıdaki sayı, isim, yer, saat/tarih ham haberde yoksa sarı.
+   - Seslendirmeyi okuyarak dinleme: çalan kelime vurgulanır (zaman bilgisi var), kelimeye dokununca oradan çalar.
+   - Başlıkların videodaki gibi (2 satır, gerçek yazı tipi) görsel önizlemesi.
+   - Düzeltme çağrısının neyi değiştirdiği.
+   - Küçük kolaylıklar: son video dosya adı haber başlığı olsun; video bitince hangi sayfadaysan kısa bildirim
+     ("✅ … videosu hazır"); paylaşım metni tek dokunuşla kopyalansın.
 4. **Ölçüm:** haber başına adım süreleri yerel olarak kaydedilir (geliştirici için; editörün görmesi gerekmez).
 5. Tablette Tasarım Stüdyosu ve Tarayıcı denemesi (editör yapacak), aynı haberin iki cihazda açılması uyarısı.
 

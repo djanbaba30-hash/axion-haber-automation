@@ -31,6 +31,9 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
     sadece "Geliştirici bilgileri" altında; nadir değişen ayarlar kapalı bölümlerde. Sık kullanılan ayarlar
     (üslup, süre, yapay zekâ, model, düşünme seviyesi, spiker) kenar çubuğunda hep görünür ve hatırlanır.
     Video Stüdyosu adım adım ilerler: her adım bir expander; biten adım "✅ …" özet satırına daralır.
+11. **Kullanım limitini ve bağlamı idareli kullan; iş yarım kalmasın.** Büyük dosyaları bütün okuma, gereken kısmı oku;
+    uzun çıktıları kısalt. Uzun işleri küçük, testleri geçen commit'lere böl. Limit ya da bağlam dolmak üzereyse yeni
+    işe başlama: yapılanı commit'le, kalanı "Nerede kaldık"a yaz ve editöre "sonraki oturumda devam" de.
 
 ## Kod haritası
 
