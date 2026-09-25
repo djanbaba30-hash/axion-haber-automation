@@ -1,4 +1,10 @@
-# v3.3.2 — Tarayıcı: indirmeleri Axion yapar (Brave çöküyordu) — 2026-09-25
+# v3.3.2 — Tarayıcı: indirmeleri Axion yapar (Brave çöküyordu); tek çekim sırasıyla oynar — 2026-09-25
+
+## Changed
+- **Aynı çekimden alınan parçalar kaynaktaki sırasıyla oynar** (editör: "kadın polis midibüsü itti" haberinde tek,
+  55 sn'lik cep telefonu çekimi 2–5 sn'lik parçalara bölünüp 46 → 4 → 50. sn diye atlanıyordu, olay anlaşılmıyordu).
+  Hangi anların seçildiği değişmez; her parça kadrajını yanında taşır; aynı an iki kez gösterilmez. Sığmazsa (çekim
+  sonu, kaynak sesli kesit aralığı) o çekim eski sırasında kalır. Regresyon testi: `test_one_long_shot_plays_in_source_order`.
 
 ## Fixed
 - **DHA'dan indirirken Brave çöküyordu** (editörün `axion.log`'u: "Tarayıcı (Brave) beklenmedik şekilde kapandı" iki

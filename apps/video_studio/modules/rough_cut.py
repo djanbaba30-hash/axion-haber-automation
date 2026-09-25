@@ -434,6 +434,8 @@ def plan_rough_cut(
             previous_shot = best.shot_id
             cursor_f += duration_f
 
+    _chronological(clips, candidates, usage.blocked)
+
     cursor_f = 0
     for clip in before:
         clip.start_f, cursor_f = cursor_f, cursor_f + clip.duration_f
@@ -452,6 +454,35 @@ def plan_rough_cut(
                 if clip.asset_id == project.audio.asset_id:
                     clip.start_f = intro_end_f  # Seslendirme, öncesindeki kesitler bitince başlar.
     return EditProject.model_validate(project.model_dump(mode="json")).model_dump(mode="json")
+
+
+def _chronological(clips: list[Clip], candidates: list[Candidate], blocked: list[tuple[str, float, float]]) -> None:
+    """Aynı çekimden alınan parçalar videoda kaynaktaki sırasıyla oynar (editör, v3.3: tek uzun cep telefonu çekiminde
+    parçalar 46. sn → 4. sn → 50. sn diye atlıyor, olay anlaşılmıyordu). Hangi anların seçildiği değişmez; her parça
+    kadrajını yanında taşır, süreler videodaki yerlerinde kalır. Sığmazsa (sahne sonu, kesit aralığı) o çekim eski
+    sırasında bırakılır."""
+    shot_end = {c.shot_id: c.shot_end for c in candidates}
+    by_shot: dict[str, list[Clip]] = {}
+    for clip in clips:
+        by_shot.setdefault(clip.shot_id, []).append(clip)
+    for shot_id, group in by_shot.items():
+        if len(group) < 2:
+            continue
+        slots = sorted(group, key=lambda c: c.start_f)  # videodaki yerler (süreleriyle)
+        pieces = sorted(((c.source_in_s, c.framing, c.reason) for c in group), key=lambda p: p[0])
+        limit = shot_end.get(shot_id, math.inf) - EDGE_SECONDS
+        plan, previous_out = [], 0.0
+        for slot, (source_in, framing, reason) in zip(slots, pieces):
+            start = max(source_in, previous_out)
+            out = start + (slot.source_out_s - slot.source_in_s)
+            if out > limit + 1e-6 or any(a == slot.asset_id and s < out and start < e for a, s, e in blocked):
+                break
+            plan.append((slot, start, out, framing, reason))
+            previous_out = out
+        else:
+            for slot, start, out, framing, reason in plan:
+                slot.source_in_s, slot.source_out_s = round(start, 3), round(out, 3)
+                slot.framing, slot.reason = framing, reason
 
 
 def has_rough_cut(edit_project: dict[str, Any] | None) -> bool:

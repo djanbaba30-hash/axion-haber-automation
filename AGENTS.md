@@ -186,8 +186,11 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 ## Nerede kaldık (2026-09-25) — Sürüm 3.3.2
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
-httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Sıradaki: editörün "kadın polis midibüs" videosunda kırpma
-(640x480 kaynak, dar dikey şerit, tek uzun elde çekim; özne kutusu pencere başına tek).
+httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Kurgu: aynı çekimin parçaları kaynak sırasıyla
+(`rough_cut._chronological`). Açık: "kadın polis midibüs" videosu 640x480, asıl görüntü ~239 px şerit → ~4x büyütme
+bulanık (DHA'da daha yüksek çözünürlüklü dosya var mı, editör bakacak); özne kutusu 9 sn'lik pencere başına tek (elde
+çekimde kayabilir) — editörün projesindeki media_library.json/edit_project.json ile doğrulanacak; dar şeritte üst/alt
+kırpma yerine koyu kenarlı "tam göster" seçeneği editöre soruldu (bulanık dolgu yasak).
 
 **3.3.1:** Tarayıcı indirirken "yeniden başlatılıyor"da kalma düzeltildi (tek hata çökme sayılmaz, gerçek çökmede
 ekran kendiliğinden yeni tarayıcı açar ve sayfaya döner; eşzamanlı aynı adlı indirmeler). Windows'ta tetikleyici

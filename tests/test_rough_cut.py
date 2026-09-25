@@ -252,3 +252,24 @@ def test_opening_scene_is_a_clear_event_matching_the_headlines():
     project = plan_rough_cut(build_edit_project(lib, text, "C:/tts.mp3", 20.0, package), lib)
     first = video_clips(project)[0]
     assert first["asset_id"] == "video_001" and first["source_in_s"] >= 16.0
+
+
+def test_one_long_shot_plays_in_source_order():
+    """Editör (v3.3, "kadın polis midibüsü itti"): tek, 55 sn'lik cep telefonu çekiminden parçalar 46 → 4 → 50. sn diye
+    atlıyordu; olay anlaşılmıyordu. Aynı çekimin parçaları kaynaktaki sırasıyla oynar."""
+    roles = [("vehicle", "context", "Yolda duran midibüs"), ("event", "action", "Kadın polis midibüsü itiyor"),
+             ("event", "action", "Polis midibüsü yol kenarına itiyor"), ("people", "reaction", "Sürücüler yardıma geliyor"),
+             ("vehicle", "context", "Trafik akıyor"), ("vehicle", "evidence", "Polis aracı ışıklarla geliyor")]
+    data = library([(0.0, 55.0, "event", "action", "x", "")])
+    shot = data["assets"][0]["shots"][0]
+    shot["analysis_windows"] = [
+        {"window_id": f"{shot['shot_id']}_w{i + 1:02d}", "shot_id": shot["shot_id"], "start_seconds": i * 9.0,
+         "end_seconds": 55.0 if i == 5 else (i + 1) * 9.0, "visual": visual(kind, role, text, "")}
+        for i, (kind, role, text) in enumerate(roles)]
+    text = ("Arızalanan midibüs yolda kaldı. Kadın polis midibüsü tek başına itti. Polis aracı ışıklarla geldi. "
+            "Çevredeki sürücüler de yardım etti ve trafik yeniden açıldı.")
+    clips = video_clips(plan_rough_cut(edit_project(text, 20.0), data))
+    starts = [c["source_in_s"] for c in clips]
+    assert len(clips) >= 3 and starts == sorted(starts)
+    for before, after in zip(clips, clips[1:]):
+        assert after["source_in_s"] >= before["source_out_s"] - 1e-6  # aynı an iki kez gösterilmez
