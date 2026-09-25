@@ -1,3 +1,14 @@
+# v3.3.2 — Tarayıcı: indirmeleri Axion yapar (Brave çöküyordu) — 2026-09-25
+
+## Fixed
+- **DHA'dan indirirken Brave çöküyordu** (editörün `axion.log`'u: "Tarayıcı (Brave) beklenmedik şekilde kapandı" iki
+  kez; Tüm Materyali İndir ve video İndir'de hata, ikinci denemede iniyor). Artık Brave'in indirme hattı kullanılmıyor:
+  indirme başlar başlamaz iptal edilir, dosyayı Axion aynı oturum çerezleriyle (girişli DHA) kendisi indirir; parça
+  parça diske yazar (büyük video belleği doldurmaz), yönlendirmeleri izler, indirilenlerde ilerleme (MB) görünür.
+  Sunucu reddederse kartta "HTTP 403" gibi neden yazar ve günlüğe düşer. Sayfanın kendi ürettiği dosyalar (`blob:`)
+  eskisi gibi tarayıcıyla kaydedilir. Sandbox'ta: yeni sekme, aynı sekme, `window.open`, `download` bağlantısı,
+  yalnız çerezle açılan ve yönlendiren indirme. Windows + Brave + gerçek DHA ile denenmedi.
+
 # v3.3.1 — Tarayıcı: indirirken "yeniden başlatılıyor"da kalma — 2026-09-25
 
 ## Fixed

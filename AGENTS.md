@@ -113,7 +113,8 @@ apps/remote_browser/           TARAYICI (Faz 6; API yok): tabletten evdeki bilgi
   service.py                   Playwright (async, kendi iş parçacığında) ile Brave/Chrome'u sürer (Edge kasıtlı yok); 1024x768
                                CSS, 1,5x çözünürlük (tablette net yazı), JPEG 70;
                                ekran CDP screencast ile (yalnız değişen kare; yoksa ekran görüntüsü), sekme listesi/seçme;
-                               Axion'un kendi profili data/tarayici; indirmeler İndirilenler'e (.iniyor → ad); 20 dk boşta kapanır;
+                               Axion'un kendi profili data/tarayici; indirmeleri Axion yapar (httpx + tarayıcı çerezleri; Brave
+                               indirmede çöküyordu) → İndirilenler (.iniyor → ad); 20 dk boşta kapanır;
                                giriş formu gönderilirken bilgileri okur ("kaydedilsin mi?"), kayıtlı sitede kutuları doldurur;
                                profil kilitliyse (Axion zorla kapatılmış) artık süreci kapatıp yeniden dener
   stream.py                    Doğrudan akış (WebSocket, axion_app.py ekler): kareler anında, dokunuşlar anında; oturum jetonlu;
@@ -182,7 +183,11 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.3.1
+## Nerede kaldık (2026-09-25) — Sürüm 3.3.2
+
+**3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
+httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Sıradaki: editörün "kadın polis midibüs" videosunda kırpma
+(640x480 kaynak, dar dikey şerit, tek uzun elde çekim; özne kutusu pencere başına tek).
 
 **3.3.1:** Tarayıcı indirirken "yeniden başlatılıyor"da kalma düzeltildi (tek hata çökme sayılmaz, gerçek çökmede
 ekran kendiliğinden yeni tarayıcı açar ve sayfaya döner; eşzamanlı aynı adlı indirmeler). Windows'ta tetikleyici

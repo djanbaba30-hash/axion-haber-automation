@@ -155,6 +155,30 @@ def unique_path(folder: Path, name: str, taken: set[Path] = frozenset()) -> Path
     return path
 
 
+def fetch_file(url: str, target: Path, cookies: list[dict[str, Any]], user_agent: str, referer: str,
+               item: "Download | None" = None) -> None:
+    """Dosyayı tarayıcının çerezleriyle indirir (parça parça diske; büyük video belleği doldurmaz)."""
+    import httpx
+
+    jar = httpx.Cookies()
+    for cookie in cookies:
+        jar.set(cookie["name"], cookie["value"], domain=cookie.get("domain", ""), path=cookie.get("path", "/"))
+    headers = {"User-Agent": user_agent} if user_agent else {}
+    if referer.startswith("http"):
+        headers["Referer"] = referer
+    timeout = httpx.Timeout(30.0, read=120.0)
+    with httpx.stream("GET", url, cookies=jar, headers=headers, follow_redirects=True, timeout=timeout) as response:
+        if response.status_code >= 400:
+            raise RuntimeError(f"Sunucu indirmeyi reddetti (HTTP {response.status_code}).")
+        if item is not None:
+            item.total = int(response.headers.get("content-length") or 0)
+        with open(target, "wb") as out:
+            for chunk in response.iter_bytes(1 << 20):
+                out.write(chunk)
+                if item is not None:
+                    item.received += len(chunk)
+
+
 @dataclass
 class Download:
     name: str
@@ -162,13 +186,15 @@ class Download:
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     error: str | None = None
+    received: int = 0  # Axion'un kendi indirmesinde inen bayt (ilerleme)
+    total: int = 0
 
     @property
     def state(self) -> str:
         return "hata" if self.error else ("bitti" if self.finished else "iniyor")
 
     def summary(self) -> dict[str, Any]:
-        size = self.path.stat().st_size if self.finished and self.path.exists() else 0
+        size = self.path.stat().st_size if self.finished and self.path.exists() else self.received
         return {"name": self.path.name, "state": self.state, "mb": round(size / 1e6, 1), "error": self.error,
                 "seconds": round((self.finished or time.monotonic()) - self.started),
                 "video": self.path.suffix.lower() in MEDIA_EXTENSIONS, "text": self.path.suffix.lower() == ".txt"}
@@ -193,6 +219,7 @@ class RemoteBrowser:
         self.last_used = time.monotonic()
         self.closed = False
         self.crashed = False  # Brave kendiliğinden kapandı (çöktü)
+        self.user_agent = ""
         self._screen: Screen | None = None
         # Canlı görüntü (CDP screencast): Chrome yalnız değişen kareyi yollar; ekran görüntüsü beklemekten hızlı.
         self._cast: Any = None
@@ -234,6 +261,10 @@ class RemoteBrowser:
         for page in self._context.pages:
             self._watch(page)
         self._page = self._context.pages[-1] if self._context.pages else await self._context.new_page()
+        try:
+            self.user_agent = await self._page.evaluate("navigator.userAgent")
+        except Exception:  # noqa: BLE001
+            self.user_agent = ""
         self._watchdog = self._loop.create_task(self._idle_watch())
 
     def _watch(self, page) -> None:
@@ -267,11 +298,24 @@ class RemoteBrowser:
         self.downloads.append(item)
         partial = item.path.with_name(item.path.name + ".iniyor")
         try:
-            await download.save_as(partial)
+            url = download.url
+            if url.startswith(("http://", "https://")):
+                # Brave'in indirme hattı kullanılmaz: Windows'ta DHA indirmelerinde Brave çöküyordu (v3.3.1 günlüğü).
+                # İndirme hemen iptal edilir, dosyayı Axion aynı çerezlerle kendisi indirir.
+                try:
+                    await download.cancel()
+                except Exception:  # noqa: BLE001
+                    pass
+                cookies = await self._context.cookies()
+                referer = download.page.url if not download.page.is_closed() else ""
+                await asyncio.to_thread(fetch_file, url, partial, cookies, self.user_agent, referer, item)
+            else:  # blob:/data: (sayfanın kendi ürettiği dosya): yalnız tarayıcı kaydedebilir
+                await download.save_as(partial)
             partial.replace(item.path)  # yarım dosya Video Stüdyosu'nun listesinde görünmesin
             item.finished = time.monotonic()
         except Exception as error:  # noqa: BLE001 — ekranda gösterilir
             item.error = str(error).splitlines()[0][:200] or error.__class__.__name__
+            logger.warning("İndirme olmadı: %s (%s)", item.name, item.error)
             partial.unlink(missing_ok=True)
 
     async def _idle_watch(self) -> None:

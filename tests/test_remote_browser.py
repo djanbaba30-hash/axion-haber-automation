@@ -28,6 +28,10 @@ LOGIN = b"""<!doctype html><html><body style="margin:0"><form action="/panel" me
 
 class _Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
+        if self.path == "/video.mp4" and "oturum=1" not in (self.headers.get("Cookie") or ""):
+            self.send_response(403)  # DHA gibi: video yalnız girişli oturuma
+            self.end_headers()
+            return
         if self.path == "/video.mp4":
             body, kind = VIDEO, "video/mp4"
         elif self.path == "/giris":
@@ -39,6 +43,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         else:
             body, kind = PAGE, "text/html"
         self.send_response(200)
+        self.send_header("Set-Cookie", "oturum=1; Path=/; HttpOnly")
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -128,6 +133,11 @@ def test_remote_browser_types_scrolls_downloads_and_follows_new_tab(tmp_path, si
         saved = tmp_path / "indirilenler" / "video.mp4"
         assert saved.read_bytes() == VIDEO and not list(saved.parent.glob("*.iniyor"))
         assert browser.download_rows()[0]["name"] == "video.mp4"
+        # v3.3.2: dosyayı Brave değil Axion indirir (Windows'ta Brave DHA indirmelerinde çöküyordu); oturum çerezi gider.
+        browser._call(browser._context.clear_cookies())
+        browser.run("click", (110, 205))
+        assert _wait(lambda: browser.download_rows()[0]["state"] == "hata")
+        assert "HTTP 403" in browser.download_rows()[0]["error"] and not list(saved.parent.glob("*.iniyor"))
 
         assert _wait(lambda: browser._frame is not None)  # canlı görüntü akışı (screencast) kare yolluyor
 
