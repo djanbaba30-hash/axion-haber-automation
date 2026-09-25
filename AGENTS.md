@@ -327,7 +327,8 @@ incelemesi `reviews/gpt-v3.2.md` (281 geçti, 1 atlandı: Node yok). Sırayla, h
    e) Kontak sayfasını kare eleme, düşük ayrıntı ve çözünürlük adımlarından sonra analiz hâlâ pahalıysa, yalnız uzun ve
       çok sahneli videolarda dene. Faz 4 (Luna Edit Planner) token azaltmaz, ek çağrıdır.
    - Değişikliklerin kabul ölçütü: gerçek örnekte anlamlı olay/sahne kaçırılmamalı; rol, `side_bars` ve özne kutusu
-     kalitesi önceki analizle karşılaştırılmalı. Ölçüm için ikinci bir Luna çağrısı ekleme.5. **Sistem komutunu kısaltmak** (~%25–30, kural atmadan; tekrarları birleştir): önbellek çalışırsa kazanç küçük;
+     kalitesi önceki analizle karşılaştırılmalı. Ölçüm için ikinci bir Luna çağrısı ekleme.
+5. **Sistem komutunu kısaltmak** (~%25–30, kural atmadan; tekrarları birleştir): önbellek çalışırsa kazanç küçük;
    gerçek haberle önce/sonra karşılaştırmayı editör yapar (AGENTS kural 5). En sona.
 6. **Belgeler ve kapanış:** uzun önbellek, model ayrıntı seviyesi/çözünürlük ve fiyatları uygulamaya başlamadan önce
    resmi sağlayıcı belgelerinden doğrula; bağlantı ve kontrol tarihini plana yaz. Her adım tamamlandıktan sonra CHANGELOG,
