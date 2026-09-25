@@ -221,6 +221,8 @@ def test_amd_failure_falls_back_to_x264(tmp_path, monkeypatch):
     calls = []
 
     def fake_ffmpeg(command, timeout, label):
+        if command[-1] == "-":  # ses yüksekliği ölçümü (sahte dosyalar: ölçülemez, kazanç 0)
+            return types.SimpleNamespace(returncode=1, stderr="", stdout="")
         calls.append(command)
         output = Path(command[-1])
         output.write_bytes(b"partial")

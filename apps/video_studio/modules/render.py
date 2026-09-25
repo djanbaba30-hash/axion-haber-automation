@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -14,6 +16,44 @@ from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
 
 X264 = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
 AMF = ["-c:v", "h264_amf", "-quality", "quality", "-b:v", "10M"]  # AMD ekran kartı donanım kodlayıcısı
+
+
+# Ses seviyeleri (editör: CapCut'ta seslendirmeyi ~6 dB kısıyor, kaynak sesi "kırmızıya" çıkmayana dek indiriyordu).
+# Her parça ölçülüp sabit kazançla hedefe getirilir (tek geçişli loudnorm kısa kesitlerde pompalama/bozulma yapıyordu);
+# sonda sınırlayıcı: hiçbir tepe -2 dBFS'yi geçmez, kulakta patlama olmaz.
+TTS_LUFS = -18.0
+SOUNDBITE_LUFS = -20.0  # kaynak sesli kesit spikerin biraz altında (bağırma, siren)
+MAX_BOOST_DB = 12.0  # sessiz kesitte gürültüyü şişirme (seslendirme temiz kayıt: 20 dB'ye kadar)
+FADE_S = 0.03  # kesit kenarlarında çıt sesi olmasın
+LIMITER = "alimiter=limit=0.79:attack=5:release=60:level=disabled"
+AUDIO_FORMAT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+
+
+@lru_cache(maxsize=128)
+def _measure(path: str, start: float, seconds: float, mtime: float) -> float | None:
+    command = ["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{start:.3f}"]
+    command += ["-t", f"{seconds:.3f}"] if seconds > 0 else []
+    command += ["-i", path, "-vn", "-af", "loudnorm=print_format=json", "-f", "null", "-"]
+    try:
+        result = run_ffmpeg(command, long_job_timeout(seconds or None), "Ses ölçümü")
+        stats = json.loads(re.findall(r"\{[^{}]*\}", result.stderr)[-1])
+        value = float(stats["input_i"])
+    except (RuntimeError, OSError, subprocess.SubprocessError, IndexError, KeyError, ValueError):
+        return None
+    return value if value > -70 else None  # sessiz / ölçülemedi
+
+
+def measure_loudness(path: str, start: float = 0.0, seconds: float = 0.0) -> float | None:
+    """Parçanın bütünleşik ses yüksekliği (LUFS); ölçülemezse None."""
+    try:
+        mtime = Path(path).stat().st_mtime
+    except OSError:
+        return None
+    return _measure(str(path), round(start, 3), round(seconds, 3), mtime)
+
+
+def gain_db(measured: float | None, target: float, max_boost: float = MAX_BOOST_DB) -> float:
+    return 0.0 if measured is None else round(min(target - measured, max_boost), 2)
 
 
 @lru_cache(maxsize=1)
@@ -90,8 +130,7 @@ def build_render_command(edit_project: dict[str, Any], media_library: dict[str, 
     filters.append(f"{joined}concat=n={len(clips)}:v=1:a=0[video]")
 
     # Ses: [öncesi kesitler (kendi sesi)] + [seslendirme, dolgu süresince; sonu sessiz] + [sonrası kesitler].
-    # Her parça aynı ses yüksekliğine getirilir (loudnorm), kesit ile spiker arasında ses sıçraması olmasın.
-    level = "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+    # Her parça ölçülüp hedef yüksekliğe sabit kazançla getirilir; kesitlerin kenarı yumuşak (çıt yok); sonda sınırlayıcı.
     pieces = []
     before = [(i, c) for i, c in soundbites if c.start_f < tts_start_f]
     after = [(i, c) for i, c in soundbites if c.start_f >= tts_start_f]
@@ -102,18 +141,25 @@ def build_render_command(edit_project: dict[str, Any], media_library: dict[str, 
         label = f"a{number}"
         if item is None:
             seconds = (after_start_f - tts_start_f) / fps
-            filters.append(f"[{tts_index}:a]{level},apad,atrim=duration={seconds:.3f}[{label}]")
+            gain = gain_db(measure_loudness(project.audio.path), TTS_LUFS, max_boost=20.0)
+            filters.append(f"[{tts_index}:a]volume={gain}dB,{AUDIO_FORMAT},afade=t=in:d=0.01,apad,"
+                           f"atrim=duration={seconds:.3f}[{label}]")
         else:
             index, clip = item
             seconds = clip.duration_f / fps
             if has_audio.get(clip.asset_id):
-                filters.append(f"[{index}:a]atrim=duration={seconds:.3f},asetpts=PTS-STARTPTS,{level},apad,atrim=duration={seconds:.3f}[{label}]")
+                gain = gain_db(measure_loudness(sources[clip.asset_id], clip.source_in_s, seconds), SOUNDBITE_LUFS)
+                filters.append(
+                    f"[{index}:a]atrim=duration={seconds:.3f},asetpts=PTS-STARTPTS,volume={gain}dB,{AUDIO_FORMAT},"
+                    f"afade=t=in:d={FADE_S},afade=t=out:st={max(seconds - FADE_S, 0):.3f}:d={FADE_S},apad,"
+                    f"atrim=duration={seconds:.3f}[{label}]"
+                )
             else:  # Kaynak videoda ses yok: sessizlik.
                 command += ["-f", "lavfi", "-t", f"{seconds:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
                 filters.append(f"[{extra_index}:a]aformat=sample_fmts=fltp:channel_layouts=stereo[{label}]")
                 extra_index += 1
         pieces.append(f"[{label}]")
-    filters.append(f"{''.join(pieces)}concat=n={len(pieces)}:v=0:a=1[audio]")
+    filters.append(f"{''.join(pieces)}concat=n={len(pieces)}:v=0:a=1,{LIMITER}[audio]")
     command += [
         "-filter_complex", ";".join(filters),
         "-map", "[video]", "-map", "[audio]",

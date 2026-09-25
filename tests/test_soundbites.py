@@ -112,3 +112,43 @@ def test_broll_next_to_a_soundbite_does_not_run_into_it():
         for clip in video_clips(project):
             if not clip["use_source_audio"]:
                 assert clip["source_out_s"] <= reserved[0] + 1e-6 or clip["source_in_s"] >= reserved[1] - 1e-6, (reserved, clip)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
+def test_loud_soundbite_does_not_blast_and_sits_below_the_voiceover(tmp_path, monkeypatch):
+    """Editör: "ses patlamasın". Bağırma/siren gibi aşırı yüksek kaynak ses kısılır, hiçbir tepe -2 dBFS'yi geçmez."""
+    from apps.video_studio.modules import render
+    from apps.video_studio.modules.edit_plan import build_edit_project
+
+    monkeypatch.setattr(render, "amd_encoder_available", lambda: False)
+    source, audio = tmp_path / "dha.mp4", tmp_path / "tts.mp3"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25:duration=12",
+         "-f", "lavfi", "-i", "anoisesrc=color=pink:amplitude=1:duration=12", "-shortest", str(source)],
+        check=True,
+    )
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=4",
+                    "-af", "volume=-8dB", str(audio)], check=True)  # kısık kayıt (~-30 LUFS)
+    lib = library([(0.0, 6.0, "event", "establishing", "Kaza", ""), (6.0, 12.0, "vehicle", "context", "Ambulans", "")], source=str(source))
+    lib["assets"][0]["audio"] = {"codec": "aac"}
+    text = "Kaza oldu. Yaralılar var."
+    project = plan_rough_cut(
+        build_edit_project(lib, text, str(audio), 4.0, {"tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}),
+        lib, soundbites=[bite(1.0, 4.0, "before", path=str(source))],
+    )
+    output = tmp_path / "out.mp4"
+    render.render_rough_cut(project, lib, output)
+
+    def levels(start, seconds):
+        log = subprocess.run(
+            ["ffmpeg", "-ss", str(start), "-t", str(seconds), "-i", str(output), "-af", "volumedetect", "-f", "null", "-"],
+            capture_output=True, text=True,
+        ).stderr
+        return (float(re.search(r"mean_volume: (-?[\d.]+) dB", log).group(1)),
+                float(re.search(r"max_volume: (-?[\d.]+) dB", log).group(1)))
+
+    whole_peak = levels(0, 20)[1]
+    soundbite_mean, voice_mean = levels(0.2, 2.6)[0], levels(3.5, 3.0)[0]
+    assert whole_peak <= -1.5                  # sınırlayıcı: patlama yok (AAC payıyla)
+    assert soundbite_mean < voice_mean         # kaynak ses spikerin altında
+    assert voice_mean > -30                    # kısık gelen seslendirme hedefe yükseltildi
