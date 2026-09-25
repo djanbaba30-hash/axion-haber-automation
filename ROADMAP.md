@@ -115,7 +115,11 @@ kontrolü kaldırmak değil, hızlandırmak.
    - Bilgisayarda Axion varsayılan tarayıcıda (Firefox) açılıyor; Brave'e çevirmek performans kazandırmaz (iş
      sunucuda; editör çoğunlukla tabletten kullanıyor), değiştirilmedi.
    - Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
-   - Seçilenler + dükkân denemesinin notları yapılınca sürüm 4.0.
+   - **Yapıldı (editör isteği, 3.4.1–3.4.2):** 🟢/🔴 güncelleme göstergesi + uygulamadan (tabletten) "Güncelle ve yeniden
+     başlat". Editör sabah bir kez `guncelle.bat` + masaüstü simgesiyle alacak; ilk gerçek uzaktan güncelleme bir
+     sonraki sürümde.
+   - **4.0'dan önce yapılacaklar (editörün onayladığı liste):** (1) günlük/aylık maliyet (g), (2) editörün dükkândaki
+     tablet denemesinin notları. Bunlar bitince sürüm 4.0. İsteğe bağlı sonra: Luna ile sahne düzenleme (i).
 
 Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
 gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)

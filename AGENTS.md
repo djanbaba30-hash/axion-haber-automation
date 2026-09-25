@@ -204,10 +204,15 @@ kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevr
 başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber Stüdyosu 2 çağrı (haber + elle başlık yenileme)
 2.688 girdi (%66'sı önbellekten) / 482 çıktı ≈ $0.0008; görüntü analizi 6 kare (net şerit) 1.995 girdi / 754 çıktı
 ≈ $0.0013. Haber başına toplam ~$0.002.
-Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı. **Sıradaki:** editör yarın dükkânda
-tabletten tam akışı deneyecek (haber → ses → Tarayıcı'dan DHA → video); sonra dükkân notları + ROADMAP "Sıradaki
-işler" 8 (editör yalnız günlük/aylık maliyeti seçti; diğer QoL önerileri istenmedi) yapılır, ardından sürüm 4.0.
-Yeni oturum AGENTS.md + ROADMAP'ten başlar.
+Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı.
+
+**Sıradaki (4.0'dan önce, editörün onayladığı liste; ROADMAP "Sıradaki işler" 8):**
+1. Editör sabah ilk iş `guncelle.bat` + masaüstü simgesi (v3.4.2: gösterge + uygulamadan güncelleme gelsin; 🟢 görmeli).
+2. Editör dükkânda tabletten tam akışı dener (haber → ses → Tarayıcı'dan DHA → video); notlarını getirir → yapılır.
+3. Günlük/aylık toplam maliyet (Geliştirici bilgileri; history.sqlite3 + media_library analiz kayıtları).
+4. Bunlar bitince sürüm 4.0 (CHANGELOG, belgeler). Bir sonraki sürüm yayımlanınca editör tabletten "⬇️ Güncelle ve
+   yeniden başlat"ı ilk kez gerçek dener (Windows'ta bekçinin kod 3 yolu henüz denenmedi; olmazsa evde guncelle.bat).
+İstenmeyenler ve sonraya kalanlar ROADMAP'te (tekrar önerme). Yeni oturum AGENTS.md + ROADMAP'ten başlar.
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
 httpx, tarayıcının çerezleri; `blob:` hâlâ tarayıcıyla). Kurgu: aynı çekimin parçaları kaynak sırasıyla
