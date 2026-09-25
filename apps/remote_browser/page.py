@@ -8,6 +8,7 @@ Ekran önce doğrudan akış kanalıyla (stream.py) taşınır; yoksa bu sayfan�
 
 from __future__ import annotations
 
+import secrets
 from typing import Any
 
 import streamlit as st
@@ -103,10 +104,11 @@ def live() -> None:
     if screen.url in ("", "about:blank") and not ss.get("tarayici_acildi"):
         ss["tarayici_acildi"] = True
         browser.run("goto", HOME)
+    client = ss.setdefault("tarayici_akis_id", secrets.token_hex(8))  # bu oturumun akışı
     browser_view({
         # Akış kanalı açıksa kareler oradan gider; aynı kare Streamlit'ten ikinci kez yollanmaz.
-        "img": None if stream.streaming() else media_url(screen.image, "image/jpeg", "tarayici"),
-        "stream": {"path": stream.PATH, "token": stream.TOKEN},
+        "img": None if stream.streaming(client) else media_url(screen.image, "image/jpeg", "tarayici"),
+        "stream": {"path": stream.PATH, "token": stream.ticket(client)},
         "downloads": browser.download_rows(),
         "password": bool(secret("DHA_SIFRE")) or site_of(screen.url) in dict(logins.sites()),
         "login": browser.login_state(),

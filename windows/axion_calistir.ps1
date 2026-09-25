@@ -1,5 +1,5 @@
 # Axion baslatici bekcisi: Axion'u calistirir, cokerse 5 sn sonra yeniden baslatir (uzaktan kullanirken ise yarar).
-# Yeniden baslatmaz: "Axion'u kapat" (cikis kodu 0) ve guncelle.bat / Stop-Process ile durdurma (kod -1).
+# Yeniden baslatmaz: "Axion'u kapat" (cikis kodu 0), Stop-Process ile durdurma (kod -1) ve guncelle.bat calisirken.
 # 10 dakikada 3 kez cokerse durur (surekli coken bir hata dongusu olmasin). Kayit: data\axion.log
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
@@ -10,6 +10,11 @@ $log = Join-Path $data 'axion.log'
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 if (Test-Path $log) { Move-Item -Force $log (Join-Path $data 'axion.onceki.log') }
 $crashes = @()
+function Test-Updating {
+    $found = Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -and $_.CommandLine -match 'guncelle\.bat' }
+    return [bool]$found
+}
 while ($true) {
     $command = '/c ""' + $python + '" -m streamlit run axion_app.py >> "' + $log + '" 2>&1"'
     # -Wait kullanilmaz: alt surecleri (Brave) de bekler; Axion coker Brave acik kalirsa bekci hic uyanmazdi.
@@ -18,6 +23,8 @@ while ($true) {
     $process.WaitForExit()
     $code = $process.ExitCode
     if ($code -eq 0 -or $code -eq -1) { break }
+    # guncelle.bat calisiyorsa yeniden baslatma (cift tiklayinca komut satiri: cmd.exe /c ""...\guncelle.bat" ").
+    if (Test-Updating) { break }
     $now = Get-Date
     $crashes = @($crashes | Where-Object { ($now - $_).TotalMinutes -lt 10 }) + $now
     if ($crashes.Count -ge 3) {
@@ -26,4 +33,5 @@ while ($true) {
     }
     Add-Content -Path $log -Value "[$now] Axion kapandi (kod $code); 5 sn sonra yeniden baslatiliyor."
     Start-Sleep -Seconds 5
+    if (Test-Updating) { break }  # bu arada guncelleme baslamis olabilir
 }

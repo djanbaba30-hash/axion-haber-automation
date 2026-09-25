@@ -51,9 +51,10 @@ def test_stream_rejects_missing_token(client):
 
 def test_stream_pushes_frames_with_ack_and_applies_only_fast_events(client):
     test_client, fake = client
-    with test_client.websocket_connect(f"{stream.PATH}?t={stream.TOKEN}") as ws:
+    with test_client.websocket_connect(f"{stream.PATH}?t={stream.ticket('tablet1')}") as ws:
         assert ws.receive_bytes() == b"\xff\xd8kare1"
-        assert stream.streaming()  # sayfa aynı kareyi Streamlit'ten ikinci kez yollamaz
+        assert stream.streaming("tablet1")  # sayfa aynı kareyi Streamlit'ten ikinci kez yollamaz
+        assert not stream.streaming("tablet2")  # öteki tabletin yedek görüntüsü kesilmez (GPT v3.2 bulgusu)
         fake.frame, fake.frame_count = b"\xff\xd8kare2", 2
         assert ws.receive_bytes() == b"\xff\xd8kare2"
         ws.send_text(json.dumps({"t": "ack"}))
@@ -64,6 +65,30 @@ def test_stream_pushes_frames_with_ack_and_applies_only_fast_events(client):
             time.sleep(0.01)
     # Yalnız dokunuş/kaydırma/yazı akıştan; giriş kaydı ve adres gibi işler Streamlit yolundan (doğrulamalı) gider.
     assert fake.calls == [("click", (10.0, 20.0))]
+
+
+def test_stream_ticket_is_bound_to_its_session():
+    assert stream._client_of(stream.ticket("a1")) == "a1"
+    forged = stream.ticket("a1").replace("a1.", "b2.")
+    assert stream._client_of(forged) is None and stream._client_of("") is None
+
+
+def test_stream_disconnect_is_a_clean_close(client, caplog):
+    """Tablet kapanınca alıcı görevin istisnası tüketilir; oturumun akış durumu silinir."""
+    test_client, _ = client
+    with test_client.websocket_connect(f"{stream.PATH}?t={stream.ticket('t3')}") as ws:
+        ws.receive_bytes()
+    deadline = time.monotonic() + 3
+    while "t3" in stream._seen and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert "t3" not in stream._seen
+    assert "never retrieved" not in caplog.text
+
+
+def test_watchdog_does_not_restart_during_update():
+    """GPT v3.2 bulgusu: güncelleme sırasında bekçi Axion'u yeniden açmasın (guncelle.bat komut satırı)."""
+    watchdog = (ROOT / "windows" / "axion_calistir.ps1").read_text()
+    assert "guncelle\\.bat" in watchdog and watchdog.count("if (Test-Updating) { break }") == 2
 
 
 def test_launcher_chain_uses_stream_app_and_watchdog():
