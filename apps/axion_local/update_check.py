@@ -90,3 +90,35 @@ def label(value: str | None) -> str | None:
     if value == "var":
         return "🔴 Güncelleme var"
     return None
+
+
+# Yeniden başlatmadan sonra sayfa kendiliğinden yenilensin: Streamlit sunucuya yeniden bağlanır ama sayfayı yeniden
+# çizmez (tablet dokunuş beklerdi). Sunucu kapanıp yeniden açılınca (sağlık adresi) sayfa yenilenir; 2 dk'da olmazsa da.
+RELOAD_JS = """
+export default function () {
+  if (window.__axionYenidenYukle) return;
+  window.__axionYenidenYukle = true;
+  const began = Date.now();
+  let wentDown = false;
+  const check = async () => {
+    let up = false;
+    try { up = (await fetch('/_stcore/health', { cache: 'no-store' })).ok; } catch (e) { up = false; }
+    if (!up) wentDown = true;
+    if ((wentDown && up) || Date.now() - began > 120000) { window.location.reload(); return; }
+    setTimeout(check, 1000);
+  };
+  setTimeout(check, 2000);
+}
+"""
+_reload_component = None
+
+
+def reload_when_back() -> None:
+    import streamlit as st
+    from streamlit.components.v2 import get_bidi_component_manager
+
+    global _reload_component
+    name = "axion_yeniden_yukle"
+    if _reload_component is None or get_bidi_component_manager().get(name) is None:
+        _reload_component = st.components.v2.component(name, html="<span></span>", js=RELOAD_JS)
+    _reload_component(key="axion_yeniden_yukle")

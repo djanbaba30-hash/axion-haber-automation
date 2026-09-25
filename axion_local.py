@@ -128,6 +128,7 @@ def update_controls() -> None:
             st.error(f"Güncelleme olmadı: {error}")
         else:
             st.success("Güncellendi. Axion yeniden başlıyor; yarım dakika içinde sayfa kendiliğinden yenilenir.")
+            update_check.reload_when_back()
             restart_after_update()
     if no.button("Vazgeç", width="stretch", key="axion_update_cancel"):
         st.session_state.axion_confirm_update = False

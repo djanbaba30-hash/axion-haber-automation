@@ -191,8 +191,10 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 ## Nerede kaldık (2026-09-25) — Sürüm 3.4.2
 
 **3.4.1–3.4.2:** kenar çubuğunda güncelleme göstergesi + "⬇️ Güncelle ve yeniden başlat" (editör isteği; tabletten
-de): `update_check.apply_update` (git pull --ff-only) → çıkış kodu 3 → bekçi pip kurar, yeniden başlatır. Windows'ta
-denenmedi (ilk kez guncelle.bat + masaüstü simgesi gerekir).
+de): `update_check.apply_update` (git pull --ff-only) → çıkış kodu 3 → bekçi pip kurar, yeniden başlatır; sayfa
+kendiliğinden yenilenir (`update_check.reload_when_back`). Sandbox'ta uçtan uca denendi; Windows'ta denenmedi. Editörün
+bilgisayarında şu an v3.4.0 (gösterge ve düğme yok): sabah bir kez `guncelle.bat` + masaüstü simgesi gerekir; göstergeyi
+ve düğmeyi ilk kez bir SONRAKİ sürümde görecek.
 
 **3.4.0:** "Sıradaki: v3.4.0" planı yapıldı (aşağıdaki bölüm; ayrıntı CHANGELOG). Kurgu olay örgüsü (aralık bazlı
 kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır

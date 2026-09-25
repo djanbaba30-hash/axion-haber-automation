@@ -9,6 +9,10 @@
   hata metni gösterilir, Axion kapanmaz. Düğme yalnız Axion bekçiyle (masaüstü simgesi) çalışıyorsa görünür
   (`AXION_BEKCI=1`); `sorun_giderme.bat` ile açıldıysa yeniden başlatacak kimse yok.
 - İlk kez: bu sürüm evde `guncelle.bat` ile alınıp Axion masaüstü simgesiyle açılmalı (yeni bekçi çalışsın).
+- Yeniden başlatmadan sonra sayfa kendiliğinden yenilenir (sunucu kapanıp açılınca; 2 dk'da olmazsa da). Streamlit
+  yeniden bağlanıyor ama sayfayı yeniden çizmiyordu (dokunuş bekliyordu).
+- Sandbox'ta uçtan uca denendi (bekçi taklidi + repoda yeni commit + dışarıdan tarayıcı): 🔴 göründü → düğme → onay →
+  yeni sürüm indi → çıkış kodu 3 → yeniden başladı → sayfa 9 sn'de kendiliğinden yenilendi.
 
 # v3.4.1 — Güncelleme göstergesi — 2026-09-25
 
