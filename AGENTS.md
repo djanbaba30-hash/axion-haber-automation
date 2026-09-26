@@ -62,6 +62,8 @@ apps/axion_local/
                                ile çiz (boş veri klasörü); geçmezse bekçi önceki sürüme döner
   corrections.py               Düzeltmelerden öğrenme kaydı (v4.0): model çıktısı ↔ editörün son hâli, sahne/kesit
                                değişiklikleri → data/duzeltmeler.jsonl (silinmez; Geliştirici bilgileri'nden indirilir)
+  status.py, ledger.py         Durum paneli (disk, ElevenLabs kalan karakter [arka planda, 10 dk], FFmpeg) ve maliyet
+                               defteri data/maliyet.jsonl (günlük/aylık; v4.0; Geliştirici bilgileri)
   diagnostics.py               Teşhis dosyası: projenin kurgu JSON'ları + günlüğün sonu tek JSON (Video Stüdyosu → Geliştirici
                                bilgileri → İndir; internete gönderilmez, editör sohbette yollar)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
@@ -206,13 +208,14 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
 | Düzeltme kaydı (v4.0) | `data/duzeltmeler.jsonl` | Silinmez (internete gitmez; editör indirip yollar) |
+| Maliyet defteri (v4.0) | `data/maliyet.jsonl` | Silinmez (çağrı başına ~100 bayt) |
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 | Tarayıcı profili (DHA oturumu, çerezler) | `data/tarayici/` | Silinmez (silinirse DHA'ya yeniden giriş) |
 | Kayıtlı girişler (şifre DPAPI ile şifreli) | `data/tarayici_girisler.json` | Kenar çubuğundan "Sil" ile |
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.5 → sıradaki: alpha.6 (durum paneli + maliyet)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.6 → sıradaki: alpha.7 (yerel yazıya dökme)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -253,8 +256,11 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    gerçek örnekle regresyon testi ekle (kural 5). **Editör kararı (2026-09-26): kayıt token harcamaz ve istemi
    büyütmez** — düzeltirken istem uzamasın (yeni kural = eski/uzun bir kuralı sadeleştir ya da çıkar; öncesi/sonrası
    token say); kayıt çalışma zamanında modele hiç gönderilmez. Testler `tests/test_corrections.py` + AppTest.
-6. `alpha.6` **Durum paneli + günlük/aylık maliyet** (Geliştirici bilgileri): disk, ElevenLabs kalan karakter, FFmpeg
-   ve kodlayıcı; maliyet için silinmeyen özet (projeler 3 günde silinir). Haber başına maliyet zaten görünüyor (v3.6.2).
+6. `alpha.6` **Durum paneli + günlük/aylık maliyet — YAPILDI:** `apps/axion_local/status.py` (`lines`, `render`;
+   ElevenLabs `client.user.subscription.get()` arka plan iş parçacığında, 10 dk önbellek; testlerde conftest engeller)
+   ve `apps/axion_local/ledger.py` (`add` çağrı noktaları: news page haber/başlık/seslendirme metni/ses,
+   video page görüntü analizi, jobs.py sahne [yalnız kaynak "luna"]). Yeni ücretli çağrı eklerken `ledger.add` de
+   çağır. Testler `tests/test_status.py`.
 7. `alpha.7` **Yerel yazıya dökme (Whisper benzeri):** önce gerçek DHA videosuyla Türkçe doğruluk/hız denemesi; kesit
    seçimi metinden; ileride altyazı temeli (altyazı şu an ürün kararı gereği yok). Boyut sorun değil (32 GB RAM).
 Sonra: genel repo taraması → `v4.0.0`.

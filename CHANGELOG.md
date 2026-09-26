@@ -1,3 +1,24 @@
+# v4.0.0-alpha.6 — Durum paneli ve günlük/aylık maliyet — 2026-09-26
+
+## Added
+- **🩺 Durum ve maliyet** (Haber ve Video Stüdyosu → Geliştirici bilgileri; `apps/axion_local/status.py`):
+  - **Disk:** veri klasörünün diskindeki boş alan (10 GB altında ⚠️) ve projelerin kapladığı yer.
+  - **ElevenLabs:** kalan karakter / aylık sınır ve yenilenme günü (%10'un altında ⚠️). Abonelik sorgusu ücretsizdir
+    (karakter harcamaz), 10 dakikada bir, arka planda yapılır: sayfa hiç beklemez, sonuç bir sonraki çizimde görünür;
+    ulaşılamazsa "okunamadı" yazar.
+  - **FFmpeg:** sürüm, AMD donanım kodlayıcısı var mı, FFprobe.
+  - **Bugün / Bu ay:** tahmini toplam yapay zekâ maliyeti, çağrı sayısı, ElevenLabs karakteri ve türlere göre döküm.
+- **Maliyet defteri** (`apps/axion_local/ledger.py` → `data/maliyet.jsonl`; projeler 3 günde silinse de silinmez, çağrı
+  başına ~100 bayt): haber metni (düzeltme çağrısı dahil), başlık yenileme, seslendirme metni yenileme, görüntü
+  analizi, sahne seçimi (yalnız yeni Luna çağrısı; kayıtlı plan ve kurallar ücretsiz) ve ses üretimi (karakter).
+  Maliyetler kullanım sayılarından tahmindir (fiyat tablosu `news_studio/ai/cost.py`). Yazılamazsa iş durmaz.
+
+## Notes
+- Bu sürümden önceki harcamalar defterde yok (toplam bugünden başlar). Haber başına maliyet Video Stüdyosu'nda aynen
+  görünmeye devam ediyor.
+- ElevenLabs sorgusu sandbox'ta denenemedi (ağ kapalı; sahte istemciyle testli). Anahtarın abonelik okuma izni yoksa
+  panel "okunamadı" yazar.
+
 # v4.0.0-alpha.5 — Düzeltmelerden öğrenme kaydı — 2026-09-26
 
 Editör: "benim düzeltmelerimden öğrenme mantıklı" (başlık kalitesi orta, küçük düzeltmeler yapıyor; seslendirme ve

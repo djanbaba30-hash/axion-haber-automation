@@ -144,6 +144,11 @@ def test_headline_regeneration_cost_is_counted(local_env, monkeypatch):
     first = ("SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI", "5 KİŞİ YARALANDI")
     button(at, "↻ Başlıkları yeniden üret").click().run()
     assert calls == [[first], [first, ("YENİ 1", "İKİNCİ")]]
+    # v4.0 maliyet defteri: her yenileme günlük/aylık toplama yazılır; Geliştirici bilgileri'nde durum paneli.
+    from apps.axion_local import ledger
+
+    assert ledger.totals()["gun"]["turler"]["baslik"] == pytest.approx(2 * (50 * 0.20e-6 + 10 * 1.20e-6))
+    assert any(m.value == "**🩺 Durum ve maliyet**" for m in at.markdown)
 
 
 def test_corrections_are_logged_when_saving(local_env, monkeypatch):
@@ -303,6 +308,9 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     at.run()
     saved = json.loads((project.folder / luna_edit.PLAN_FILENAME).read_text(encoding="utf-8"))
     assert len(prompts) == 1 and saved["sahneler"][0]["kaynak_bas"] == 2.0
+    from apps.axion_local import ledger  # v4.0: yeni Luna çağrısı maliyet defterine (kayıtlı plan ücretsiz, yazılmaz)
+
+    assert ledger.totals()["gun"]["turler"] == {"sahne": 0.0}
     clips = [c for t in at.session_state["edit_project"]["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video" for c in t["clips"]]
     # Tek çekim: parçalar kaynak sırasına dizilir (v3.3 kuralı); Luna'nın seçtiği parça videoda (etiketiyle) yer alır.
     assert [c["origin"] for c in clips].count("llm") == 1

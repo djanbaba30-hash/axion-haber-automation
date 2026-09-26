@@ -13,7 +13,8 @@ import streamlit as st
 from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.metrics import timed
 from apps.axion_local.project_picker import project_selector, selected_project
-from apps.axion_local import corrections, diagnostics, update_check
+from apps.axion_local import corrections, diagnostics, ledger, update_check
+from apps.axion_local import status as axion_status
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
@@ -295,6 +296,7 @@ with st.expander(
                         context=news_context(project),
                     )
                     status.update(label="Analiz tamamlandı.", state="complete", expanded=False)
+                    ledger.add("goruntu", usage.get("estimated_cost_usd"))
             except Exception as error:
                 st.error(f"Görüntüler analiz edilemedi: {error}")
             else:
@@ -502,6 +504,7 @@ if media_library:
                 file_name=diagnostics.filename(project.folder), mime="application/json", on_click="ignore",
                 help="Kurgu dosyaları ve günlüğün sonu (video ve ses yok). İnternete gönderilmez; Claude'a/GPT'ye sen yollarsın.",
             )
+        axion_status.render(secret("ELEVENLABS_API_KEY"))
         corrections.download_button(st)
         plan = load_project_json(project, luna_edit.PLAN_FILENAME) if project else None
         if project:  # editör: "yukarıdaki token tüm işlemlerin mi?" — hayır; üç adım ayrı, toplam burada

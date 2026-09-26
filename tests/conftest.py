@@ -35,3 +35,14 @@ def no_luna_edit_calls(monkeypatch):
         raise RuntimeError("testte Luna yok")
 
     monkeypatch.setattr("apps.video_studio.modules.luna_edit.request", offline)
+
+
+@pytest.fixture(autouse=True)
+def no_elevenlabs_status(monkeypatch):
+    """Durum paneli testlerde ElevenLabs'a sorulmaz (ağ yok); paneli kendi testi sahte istemciyle sürer."""
+    from apps.axion_local import status
+
+    query = status._query
+    monkeypatch.setattr(status, "_query", lambda api_key, client=None: {"hata": "testte ElevenLabs yok"}
+                        if client is None else query(api_key, client))
+    status._ELEVENLABS.clear()

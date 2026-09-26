@@ -10,7 +10,7 @@ import streamlit as st
 from elevenlabs.client import ElevenLabs
 from mutagen.mp3 import MP3
 
-from apps.axion_local import corrections
+from apps.axion_local import corrections, ledger, status
 from apps.axion_local.metrics import record, timed
 from apps.axion_local.preferences import load_preferences, persist, remember, save_preferences
 from apps.axion_local.settings import require_secrets, secret
@@ -310,6 +310,7 @@ if process:
                                    "tts": result.tts}
                 ss.regenerations = {}
                 ss.last_usage = total
+                ledger.add("haber", cost.cost_usd(total))  # günlük/aylık toplam (düzeltme çağrısı dahil)
                 cost.touch(data_dir(), total)
                 ss.last_validation = check.errors
                 ss.last_warnings = check.warnings + find_censorship_warnings(result.tts + "\n" + result.icerik)
@@ -363,6 +364,7 @@ if ss.icerik:
             ss.baslik1, ss.baslik2 = headlines.baslik1, headlines.baslik2
             note_model_output("baslik", baslik1=headlines.baslik1, baslik2=headlines.baslik2)
             ss.last_usage = accumulate(ss.last_usage, headline_usage)
+            ledger.add("baslik", cost.cost_usd({**headline_usage, "provider": provider}))
             st.rerun()
         except Exception as exc:  # noqa: BLE001
             st.error(f"Başlıklar üretilemedi: {exc}")
@@ -396,6 +398,7 @@ if ss.icerik:
             note_model_output("seslendirme", tts=composed.tts)
             ss.tts_notes = [n for n in check.errors + check.warnings if "eslendirme" in n or "tts" in n.lower()]
             ss.last_usage = accumulate(ss.last_usage, {**tts_usage, "provider": provider})
+            ledger.add("seslendirme_metni", cost.cost_usd({**tts_usage, "provider": provider}))
             cost.touch(data_dir(), tts_usage)
             st.rerun()
         except Exception as exc:  # noqa: BLE001
@@ -416,6 +419,7 @@ if ss.icerik:
                 with st.spinner("Ses üretiliyor..."), timed("seslendirme", karakter=len(tts_text)):
                     audio, alignment = synthesize(elevenlabs_client(), tts_text, voice_id, speed, stability, similarity,
                                                   style_strength, boost)
+                ledger.add("ses", 0.0, characters=len(tts_text))  # abonelik: karakter sayılır
                 try:
                     duration = float(MP3(io.BytesIO(audio)).info.length)
                 except Exception:  # noqa: BLE001
@@ -482,6 +486,7 @@ if ss.icerik:
     # GELİŞTİRİCİ BİLGİLERİ
     # =================================================
     with st.expander("Geliştirici bilgileri"):
+        status.render(secret("ELEVENLABS_API_KEY"))
         corrections.download_button(st)
         cols = st.columns(4)
         cols[0].metric("Motor", usage.get("provider", "-"))

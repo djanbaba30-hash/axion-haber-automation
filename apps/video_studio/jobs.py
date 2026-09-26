@@ -12,6 +12,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from apps.axion_local import ledger
 from apps.axion_local.metrics import timed
 from apps.axion_local.store import EDIT_PROJECT_FILENAME, ROUGH_CUT_FILENAME, NewsProject, save_project_json
 from apps.design_studio import jobs as design_jobs
@@ -66,6 +67,8 @@ def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict
                 edit_project, job.plan_info = luna_edit.plan(edit_project, media_library, plan.soundbites,
                                                              plan.api_key, project.folder, replan=plan.replan)
                 info["kaynak"] = job.plan_info["kaynak"]
+            if job.plan_info["kaynak"] == "luna":  # yeni Luna çağrısı (kayıtlı plan ve kurallar ücretsiz)
+                ledger.add("sahne", (job.plan_info.get("kullanim") or {}).get("estimated_cost_usd"))
             save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
             job.edit_project = edit_project
             job.stage = "kurgu"
