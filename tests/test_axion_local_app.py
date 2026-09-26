@@ -351,7 +351,7 @@ def test_editor_swaps_one_scene_without_api(local_env, monkeypatch, tmp_path):
     button(at, "🎬 Videoyu oluştur").click().run()
     video_jobs.wait(project)
     at.run()
-    at.toggle(key="scene_swap_open").set_value(True).run()
+    button(at, "🎞️ Sahneleri göster ve değiştir").click().run()
     assert not at.exception
     before = [(c["scene"], c["shot_id"], c["source_in_s"]) for c in video_clips(at.session_state["edit_project"])]
     scene_buttons = [b for b in at.button if b.key and b.key.startswith("sahne_") and b.key != "sahne_vazgec"]
@@ -660,7 +660,8 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
         def transcribe(self, audio, **kwargs):
             parts = [(1.0, 3.2, "Müşterimizin boğazına yemek kaçtı."), (3.6, 5.1, "Hemen fark ettim."),
                      (6.0, 9.4, "Heimlich manevrası uyguladım.")]
-            return (SimpleNamespace(start=a, end=b, text=t) for a, b, t in parts), SimpleNamespace(duration=12.0)
+            return (SimpleNamespace(start=a, end=b, text=t, words=[SimpleNamespace(start=a, end=b, word=" " + t)])
+                    for a, b, t in parts), SimpleNamespace(duration=12.0)
 
     monkeypatch.setattr(transcribe, "_load_model", lambda: FakeWhisper())
     video = local_env / "Downloads" / "roportaj.mp4"
@@ -675,18 +676,19 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
     at.run()
     assert not at.exception
     lines = [b for b in at.button if b.key and b.key.startswith("yazi_")]
-    assert [b.label for b in lines] == ["00:01.0–00:03.2 · Müşterimizin boğazına yemek kaçtı.",
-                                        "00:03.6–00:05.1 · Hemen fark ettim.", "00:06.0–00:09.4 · Heimlich manevrası uyguladım."]
+    # Kelime zamanlarından, biraz önce başlar/sonra biter ama sonraki kelimeye taşmaz (v4.0 editör notu).
+    assert [b.label for b in lines] == ["00:00.9–00:03.5 · Müşterimizin boğazına yemek kaçtı.",
+                                        "00:03.5–00:05.3 · Hemen fark ettim.", "00:05.9–00:09.7 · Heimlich manevrası uyguladım."]
     assert any("yazıya döküldü" in c.value for c in at.caption)
     lines[1].click().run()
-    assert at.select_slider(key="kesit_range").value == ("00:03.6", "00:05.1")
+    assert at.select_slider(key="kesit_range").value == ("00:03.5", "00:05.3")
     next(b for b in at.button if b.key == "yazi_2").click().run()  # ikinci dokunuş: 2. ve 3. cümlenin arası
-    assert at.select_slider(key="kesit_range").value == ("00:03.6", "00:09.4")
+    assert at.select_slider(key="kesit_range").value == ("00:03.5", "00:09.7")
     assert not at.exception and not at.warning
     button(at, "➕ Kesiti ekle").click().run()
     from apps.video_studio.modules.soundbites import SOUNDBITES_FILENAME
 
-    assert [(b["start_s"], b["end_s"]) for b in store.load_project_json(project, SOUNDBITES_FILENAME)] == [(3.6, 9.4)]
+    assert [(b["start_s"], b["end_s"]) for b in store.load_project_json(project, SOUNDBITES_FILENAME)] == [(3.5, 9.7)]
 
 
 def test_fresh_start_selects_nothing_and_hides_previous_days(local_env):

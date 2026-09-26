@@ -111,6 +111,7 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); fotoğraf:
                                EXIF yönü + yavaş yakınlaşma (zoompan, v4.0); ilk kare kapak sahnesi (v4.0); ses: parça
                                başına ölçülmüş sabit kazanç (TTS -18, kesit -20 LUFS), kenar yumuşatma, -2 dBFS sınırlayıcı
+  range_player.py              Kesit oynatıcısı (v4.0, components v2): yalnız seçili aralık oynar, dışarı sarılmaz
   jobs.py                      Videoyu arka planda üretme: sahne seçimi (Luna, PlanRequest) → kaba kurgu → son video (aynı haberin tasarım üretimi önce
                                durdurulur); sayfa saniyede bir durumu yeniler, tablet kapansa da sürer
 
@@ -218,7 +219,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.1 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -270,6 +271,11 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    `tests/test_transcribe.py` + AppTest `test_soundbite_is_picked_from_the_transcript`. **Türkçe doğruluk/hız sandbox'ta
    ölçülemedi (HuggingFace kapalı): editörün bilgisayarında Artvin videosuyla** (DHA 1524777.mp4 + TXT; röportaj
    42–70 sn). Yavaşsa MODEL="small". İleride: müzik altlığının konuşma tespiti (`speech.py`) dökümden alınabilir.
+   **Editör denedi (Artvin, 71 sn video): "kelimeleri ufak hatalar dışında doğru tanıdı".** alpha.7.1: cümleler kelime
+   zamanlarından (`transcribe.sentences`, pay 0,1/0,25 sn, sonraki kelimeye taşmaz), uydurma altyazı kalıpları atılır,
+   özel adlar `hotwords` (`transcribe.hints`, ham haberden), döküm biçimi `VERSION=2`; kesit oynatıcısı
+   `video_studio/range_player.py` (components v2: yalnız aralık, her oynatma baştan, dışarı sarılmaz); sahne bölümü
+   düğmeyle açılır (anahtar tablette açılmıyordu).
 Sonra: genel repo taraması → `v4.0.0`.
 
 **Açık notlar:** editör Axion'u henüz masaüstü simgesiyle yeniden açmadı → geri dönüş bekçisi (v3.5.0) etkin değil

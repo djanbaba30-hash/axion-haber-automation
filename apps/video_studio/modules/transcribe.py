@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -24,6 +25,14 @@ from apps.axion_local.store import data_dir
 MODEL = "large-v3-turbo"
 LANGUAGE = "tr"
 FOLDER = "yazi"
+VERSION = 2  # döküm biçimi (v2: kelime zamanlarından cümleler); değişince eski dökümler yeniden yapılır
+PAD_START, PAD_END = 0.1, 0.25  # kesit cümlenin biraz önce/sonrasından (ilk/son hece kesilmesin)
+NEXT_WORD_MARGIN = 0.08  # ...ama sonraki kelimeye taşmadan (editör: "sonraki kelimenin ortasında bitiyor")
+SENTENCE_GAP = 1.2  # kelimeler arası bu kadar sessizlik varsa yeni cümle
+MAX_SENTENCE = 15.0
+# Whisper'ın sessizlikte uydurduğu (altyazı ekiplerinden öğrendiği) kalıplar: gösterilmez.
+HALLUCINATION = re.compile(r"altyaz[ıi]|abone ol|izlediğiniz için|teşekkürler izlediğiniz", re.IGNORECASE)
+NAME = re.compile(r"[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,}")
 _MODELS: dict[str, Any] = {}
 _LOCK = threading.Lock()  # model tek; iki döküm aynı anda işlemciyi bölmesin
 
@@ -56,7 +65,7 @@ def model_ready() -> bool:
 
 def _key(source: Path) -> str:
     stat = source.stat()
-    return hashlib.sha1(f"{source.name}|{stat.st_size}|{int(stat.st_mtime)}|{MODEL}".encode()).hexdigest()[:16]
+    return hashlib.sha1(f"{source.name}|{stat.st_size}|{int(stat.st_mtime)}|{MODEL}|{VERSION}".encode()).hexdigest()[:16]
 
 
 def _path(folder: Path, source: Path) -> Path:
@@ -81,30 +90,70 @@ def _load_model():
     return _MODELS[MODEL]
 
 
+def hints(text: str, limit: int = 20) -> str:
+    """Haberin metnindeki özel adlar (cümle başı olmayan büyük harfli kelimeler): modele ipucu, "Heimlich" "hemlik"
+    olarak yazılmasın. Cümle başındaki kelimeler (her kelime olabilir) alınmaz."""
+    found: list[str] = []
+    for match in NAME.finditer(text):
+        before = text[:match.start()].rstrip()
+        if not before or before[-1] in ".!?:\"'“”‘’\n" or match.group() in found:
+            continue
+        found.append(match.group())
+    return " ".join(found[:limit])
+
+
+def sentences(words: list[tuple[float, float, str]], duration: float) -> list[dict[str, Any]]:
+    """Kelimelerden cümleler: nokta/soru/ünlemde, uzun sessizlikte ya da 15 sn'de kesilir. Kesit payı: biraz önce başlar,
+    biraz sonra biter ama sonraki kelimeye taşmaz."""
+    groups: list[list[tuple[float, float, str]]] = []
+    for word in words:
+        current = groups[-1] if groups else None
+        if (current is None or current[-1][2].rstrip().endswith((".", "?", "!", "…"))
+                or word[0] - current[-1][1] > SENTENCE_GAP or word[1] - current[0][0] > MAX_SENTENCE):
+            groups.append([word])
+        else:
+            current.append(word)
+    result = []
+    for number, group in enumerate(groups):
+        text = "".join(w[2] for w in group).strip()
+        if not text:
+            continue
+        previous_end = groups[number - 1][-1][1] if number else 0.0
+        next_start = groups[number + 1][0][0] if number + 1 < len(groups) else duration or group[-1][1] + PAD_END
+        start = max(previous_end, group[0][0] - PAD_START, 0.0)
+        end = max(group[-1][1], min(group[-1][1] + PAD_END, next_start - NEXT_WORD_MARGIN))
+        result.append({"bas": round(start, 2), "son": round(min(end, duration or end), 2), "metin": text})
+    return result
+
+
 def transcribe(source: Path, folder: Path, progress: Callable[[float], None] = lambda share: None,
-               model: Any = None) -> dict[str, Any]:
-    """Videonun konuşmasını cümlelere döker ve kaydeder. Sessiz yerler atlanır (VAD); dil Türkçe."""
+               model: Any = None, context: str = "") -> dict[str, Any]:
+    """Videonun konuşmasını cümlelere döker ve kaydeder. Sessiz yerler atlanır (VAD); dil Türkçe; `context` haberin
+    metni (özel adlar ipucu olur)."""
     started = time.monotonic()
     with _LOCK:
         model = model or _load_model()
         segments, info = model.transcribe(str(source), language=LANGUAGE, vad_filter=True, beam_size=5,
-                                          condition_on_previous_text=False)
-        sentences = []
+                                          condition_on_previous_text=False, word_timestamps=True,
+                                          hotwords=hints(context) or None)
+        duration = float(info.duration or 0)
+        words: list[tuple[float, float, str]] = []
         for segment in segments:  # üreteç: döküm ilerledikçe gelir
-            text = segment.text.strip()
-            if text:
-                sentences.append({"bas": round(segment.start, 2), "son": round(segment.end, 2), "metin": text})
-            if info.duration:
-                progress(min(1.0, segment.end / info.duration))
-    result = {"model": MODEL, "sure_sn": round(time.monotonic() - started, 1),
-              "video_sn": round(float(info.duration or 0), 1), "cumleler": sentences}
+            if duration and segment.start >= duration - 0.2 or HALLUCINATION.search(segment.text):
+                continue  # videonun sonundan sonrası ya da sessizlikte uydurulan altyazı kalıbı
+            words += [(w.start, min(w.end, duration or w.end), w.word) for w in (segment.words or [])
+                      if not duration or w.start < duration]
+            if duration:
+                progress(min(1.0, segment.end / duration))
+    result = {"model": MODEL, "surum": VERSION, "sure_sn": round(time.monotonic() - started, 1),
+              "video_sn": round(duration, 1), "cumleler": sentences(words, duration)}
     path = _path(folder, source)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     return result
 
 
-def start(source: Path, folder: Path, model: Any = None) -> Job:
+def start(source: Path, folder: Path, model: Any = None, context: str = "") -> Job:
     """Arka planda döker (zaten sürüyorsa onu döndürür)."""
     key = str(_path(folder, source))
     job = _JOBS.get(key)
@@ -114,7 +163,7 @@ def start(source: Path, folder: Path, model: Any = None) -> Job:
 
     def run() -> None:
         try:
-            transcribe(source, folder, lambda share: setattr(job, "progress", share), model)
+            transcribe(source, folder, lambda share: setattr(job, "progress", share), model, context)
         except Exception as error:  # noqa: BLE001 — model inemedi, ses okunamadı: sayfada gösterilir
             job.error = str(error)[:400]
         finally:

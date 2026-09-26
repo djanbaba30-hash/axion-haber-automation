@@ -23,8 +23,16 @@ class FakeWhisper:
         self.calls.append(kwargs)
         if self.fail:
             raise RuntimeError("model inemedi")
-        parts = (SimpleNamespace(start=s, end=e, text=t) for s, e, t in self.segments)
-        return parts, SimpleNamespace(duration=self.duration)
+        return (segment(*part) for part in self.segments), SimpleNamespace(duration=self.duration)
+
+
+def segment(start, end, text):
+    """Whisper bölümü: kelimeler bölüme eşit dağılır (" kelime" biçiminde, Whisper gibi)."""
+    tokens = text.split()
+    step = (end - start) / max(1, len(tokens))
+    words = [SimpleNamespace(start=start + i * step, end=start + (i + 0.8) * step, word=" " + token)
+             for i, token in enumerate(tokens)]
+    return SimpleNamespace(start=start, end=end, text=text, words=words)
 
 
 SEGMENTS = [(42.1, 46.8, " Geçtiğimiz günlerde müşterimiz yemek yerken boğazına yemek kaçtı."),
@@ -38,18 +46,40 @@ def video(tmp_path, name="1524777.mp4", data=b"mp4"):
     return path
 
 
-def test_transcript_is_saved_turkish_with_vad_and_reused(tmp_path):
+def test_transcript_is_saved_turkish_with_vad_word_times_and_reused(tmp_path):
     source, model, shares = video(tmp_path), FakeWhisper(SEGMENTS), []
-    result = transcribe.transcribe(source, tmp_path / "proje", shares.append, model)
-    assert model.calls[0]["language"] == "tr" and model.calls[0]["vad_filter"] is True
+    news = "Restoran sahibi Muzaffer Yazıcı, Heimlich manevrasıyla kurtardı. Olay Hopa'da oldu."
+    result = transcribe.transcribe(source, tmp_path / "proje", shares.append, model, news)
+    call = model.calls[0]
+    assert call["language"] == "tr" and call["vad_filter"] is True and call["word_timestamps"] is True
+    assert call["hotwords"] == "Muzaffer Yazıcı Heimlich Hopa"  # özel adlar ipucu (cümle başı "Restoran", "Olay" değil)
     assert [s["metin"] for s in result["cumleler"]] == ["Geçtiğimiz günlerde müşterimiz yemek yerken boğazına yemek kaçtı.",
                                                          "Ben de durumu hemen fark ettim.",
                                                          "Daha önce eğitimini aldığım Heimlich manevrasını uyguladım."]
-    assert result["cumleler"][0] == {"bas": 42.1, "son": 46.8, "metin": result["cumleler"][0]["metin"]}
-    assert shares[-1] == pytest.approx(58.9 / 70.7) and result["video_sn"] == 70.7 and result["model"] == transcribe.MODEL
+    first = result["cumleler"][0]
+    assert first["bas"] == 42.0  # ilk kelimeden 0,1 sn önce
+    assert first["son"] <= 47.0 - transcribe.NEXT_WORD_MARGIN  # sonraki cümlenin ilk kelimesine taşmaz
+    assert shares[-1] == pytest.approx(58.9 / 70.7) and result["video_sn"] == 70.7 and result["surum"] == 2
     assert transcribe.load(tmp_path / "proje", source) == result
     source.write_bytes(b"baska video")  # dosya değişti: eski döküm kullanılmaz
     assert transcribe.load(tmp_path / "proje", source) is None
+
+
+def test_sentences_split_on_punctuation_and_silence_with_padding():
+    words = [(1.0, 1.4, " Evet,"), (1.5, 2.0, " çok"), (2.1, 2.6, " korktuk."), (2.7, 3.2, " Polis"), (3.3, 3.9, " geldi"),
+             (6.0, 6.5, " Allah'tan"), (6.6, 7.0, " ölen"), (7.1, 7.4, " yok")]
+    lines = transcribe.sentences(words, 8.0)
+    assert [line["metin"] for line in lines] == ["Evet, çok korktuk.", "Polis geldi", "Allah'tan ölen yok"]
+    assert lines[0] == {"bas": 0.9, "son": 2.62, "metin": "Evet, çok korktuk."}  # sonraki kelime 2,7'de: 2,62'de biter
+    assert lines[1]["son"] == 4.15 and lines[2]["son"] == 7.65  # sessizlik varsa tam pay (0,25 sn)
+    assert transcribe.sentences([(7.9, 8.4, " son")], 8.0)[0]["son"] == 8.0  # videonun sonunu geçmez
+
+
+def test_hallucinated_subtitle_credits_and_words_after_the_end_are_dropped(tmp_path):
+    model = FakeWhisper([(66.9, 69.2, " Kendisine çayını içirdik, uğurladık."), (70.5, 100.5, " Altyazı M.K."),
+                         (60.0, 61.0, " İzlediğiniz için teşekkürler.")], duration=70.7)
+    result = transcribe.transcribe(video(tmp_path), tmp_path / "proje", model=model)
+    assert [s["metin"] for s in result["cumleler"]] == ["Kendisine çayını içirdik, uğurladık."]
 
 
 def test_background_job_reports_progress_and_errors(tmp_path):

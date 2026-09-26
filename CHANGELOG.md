@@ -1,3 +1,27 @@
+# v4.0.0-alpha.7.1 — Yazıya dökme ve kesit oynatıcısı düzeltmeleri — 2026-09-26
+
+Editörün Artvin denemesi (teşhis dosyasıyla): "kelimeleri bazı ufak hatalar dışında doğru tanıdı"; 71 sn'lik video
+bilgisayarında yazıya döküldü. Bulduğu sorunlar bu sürümde.
+
+## Fixed
+- **İlk cümle videonun başından başlıyordu** (00:19,9; konuşma aslında ~42. sn'de) ve **kesit sonraki kelimenin
+  ortasında bitiyordu**: cümle sınırları Whisper'ın kaba bölüm zamanlarından geliyordu. Artık kelime zamanlarından
+  (`word_timestamps`): cümle ilk kelimeden 0,1 sn önce başlar, son kelimeden 0,25 sn sonra biter ama sonraki kelimeye
+  taşmaz (0,08 sn önce kesilir). Cümleler nokta/soru/ünlemde, 1,2 sn'lik sessizlikte ya da 15 sn'de bölünür.
+- **"Altyazı M.K." (01:10–01:40, video 01:10'da bitiyor):** Whisper'ın sessizlikte uydurduğu altyazı kalıbı. Videonun
+  sonundan sonrası ve bilinen kalıplar ("altyazı", "abone ol", "izlediğiniz için") atılır.
+- **Özel adlar:** haberin metnindeki özel adlar (ör. "Muzaffer Yazıcı Heimlich Hopa") modele ipucu olarak gider
+  ("Heimlich" "hemlik" yazılıyordu). Cümle başındaki büyük harfli kelimeler ipucu sayılmaz. Eski dökümler bir kez
+  yeniden yapılır (döküm biçimi v2).
+- **Kesit oynatıcısı** (editör: "kesit seçtiğimde ne olursa olsun videoda yalnız o kesit oynasın"; yeni
+  `video_studio/range_player.py`, `st.video(start_time, end_time)` yerine): yalnız seçili aralık oynar; her oynatma
+  kesitin başından başlar (durdurup aralık içinde elle sarınca oradan sürer), sonunda durup başa döner, aralığın dışına
+  sarılamaz; kaydırıcı ya da cümle değişince video durur ve yeni aralığın başına gider. Altında "Kesit: 00:58,0 –
+  01:01,9 (3,9 sn)". Tarayıcıda denendi (oynatıp bitişte durma, dışarı sarma, durdur-oynat, oynarken aralık değişimi).
+- **"🎞️ Sahneleri göster ve değiştir" tablette açılmıyordu:** küçük anahtar yerine tam genişlikte düğme ("🎞️ Sahneleri
+  gizle" ile kapanır). Sandbox'ta dokunmatik tarayıcıda anahtar açılıyordu; asıl neden bulunamadı, düğme tablette
+  güvenilir (cümle düğmeleri editörün tabletinde çalışıyor).
+
 # v4.0.0-alpha.7 — Yerel yazıya dökme: kesit cümleden seçilir — 2026-09-26
 
 4.0'ın son parçası. Editörün Artvin haberi (DHA 1524777.mp4, 70 sn: güvenlik kamerası + restoran sesi + röportaj) ve

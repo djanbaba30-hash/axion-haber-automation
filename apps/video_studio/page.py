@@ -48,6 +48,7 @@ from apps.video_studio.modules.soundbites import (
     total_seconds,
 )
 from apps.video_studio.modules.video_ingestion import probe_video
+from apps.video_studio.range_player import range_player
 from shared.media_models import MediaLibrary
 
 ANALYSIS_OPTIONS = {
@@ -91,14 +92,17 @@ def render_status(project: NewsProject) -> None:
     status()
 
 
-def news_context(project: NewsProject | None) -> str:
-    """Görüntü analizine haberin özü (başlıklar + seslendirme): açıklamalar haberle ilgili ayrıntıyı anlatsın."""
+def news_context(project: NewsProject | None, source: bool = False) -> str:
+    """Görüntü analizine haberin özü (başlıklar + seslendirme): açıklamalar haberle ilgili ayrıntıyı anlatsın.
+    `source`: yazıya dökmeye ham haber (özel adlar ipucu olur: "Heimlich", kişi adları)."""
     if project is None:
         return ""
     try:
         package = load_news_project(project)[0]
     except Exception:  # noqa: BLE001 — bağlam yoksa analiz yine yapılır
         return ""
+    if source:
+        return package.source_text or package.caption
     return f"{package.headline_1} / {package.headline_2}. {package.tts_text}"
 
 
@@ -154,7 +158,7 @@ def transcript_picker(project: NewsProject, source: Path) -> None:
         elif st.button("📝 Konuşmaları yazıya dök", width="stretch",
                        help="Videodaki konuşmayı bu bilgisayarda yazıya döker (internet ve ücret yok); cümleye dokunarak "
                             "kesit seçersin. İlk seferde dil modeli bir kez iner (~1,6 GB, birkaç dakika)."):
-            transcribe.start(source, project.folder)
+            transcribe.start(source, project.folder, context=news_context(project, source=True))
             st.rerun()
         return
 
@@ -204,10 +208,12 @@ def scene_picker(project: NewsProject, edit_project: dict, media_library: dict, 
     items = scene_swap.scenes(edit_project)
     if not items:
         return
-    # Video yeniden oluşurken bu bölüm çizilmez, Streamlit düğmenin durumunu siler: açık kalsın (art arda değiştirme).
-    ss.scene_swap_keep = st.toggle("🎞️ Sahneleri göster ve değiştir", key="scene_swap_open",
-                                   value=ss.get("scene_swap_keep", False))
-    if not ss.scene_swap_keep:
+    # Tam genişlikte düğme (tablette anahtar düğmesine dokunmak zordu, v4.0); açık kalır, art arda değiştirilebilir.
+    opened = ss.get("scene_swap_keep", False)
+    if st.button("🎞️ Sahneleri gizle" if opened else "🎞️ Sahneleri göster ve değiştir", key="scene_swap_open",
+                 width="stretch"):
+        ss.scene_swap_keep = opened = not opened
+    if not opened:
         ss.pop("swap_scene", None)
         return
     library = MediaLibrary.model_validate(media_library)
@@ -427,7 +433,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
             else:
                 st.caption("Videoda belirgin bir olay anı bulunamadı; aralığı videoyu izleyerek seç.")
             start_s, end_s = seconds_of[start_label], seconds_of[end_label]
-            st.video(str(preview), start_time=int(start_s), end_time=max(int(start_s) + 1, int(end_s + 0.999)))
+            range_player(preview, start_s, end_s, key="kesit_oynatici")  # yalnız seçili aralık oynar (v4.0)
             transcript_picker(project, source)
             placement_col, add_col = st.columns([2, 1], vertical_alignment="bottom")
             placement = placement_col.segmented_control(

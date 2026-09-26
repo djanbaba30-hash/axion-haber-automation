@@ -85,7 +85,8 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      (dikkat çekici an) veya arkasına (röportaj) ekler. Analizden önce de yapılabilir.
      **Videoyu izle ve kesit seç** → aralık kendiliğinden olayın olduğu yerden gelir (ani hareket/ses, ör. çarpma anı;
      "📍 Aralık olayın olduğu yerden seçildi"); bulunamazsa videoyu izleyip seç. Kaydırıcıyla başlangıç ve bitişi ayarla
-     (dakika:saniye, ör. 01:20; oynatıcı o aralığı oynatır) →
+     (dakika:saniye, ör. 01:20; oynatıcı yalnız o aralığı oynatır: her oynatma kesitin başından, sonunda durur,
+     aralığın dışına sarılmaz) →
      **Seslendirmeden önce / sonra** → **Kesiti ekle**. Birden fazla kesit ekleyebilirsin (ör. röportajın iki kısmı);
      eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
      İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
