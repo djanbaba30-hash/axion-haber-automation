@@ -34,3 +34,12 @@ def test_corrupt_file_is_ignored(tmp_path, monkeypatch):
     monkeypatch.setenv("AXION_DATA_DIR", str(tmp_path))
     preferences.preferences_path().write_text("[bozuk", encoding="utf-8")
     assert preferences.load_preferences() == {}
+
+
+def test_retired_style_settings_are_dropped(tmp_path, monkeypatch):
+    """v4.2: üslup seçimi ve örnekleri kalktı; editörün ayar dosyasında kalmaz (çöp bırakma)."""
+    monkeypatch.setenv("AXION_DATA_DIR", str(tmp_path))
+    preferences.preferences_path().write_text('{"speed": 1.0, "news_style": "Mizahi", "news_examples": {}}',
+                                              encoding="utf-8")
+    preferences.persist({"speed": 1.1}, ["speed"])
+    assert preferences.load_preferences() == {"speed": 1.1}

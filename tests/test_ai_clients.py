@@ -86,3 +86,12 @@ def test_regenerated_headlines_see_previous_ones():
     assert "<onceki_basliklar>\n- EŞİNİ VURDU / HAYATİ TEHLİKESİ VAR\n</onceki_basliklar>" in prompt
     assert "başka bir çarpıcı yönünü" in prompt and "tekrar etme" in prompt
     assert fake.calls[0]["instructions"] == HEADLINE_SYSTEM_PROMPT  # sistem komutu (önbellek) değişmez
+
+
+def test_headline_call_carries_the_editor_instruction():
+    """v4.2: editörün talimatı başlık yenilemesine de gider (kullanıcı isteminde; sistem istemi aynı); boşsa hiç yok."""
+    fake = FakeOpenAI(HeadlineOutput(baslik1="a", baslik2="b"))
+    clients.regenerate_headlines(fake, None, "OpenAI", "GPT-5.6 Luna", "içerik", instruction="Yaralı sayısı başlıkta")
+    clients.regenerate_headlines(fake, None, "OpenAI", "GPT-5.6 Luna", "içerik")
+    assert fake.calls[0]["input"].startswith("<editor_talimati>\nYaralı sayısı başlıkta\n</editor_talimati>\n")
+    assert "editor_talimati" not in fake.calls[1]["input"] and fake.calls[0]["instructions"] == HEADLINE_SYSTEM_PROMPT

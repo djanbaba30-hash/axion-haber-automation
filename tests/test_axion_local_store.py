@@ -173,3 +173,23 @@ def test_folder_that_cannot_be_deleted_is_logged_not_reported(tmp_path, monkeypa
         assert store.delete_old_projects(tmp_path, now=datetime(2026, 9, 25, 10, 0)) == []
     assert old.exists()
     assert "silinemedi" in caplog.text and old.name in caplog.text
+
+
+def test_history_style_column_becomes_instruction(tmp_path):
+    """v4.2: üretim geçmişinde eski "style" sütunu "talimat" olur (editörün mevcut veritabanı bozulmaz)."""
+    import sqlite3
+    from types import SimpleNamespace
+
+    from apps.news_studio.integration.history import log_run
+
+    db = tmp_path / "history.sqlite3"
+    with sqlite3.connect(db) as con:
+        con.execute("""CREATE TABLE news_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            provider TEXT, model TEXT, style TEXT, source_chars INTEGER, caption_chars INTEGER, tts_chars INTEGER,
+            usage_json TEXT, validation_json TEXT, headline1 TEXT, headline2 TEXT, caption TEXT, tts TEXT)""")
+    result = SimpleNamespace(baslik1="A", baslik2="B", icerik="C", tts="D")
+    for _ in range(2):
+        log_run(db, raw_text="ham", result=result, usage={}, instruction="Kısa tut", provider="OpenAI", model="m",
+                validation=[])
+    with sqlite3.connect(db) as con:
+        assert [row[0] for row in con.execute("SELECT talimat FROM news_runs")] == ["Kısa tut", "Kısa tut"]

@@ -1,12 +1,12 @@
 SYSTEM_PROMPT = r"""
-Sen Axion Haber'in Baş Editörüsün. Ham haberi seçilen üsluba göre iki başlık,
+Sen Axion Haber'in Baş Editörüsün. Ham haberi iki başlık,
 detaylı caption ve süre hedefli TTS metnine dönüştür. Çıktılar Türkçe sosyal medyada
 (Instagram/TikTok/YouTube Shorts) paylaşılacak; ilk saniyede ilgi çekmeli, doğal okunmalı.
 
 TEMEL ÖNCELİK
 1. Haberin anlaşılması için gereken somut bilgileri koru; bilgi uydurma.
 2. Doğal, akıcı, profesyonel Türkçe kullan.
-3. Seçilen üslubu belirgin uygula.
+3. Editörün talimatı varsa belirgin uygula.
 4. Karakter ve süre kurallarına uy.
 5. Tekrar, dolgu ve yapay ifadeleri çıkar.
 
@@ -19,14 +19,9 @@ resmi açıklama, soruşturma, gözaltı/tutuklama ve sonuç gibi somut bilgiler
 - Görgü tanığının tahminlerini (ör. ölüm olabileceği) kesin bilgi gibi verme;
   yalnızca tanığa atfederek aktar.
 
-ÜSLUPLAR
-- Standart: nötr, dengeli, profesyonel haber dili.
-- Tepkili: çarpıcı yönleri daha vurucu aktar; sansasyon/abartı ekleme.
-- Eleştirel: haberdeki gerçek çelişki, ihmal iddiası veya tepkiyi görünür kıl;
-  kaynakta olmayan suçlama/yorum ekleme.
-- Son Dakika: en güncel ve önemli gelişmeyi ilk bölümde ver; yoğun ve doğrudan yaz.
-- Mizahi: yalnızca uygun olaylarda hafif ironi kullan. Ölüm, ağır yaralanma,
-  çocuk mağduriyeti, cinsel suç ve ağır şiddette ciddi haber diline dön.
+ÜSLUP
+- Varsayılan: objektif, dengeli haber sunucusu edası; viral potansiyeli yüksek ama abartısız.
+- <editor_talimati> varsa üslup, vurgu ve anlatımda ona uy; bilgi, isim/sansür, uzunluk ve süre kurallarını delemez.
 
 BAŞLIKLAR
 - baslik1: olayın nasıl yaşandığını ve etkisini anlat.
@@ -97,27 +92,21 @@ Axion Haber Baş Editörüsün. Verilen caption'a göre iki YENİ başlık üret
 """
 
 
-def build_example_block(style: str, examples: dict[str, str]) -> str:
-    example = examples.get(style, "").strip()
-    if not example:
-        return ""
-    return (
-        "<stil_ornegi>Bu örneği yalnızca seçilen üslubun tonunu anlamak için kullan. "
-        "Olay bilgilerini veya ifadeleri kopyalama.\n" + example + "</stil_ornegi>"
-    )
+def instruction_block(instruction: str) -> str:
+    """Editörün serbest talimatı (v4.2; üslup, vurgu, basit istekler). Boşsa hiçbir şey eklenmez: varsayılan üslup."""
+    instruction = instruction.strip()
+    return f"<editor_talimati>\n{instruction}\n</editor_talimati>\n" if instruction else ""
 
 
-def build_news_prompt(style, duration_label, duration_range, tts_min, tts_target, tts_max, raw_text, speed, examples):
+def build_news_prompt(duration_label, duration_range, tts_min, tts_target, tts_max, raw_text, speed, instruction=""):
     return f"""
 <ayarlar>
-<uslup>{style}</uslup>
 <tts_sure>{duration_label}</tts_sure>
 <tts_tahmini_karakter>{tts_min}-{tts_max}</tts_tahmini_karakter>
 <tts_hedef_karakter>{tts_target}</tts_hedef_karakter>
 <tts_speed>{speed:.2f}</tts_speed>
 </ayarlar>
-{build_example_block(style, examples)}
-<tts_talimat>
+{instruction_block(instruction)}<tts_talimat>
 Hedef süre yaklaşık {duration_range[0]:g}-{duration_range[1]:g} saniyedir.
 Tahmini karakter aralığı {tts_min}-{tts_max}; merkez hedef yaklaşık {tts_target}.
 Bu bir üst sınırdır: kullanılmamış yeni bilgi varsa ekle, yoksa kısa bitir; tekrar veya dolgu ekleme.
@@ -130,16 +119,16 @@ Caption detaylı, TTS daha kısa olsun.
 """
 
 
-def build_correction_prompt(style, duration_label, tts_min, tts_target, tts_max, raw_text, current_result, errors):
+def build_correction_prompt(duration_label, tts_min, tts_target, tts_max, raw_text, current_result, errors,
+                            instruction=""):
     error_lines = "".join(f"\n- {e}" for e in errors)
     return f"""
 <duzeltme>
 Mevcut çıktıyı yalnızca aşağıdaki kalite kontrol sorunlarını gidererek düzelt.
-Yeni bilgi uydurma. Haber bilgisini koru. Seçilen üslubu koru. Sorun olmayan alanları mümkün olduğunca değiştirme.
+Yeni bilgi uydurma. Haber bilgisini ve üslubu koru. Sorun olmayan alanları mümkün olduğunca değiştirme.
 TTS'i uzatman gerekiyorsa yalnızca kullanılmamış yeni bilgi ekle; tekrar veya dolgu ekleme.
 </duzeltme>
-<uslup>{style}</uslup>
-<tts_sure>{duration_label}</tts_sure>
+{instruction_block(instruction)}<tts_sure>{duration_label}</tts_sure>
 <tts_karakter_hedefi>{tts_min}-{tts_max}; merkez {tts_target}</tts_karakter_hedefi>
 <kontrol_sorunlari>{error_lines}</kontrol_sorunlari>
 <ham_haber>{raw_text}</ham_haber>

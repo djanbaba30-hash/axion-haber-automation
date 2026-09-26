@@ -1,3 +1,23 @@
+# v4.2.0-alpha.1 — Üslup seçimi yerine editörün talimatı — 2026-09-26
+
+ROADMAP "v4.2 planı" 1. madde; editörün isteğiyle v4.1'in 2. maddesinden hemen sonra (v4.1'in 3–8. maddeleri sürüyor).
+Editör: "Haber üslubu özelliğinin bir işe yaradığını görmedim; üslup örneği de fazladan token." Yeni çağrı yok.
+
+## Added
+- **Talimat kutusu** ("Haberi işle"nin yanında, tek satır): editör üslubu ve basit istekleri kendi cümlesiyle yazar.
+  İstemin kullanıcı kısmına `<editor_talimati>` olarak gider (sistem istemi aynı kalır, önbellek bozulmaz);
+  kalite düzeltme çağrısı, başlık yenileme ve seslendirme yenileme de alır. Talimat kuralları delemez (bilgi,
+  isim/sansür, uzunluk, süre). Boşsa istemde hiç yer tutmaz; varsayılan objektif haber sunucusu edası. Her yeni
+  haberde ("Yeni haber", TXT/Tarayıcı'dan aktarma) boş gelir (editör kararı). Projeye (`metadata.talimat`), düzeltme
+  kaydına ve üretim geçmişine yazılır.
+
+## Removed
+- Kenar çubuğundaki "Üslup" seçimi ve "Üslup örnekleri" bölümü; sistem istemindeki ÜSLUPLAR bloğu (5 üslup) ve
+  örnek bloğu. Sistem istemi 5.229 → 4.950 karakter (730 → 688 kelime; tokenleştirici sandbox'ta inmedi, karakterden
+  tahmin ~%5 az token); haber isteği `<uslup>` satırı kadar kısaldı (613 → 571 karakter, talimat boşken).
+- Ayar dosyasındaki `news_style`/`news_examples` bir sonraki kayıtta silinir; üretim geçmişinin `style` sütunu
+  `talimat` olur.
+
 # v4.1.0-alpha.2 — Haberdeki alıntıdan kesit önerisi — 2026-09-26
 
 v4.1 planının 2. maddesi (ROADMAP). Veri: düzeltme kaydında 7/7 kesitte önerilen başlangıç (olay anı) ~15 sn ileri

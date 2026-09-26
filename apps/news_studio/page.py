@@ -12,7 +12,7 @@ from mutagen.mp3 import MP3
 
 from apps.axion_local import corrections, ledger, status
 from apps.axion_local.metrics import record, timed
-from apps.axion_local.preferences import load_preferences, persist, remember, save_preferences
+from apps.axion_local.preferences import persist, remember
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     NEWS_IMPORT_KEY,
@@ -53,12 +53,10 @@ VIDEO_PAGE = "apps/video_studio/page.py"
 
 st.set_page_config(page_title="Haber Stüdyosu · Axion", page_icon="📰", layout="wide")
 
-STYLES = ["Standart (Ana Haber) Dili", "Tepkili Haber Dili", "Eleştirel Haber Dili", "Son Dakika Dili", "Mizahi Haber Dili"]
-EXAMPLES_KEY = "news_examples"  # üslup örnekleri de hatırlanır (data/ayarlar.json)
 THINKING_LEVELS = ["Kapalı (Tasarruflu)", "Düşük", "Orta", "Yüksek"]
 PROVIDERS = ["OpenAI", "Claude"]
 PREFERENCES = {
-    "news_style": STYLES[0], "duration_label": list(TTS_DURATION_PRESETS)[2],
+    "duration_label": list(TTS_DURATION_PRESETS)[2],
     "ai_provider": "OpenAI", "openai_model": list(OPENAI_MODELS)[0], "thinking": THINKING_LEVELS[0], "voice_name": "",
     "speed": 1.11, "stability": 0.50, "similarity": 0.65, "style_strength": 0.10, "boost": True,
 }
@@ -89,11 +87,9 @@ def bound_text(widget, label: str, field: str, **kwargs) -> str:
 
 
 def init_state() -> None:
-    saved_examples = load_preferences().get(EXAMPLES_KEY)
-    examples = {name: str((saved_examples or {}).get(name, "")) for name in STYLES}
     defaults = {
-        "baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "raw_text": "",
-        "examples": examples, "last_usage": None, "last_validation": [], "last_warnings": [],
+        "baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "raw_text": "", "talimat": "",
+        "last_usage": None, "last_validation": [], "last_warnings": [],
         "last_correction_reason": "", "last_correction_diff": {}, "tts_calibration": load_calibration(), **AUDIO_STATE,
     }
     for key, value in defaults.items():
@@ -142,7 +138,7 @@ def cache_status(provider: str, model_id: str) -> None:
 
 
 def reset_state() -> None:
-    keep = {"examples", "tts_calibration", *PREFERENCES}
+    keep = {"tts_calibration", *PREFERENCES}
     for key in list(ss.keys()):
         if key not in keep:
             del ss[key]
@@ -174,7 +170,7 @@ def start_from_text(text: str) -> None:
     """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
     ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
                "headline_history": [], "tts_notes": [], "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
-               "raw_text": text, "model_output": None, "regenerations": {}})
+               "raw_text": text, "talimat": "", "model_output": None, "regenerations": {}})
     for key in ("active_news_project", "loaded_news_project", "active_news_source"):
         ss.pop(key, None)
 
@@ -187,7 +183,7 @@ if ss.get(NEWS_IMPORT_KEY) is not None:  # Tarayıcı'daki "📰 Haber Stüdyosu
 # =================================================
 # KENAR ÇUBUĞU: AYARLAR (son kullanılan değerler hatırlanır)
 # =================================================
-remember(ss, PREFERENCES, {"news_style": STYLES, "duration_label": list(TTS_DURATION_PRESETS), "ai_provider": PROVIDERS,
+remember(ss, PREFERENCES, {"duration_label": list(TTS_DURATION_PRESETS), "ai_provider": PROVIDERS,
                            "openai_model": list(OPENAI_MODELS), "thinking": THINKING_LEVELS})
 voices_error = ""
 try:
@@ -199,7 +195,6 @@ if names and ss.voice_name not in names:
     ss.voice_name = next((n for n in names if "Cavit" in n and "Presenter" in n), next((n for n in names if "Cavit" in n), names[0]))
 
 with st.sidebar:
-    style = st.selectbox("Üslup", STYLES, key="news_style", filter_mode=None)
     duration_label = st.selectbox("Seslendirme süresi", list(TTS_DURATION_PRESETS), key="duration_label",
                                   filter_mode=None)
     duration_range = TTS_DURATION_PRESETS[duration_label]
@@ -233,12 +228,6 @@ with st.sidebar:
                      label_visibility="collapsed", placeholder="Heimlich = Haymlih")
         if ss.get("okunus_hatali"):
             st.warning("Anlaşılmayan satır (kaydedilmedi; `yazılış = okunuş` olmalı): " + " · ".join(ss.okunus_hatali[:3]))
-    with st.expander("Üslup örnekleri"):
-        st.caption("İsteğe bağlı: seçilen üslup için örnek bir haber metni. Model yalnızca tonu örnek alır. Hatırlanır.")
-        for name in STYLES:
-            ss.examples[name] = st.text_area(name, value=ss.examples[name], height=90, key="ex_" + name)
-    if ss.examples != load_preferences().get(EXAMPLES_KEY, dict.fromkeys(STYLES, "")):
-        save_preferences({**load_preferences(), EXAMPLES_KEY: ss.examples})
     tts_min, tts_target, tts_max, cps = estimate(ss.tts_calibration, voice_id or "default", speed, duration_range)
     if st.button("Yeni haber", width="stretch", help="Ekrandaki haberi temizler; kayıtlı projeler silinmez."):
         reset_state()
@@ -267,7 +256,13 @@ if len(raw) > 7000:
 
 # Ekranda haber varken yeniden işlemek editörün düzeltmelerini siler: önce onay (editör, v3.6.3: tablette seslendirmeyi
 # düzeltirken dokunuş bu düğmeye gelmiş, haber baştan üretilmişti).
-process = st.button("Haberi işle", type="primary", width="stretch")
+# v4.2: üslup seçimi yerine editörün serbest talimatı (üslup, vurgu, basit istekler); her yeni haberde boş gelir,
+# boşsa standart haber. Talimat istemin kullanıcı kısmına gider (sistem istemi önbellekte kalır).
+note_col, process_col = st.columns([3, 1], vertical_alignment="bottom")
+with note_col:
+    bound_text(st.text_input, "Talimat", "talimat", label_visibility="collapsed",
+               placeholder="Talimat (isteğe bağlı): üslup, vurgu… Boşsa standart haber.")
+process = process_col.button("Haberi işle", type="primary", width="stretch")
 if process and ss.get("icerik") and not ss.get("confirm_reprocess"):
     ss.confirm_reprocess, process = True, False
 if ss.get("confirm_reprocess"):
@@ -283,7 +278,7 @@ if process:
     if not raw:
         st.error("Önce ham haber metnini yapıştır.")
     else:
-        prompt = build_news_prompt(style, duration_label, duration_range, tts_min, tts_target, tts_max, raw, speed, ss.examples)
+        prompt = build_news_prompt(duration_label, duration_range, tts_min, tts_target, tts_max, raw, speed, ss.talimat)
         with st.spinner("Haber hazırlanıyor..."):
             try:
                 timer = time.monotonic()
@@ -297,7 +292,8 @@ if process:
                     correction_reason = " | ".join(check.errors)
                     try:
                         headlines, headline_usage = regenerate_headlines(
-                            openai_client(), anthropic_client(), provider, openai_model, result.icerik, correction_reason)
+                            openai_client(), anthropic_client(), provider, openai_model, result.icerik, correction_reason,
+                            instruction=ss.talimat)
                         total = accumulate(total, headline_usage)
                         # Yalnız hatalı başlık değişir; geçerli başlık korunur. Tek deneme, döngü yok.
                         corrected = result.model_copy(update={
@@ -309,7 +305,8 @@ if process:
                         st.warning(f"Başlık düzeltme çağrısı başarısız; ilk sonuç korunuyor: {exc}")
                 elif check.errors:  # tek düzeltme çağrısı (düşük düşünme); daha az hatalıysa o alınır
                     correction_reason = " | ".join(check.errors)
-                    correction = build_correction_prompt(style, duration_label, tts_min, tts_target, tts_max, raw, result, check.errors)
+                    correction = build_correction_prompt(duration_label, tts_min, tts_target, tts_max, raw, result,
+                                                         check.errors, ss.talimat)
                     try:
                         corrected, correction_usage = generate(openai_client(), anthropic_client(), provider, openai_model,
                                                                correction, "Düşük", CORRECTION_MAX_TOKENS)
@@ -337,7 +334,7 @@ if process:
                 ss.last_correction_diff = changed_fields(first, {name: getattr(result, name) for name in fields})
                 record("haber_yazimi", time.monotonic() - timer, model=total.get("model"), duzeltme=bool(correction_reason),
                        cagri=total.get("requests"))
-                log_run(HISTORY_DB_PATH, raw_text=raw, result=result, usage=total, style=style, provider=provider,
+                log_run(HISTORY_DB_PATH, raw_text=raw, result=result, usage=total, instruction=ss.talimat, provider=provider,
                         model=total.get("model", ""), validation=check.errors)
                 st.rerun()
             except Exception as exc:  # noqa: BLE001
@@ -376,7 +373,7 @@ if ss.icerik:
             shown = [pair for pair in ss.get("headline_history", []) if pair != (ss.baslik1, ss.baslik2)]
             shown = (shown + [(ss.baslik1, ss.baslik2)])[-4:]
             headlines, headline_usage = regenerate_headlines(openai_client(), anthropic_client(), provider, openai_model,
-                                                             ss.icerik, previous=shown)
+                                                             ss.icerik, previous=shown, instruction=ss.talimat)
             ss.headline_history = shown
             ss.baslik1, ss.baslik2 = headlines.baslik1, headlines.baslik2
             note_model_output("baslik", baslik1=headlines.baslik1, baslik2=headlines.baslik2)
@@ -403,8 +400,8 @@ if ss.icerik:
                         "çağrısı; önceki metin \"beğenilmedi\" diye gider."):
         try:
             with st.spinner("Seslendirme metni yeniden yazılıyor..."):
-                prompt = build_news_prompt(style, duration_label, duration_range, tts_min, tts_target, tts_max, raw, speed,
-                                           ss.examples)
+                prompt = build_news_prompt(duration_label, duration_range, tts_min, tts_target, tts_max, raw, speed,
+                                           ss.talimat)
                 output, tts_usage = regenerate_tts(openai_client(), anthropic_client(), provider, openai_model, prompt,
                                                    thinking, ss.tts_metni)
             # Aynı temizlik ve kontroller (okunuş, plaka, sivil isim, uzunluk); yalnız seslendirmeyle ilgili notlar gösterilir.
@@ -482,7 +479,7 @@ if ss.icerik:
             provider=usage.get("provider", ""), model=usage.get("model", ""), tts_duration_target=duration_label,
             tts_actual_duration_seconds=ss.last_audio_duration, tts_voice_id=voice_id or "", tts_speed=speed,
             tts_alignment=ss.last_audio_alignment if ss.last_audio_bytes else None,
-            metadata={"style": style, "usage": {**usage, "estimated_cost_usd": cost.cost_usd(usage)} if usage else usage,
+            metadata={"talimat": ss.talimat.strip(), "usage": {**usage, "estimated_cost_usd": cost.cost_usd(usage)} if usage else usage,
                       "tts_characters": ss.tts_characters},
         )
         go_col, save_col = st.columns([3, 1])
@@ -494,7 +491,7 @@ if ss.icerik:
                 final = {"baslik1": ss.baslik1, "baslik2": ss.baslik2, "icerik": ss.icerik, "tts": ss.tts_metni}
                 rejected = [list(pair) for pair in ss.get("headline_history", []) if pair != (ss.baslik1, ss.baslik2)]
                 corrections.news(folder.name, ss.get("model_output"), final, raw, {
-                    "saglayici": usage.get("provider", ""), "model": usage.get("model", ""), "uslup": style,
+                    "saglayici": usage.get("provider", ""), "model": usage.get("model", ""), "talimat": ss.talimat.strip(),
                     "yeniden_uretim": ss.get("regenerations") or {}, "reddedilen_basliklar": rejected})
                 ss.active_news_project = folder.name
                 ss.active_news_source = raw

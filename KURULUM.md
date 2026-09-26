@@ -57,7 +57,11 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
 ### Haberden videoya akış
 
 1. **Haber Stüdyosu:** Ham haberi yapıştır (ya da üstteki **📄 İndirilenler'deki haber metni** → DHA'dan indirdiğin TXT →
-   **Aktar**) → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
+   **Aktar**) → istersen **Haberi işle**'nin yanındaki kutuya talimat yaz → **Haberi işle** → başlıkları, paylaşım metnini ve seslendirme metnini kontrol et → **Seslendir**.
+   - **Talimat** (isteğe bağlı): üslubu ve vurguyu kendi cümlenle söyle ("tepkili anlat", "ailenin sözlerini öne
+     çıkar", "yaralı sayısını başlığa koyma"). Başlıklara, paylaşım metnine, seslendirmeye ve yeniden üretimlere
+     uygulanır; kuralları (bilgi uydurmama, isim baş harfleri, başlık uzunluğu, süre) değiştirmez. Boş bırakırsan
+     objektif, standart haber dili. Her yeni haberde boş gelir.
    Kontrolü hızlandıranlar:
    - **🟡 Kaynakta yok:** çıktıda olup ham haberde geçmeyen sayı ve isimler (yapay zekâ uydurmuş ya da farklı yazmış
      olabilir; "iki" ↔ "2" gibi yazım farkları da çıkabilir).
@@ -265,7 +269,7 @@ düğmesi ve güncelleme yeniden başlatmaz. 10 dakikada 3 kez çökerse durur; 
 ## 7. Verilerin yeri
 
 - Projeler (haber, seslendirme, görüntü analizi, kesitler, kurgu ve video): `C:\Axion\data\projects\` — 3 günden eski projeler otomatik silinir.
-- Seslendirme hız ayarı (kalibrasyon), üretim geçmişi ve ayarlar (üslup örnekleri dahil): `C:\Axion\data\`
+- Seslendirme hız ayarı (kalibrasyon), üretim geçmişi ve ayarlar (okunuş sözlüğü dahil): `C:\Axion\data\`
 - Adım süreleri (geliştirici için; haber yazımı, seslendirme, analiz, kurgu, son video): `C:\Axion\data\olcumler.jsonl`
 - Tarayıcı sayfasının profili (DHA oturumu): `C:\Axion\data\tarayici\`; kayıtlı girişler (şifreli):
   `C:\Axion\data\tarayici_girisler.json`. Silersen DHA'ya yeniden giriş yaparsın.

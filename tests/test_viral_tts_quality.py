@@ -117,12 +117,26 @@ def test_prompt_editor_rules_2026_09():
 
 
 def test_user_prompts_no_longer_push_to_fill_length():
-    prompt = build_news_prompt("Standart", "25–26 saniye", (25, 26), 381, 389, 396, "ham", 1.11, {})
+    prompt = build_news_prompt("25–26 saniye", (25, 26), 381, 389, 396, "ham", 1.11)
     assert "hemen bitirme" not in prompt
     assert "natural" not in prompt
     assert "üst sınırdır" in prompt
-    correction = build_correction_prompt("Standart", "25–26", 381, 389, 396, "ham", output("t"), ["hata"])
+    correction = build_correction_prompt("25–26", 381, 389, 396, "ham", output("t"), ["hata"])
     assert "tekrar veya dolgu ekleme" in correction
+
+
+def test_editor_instruction_replaces_style_menu():
+    """v4.2.0-alpha.1 (editör: "üslup seçimi bir işe yaramadı"): sistem isteminde üslup menüsü yok, varsayılan objektif
+    haber sunucusu; editörün talimatı yalnız yazıldıysa kullanıcı istemine (ve düzeltme çağrısına) gider."""
+    assert "ÜSLUPLAR" not in SYSTEM_PROMPT and "Mizahi" not in SYSTEM_PROMPT and "seçilen üslub" not in SYSTEM_PROMPT
+    assert "objektif" in SYSTEM_PROMPT and "<editor_talimati>" in SYSTEM_PROMPT and "delemez" in SYSTEM_PROMPT
+    plain = build_news_prompt("25–26 saniye", (25, 26), 381, 389, 396, KAYSERI_TTS, 1.11, "  ")
+    assert "editor_talimati" not in plain and "uslup" not in plain
+    asked = build_news_prompt("25–26 saniye", (25, 26), 381, 389, 396, KAYSERI_TTS, 1.11, "Ailenin acısını öne çıkar")
+    assert "<editor_talimati>\nAilenin acısını öne çıkar\n</editor_talimati>" in asked
+    assert asked.index("editor_talimati") < asked.index("<ham_haber>")
+    correction = build_correction_prompt("25–26", 381, 389, 396, KAYSERI_TTS, output("t"), ["hata"], "Kısa tut")
+    assert "<editor_talimati>\nKısa tut\n</editor_talimati>" in correction
 
 
 # Kayseri haberi (Windows testi): ElevenLabs "18.00'de" gibi saatleri okuyamıyor; spiker "akşam 6'da" demeli.

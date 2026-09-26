@@ -127,7 +127,8 @@ tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 
 ## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — ONAYLANDI (editör, 2026-09-26)
 
-Durum: 1. ve 2. madde yapıldı (`v4.1.0-alpha.1`, `alpha.2`; editör denemesi bekleniyor); sıradaki **3. madde**. Biten maddeyi burada
+Durum: 1. ve 2. madde yapıldı (`v4.1.0-alpha.1`, `alpha.2`; editör denemesi bekleniyor); araya editörün isteğiyle
+v4.2'nin 1. maddesi girdi (`v4.2.0-alpha.1`); sıradaki **3. madde**. Biten maddeyi burada
 "— YAPILDI (sürüm)" diye işaretle.
 
 Sıra, bağımlılığa göre: önce altyapı kararını etkilemeyen küçük işler, sonra büyük kararlar için araştırma (kod yok),
@@ -166,7 +167,7 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
 
 ## v4.2 planı (editörün isteği, 2026-09-26) — 1. madde v4.1'in 2. maddesinden hemen sonra (editör)
 
-1. **Üslup seçimi yerine editörün serbest talimatı** (editör: "Haber üslubu özelliğinin bir işe yaradığını görmedim;
+1. — YAPILDI (`v4.2.0-alpha.1`; editör gerçek haberle deneyecek) **Üslup seçimi yerine editörün serbest talimatı** (editör: "Haber üslubu özelliğinin bir işe yaradığını görmedim;
    üslup örneği de fazladan token"). Ham haberin yanında, fazladan yer kaplamayan kompakt bir metin kutusu
    (sayfadaki boş bir yere; ör. "Haberi işle" satırında): editör üslubu ve basit başka talimatları yazar
    ("daha sert başlık", "ailenin tepkisini öne çıkar", "yaralı sayısını başlığa koyma" gibi); model içeriği

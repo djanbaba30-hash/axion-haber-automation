@@ -14,7 +14,7 @@ from openai import OpenAI
 
 from ..config import AI_TIMEOUT_SECONDS, CLAUDE_MODEL, OPENAI_MODELS
 from ..models.news import HeadlineOutput, NewsOutput, TtsOutput
-from ..prompts.news import HEADLINE_SYSTEM_PROMPT, SYSTEM_PROMPT
+from ..prompts.news import HEADLINE_SYSTEM_PROMPT, SYSTEM_PROMPT, instruction_block
 from ..validation.news import turkish_upper
 from .retry import retry_transient
 
@@ -118,11 +118,13 @@ def generate(client_openai, client_claude, provider: str, model_name: str, promp
 
 
 def regenerate_headlines(client_openai, client_claude, provider: str, model_name: str, content: str,
-                         problems: str = "", previous: list[tuple[str, str]] | tuple = ()) -> tuple[HeadlineOutput, dict[str, Any]]:
+                         problems: str = "", previous: list[tuple[str, str]] | tuple = (),
+                         instruction: str = "") -> tuple[HeadlineOutput, dict[str, Any]]:
     """Yalnız iki başlık (küçük, düşünmesiz çağrı); büyük harfe Türkçe kurallarıyla çevrilir. `problems`: önceki
     başlıkların hatası (haber işlenirken başlık sığmadıysa tam düzeltme yerine bu çağrı yapılır). `previous`: editörün
-    beğenmeyip yeniden ürettiği başlık çiftleri (farklı açıdan yazılsın diye)."""
-    prompt = HEADLINE_REQUEST.format(content=content)
+    beğenmeyip yeniden ürettiği başlık çiftleri (farklı açıdan yazılsın diye). `instruction`: editörün talimatı (v4.2;
+    başlık kurallarını delmeden)."""
+    prompt = instruction_block(instruction) + HEADLINE_REQUEST.format(content=content)
     pairs = [pair for pair in previous if any(part.strip() for part in pair)]
     if pairs:
         prompt += HEADLINE_RETRY.format(previous="\n".join(f"- {a} / {b}" for a, b in pairs))

@@ -8,6 +8,7 @@ from typing import Any
 from .store import data_dir
 
 PREFERENCES_FILENAME = "ayarlar.json"
+RETIRED = ("news_style", "news_examples")  # v4.2: üslup seçimi ve örnekleri kalktı (editörün talimatı); dosyadan silinir
 
 
 def preferences_path():
@@ -23,6 +24,7 @@ def load_preferences() -> dict[str, Any]:
 
 
 def save_preferences(preferences: dict[str, Any]) -> None:
+    preferences = {key: value for key, value in preferences.items() if key not in RETIRED}
     path = preferences_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(preferences, ensure_ascii=False, indent=2), encoding="utf-8")

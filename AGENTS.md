@@ -29,7 +29,8 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
    kullanma: "seslendirme metni" (TTS değil), "paylaşım metni" (caption değil), "sahne" (shot değil), "Video Stüdyosu".
 10. **Arayüz sade kalır:** editörün görmesi gerekmeyen bilgi (token, maliyet, sahne tablosu, JSON, dosya yolları)
     sadece "Geliştirici bilgileri" altında; nadir değişen ayarlar kapalı bölümlerde. Sık kullanılan ayarlar
-    (üslup, süre, yapay zekâ, model, düşünme seviyesi, spiker) kenar çubuğunda hep görünür ve hatırlanır.
+    (süre, yapay zekâ, model, düşünme seviyesi, spiker) kenar çubuğunda hep görünür ve hatırlanır. Editörün haber
+    talimatı (v4.2) "Haberi işle"nin yanında; her yeni haberde boş gelir.
     Video Stüdyosu adım adım ilerler: her adım bir expander; biten adım "✅ …" özet satırına daralır.
 11. **Kullanım limitini ve bağlamı idareli kullan; iş yarım kalmasın.** Büyük dosyaları bütün okuma, gereken kısmı oku;
     uzun çıktıları kısalt. Uzun işleri küçük, testleri geçen commit'lere böl. Limit ya da bağlam dolmak üzereyse yeni
@@ -72,14 +73,16 @@ apps/axion_local/
                                defteri data/maliyet.jsonl (günlük/aylık; v4.0; Geliştirici bilgileri)
   diagnostics.py               Teşhis dosyası: projenin kurgu JSON'ları + günlüğün sonu tek JSON (Video Stüdyosu → Geliştirici
                                bilgileri → İndir; internete gönderilmez, editör sohbette yollar)
-  preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
+  preferences.py               Son kullanılan ayarlar (süre, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
                                İndirilenler'deki TXT'ler (DHA "TXT indir" → Haber Stüdyosu)
   project_picker.py            Video/Tasarım stüdyosunun ortak haber seçicisi (taze açılışta boş, "Önceki günler")
 
 apps/news_studio/              HABER STÜDYOSU
-  page.py                      Sayfa: ham haber → başlıklar/paylaşım metni/seslendirme metni → ses → "Kaydet ve Video Stüdyosu'na geç"
-  prompts/news.py              Sistem prompt'u (viral Türkçe sosyal medya kuralları)
+  page.py                      Sayfa: ham haber (+ editörün talimatı, v4.2) → başlıklar/paylaşım metni/seslendirme metni → ses
+                               → "Kaydet ve Video Stüdyosu'na geç"
+  prompts/news.py              Sistem prompt'u (viral Türkçe sosyal medya kuralları; varsayılan objektif haber sunucusu);
+                               `instruction_block`: editörün talimatı kullanıcı istemine (boşsa hiç yok)
   validation/news.py           Deterministik kontroller: tekrar, plaka temizleme, uzunluk
   validation/speakable.py      Seslendirmede saat/tarih/sayı → okunuş ("18.00'de" → "akşam 6'da")
   validation/source_check.py   🟡 Kaynakta yok: çıktıda olup ham haberde geçmeyen sayı/isim (API yok)
@@ -230,7 +233,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.1.0-alpha.2 → sıradaki: v4.2 planı 1. madde (editör: "hemen ardından"), sonra v4.1 3. madde
+## Nerede kaldık (2026-09-26) — Sürüm 4.2.0-alpha.1 → sıradaki: v4.1 planı, 3. madde (ROADMAP "v4.1 planı")
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
@@ -241,8 +244,10 @@ fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir pa
   alıntı" doğru cümlelere mi oturuyor (düzeltme kaydında kesit satırının `alintilar` alanı ↔ `secilen`).
 - Editör ElevenLabs anahtarına "User" iznini ekledi (2026-09-26; önce yalnız TTS ve Voices vardı): kalan karakterin
   okunamamasının nedeni buydu.
-- **Editörün isteği (2026-09-26):** 2. maddeden hemen sonra ROADMAP "v4.2 planı" 1. madde (üslup seçimi yerine
-  editörün serbest talimatı; kutu her yeni haberde boş gelir, boşsa standart haber). Sonra v4.1'e 3. maddeden devam.
+- **v4.2 1. madde yapıldı** (`v4.2.0-alpha.1`, editörün isteğiyle v4.1'in arasına): üslup seçimi ve örnekleri yerine
+  "Haberi işle"nin yanında serbest talimat (her yeni haberde boş; boşsa objektif haber sunucusu). Editör gerçek
+  haberle dener: boş talimatla çıktı eskisi kadar iyi mi, talimat uygulanıyor mu. Düzeltme kaydında haber satırının
+  `talimat` alanı ↔ düzeltilen alanlar. Sonra v4.1'e 3. maddeden devam (görüntü analizinin süre ölçümü).
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =

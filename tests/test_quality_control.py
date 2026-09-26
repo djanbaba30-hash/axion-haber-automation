@@ -128,7 +128,7 @@ def test_headline_only_error_uses_the_small_headline_call(local_env, monkeypatch
     monkeypatch.setattr("apps.news_studio.ai.clients.generate",
                         lambda *args, **kwargs: calls.append("haber") or (first, {"input_tokens": 3000}))
 
-    def headlines(*args):
+    def headlines(*args, instruction=""):
         calls.append(("başlık", args[-1]))
         return SimpleNamespace(baslik1="BAŞKA", baslik2="3 KİŞİ YARALANDI"), {"input_tokens": 400, "requests": 1}
 

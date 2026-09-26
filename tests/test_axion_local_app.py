@@ -127,7 +127,7 @@ def test_headline_regeneration_cost_is_counted(local_env, monkeypatch):
     usage = {"input_tokens": 50, "output_tokens": 10, "requests": 1, "provider": "OpenAI", "model": "gpt-5.6-luna"}
     calls = []
 
-    def regenerate(*args, previous=()):
+    def regenerate(*args, previous=(), instruction=""):
         calls.append(list(previous))
         return SimpleNamespace(baslik1=f"YENİ {len(calls)}", baslik2="İKİNCİ"), usage
 
@@ -160,7 +160,7 @@ def test_corrections_are_logged_when_saving(local_env, monkeypatch):
 
     usage = {"input_tokens": 50, "output_tokens": 10, "requests": 1, "provider": "OpenAI", "model": "gpt-5.6-luna"}
     monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines",
-                        lambda *a, previous=(): (SimpleNamespace(baslik1="YENİ", baslik2="5 KİŞİ YARALANDI"), usage))
+                        lambda *a, previous=(), instruction="": (SimpleNamespace(baslik1="YENİ", baslik2="5 KİŞİ YARALANDI"), usage))
     at = start()
     at.session_state["model_output"] = {"baslik1": "SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI",
                                         "baslik2": "5 KİŞİ YARALANDI", "icerik": TTS, "tts": TTS}
@@ -183,14 +183,46 @@ def test_corrections_are_logged_when_saving(local_env, monkeypatch):
     assert any(b.label == "📝 Düzeltme kaydını indir" for b in at.get("download_button"))
 
 
-def test_style_examples_are_remembered(local_env):
-    from apps.axion_local.preferences import load_preferences
+def test_editor_instruction_goes_to_the_model_and_is_empty_for_new_news(local_env, monkeypatch):
+    """v4.2.0-alpha.1 (editör: "üslup seçimi bir işe yaramadı, örnek de fazladan token"): üslup seçimi ve örnekleri
+    yerine "Haberi işle"nin yanında serbest talimat. Model isteminin kullanıcı kısmına gider (sistem istemi aynı kalır,
+    önbellek bozulmaz); başlık yenilemesi de alır; projeye ve düzeltme kaydına yazılır; yeni haberde boş gelir."""
+    from types import SimpleNamespace
 
+    from apps.axion_local import corrections
+    from apps.news_studio.models.news import NewsOutput
+
+    prompts, headline_calls = [], []
+    output = NewsOutput(baslik1="SAVRULAN OTOMOBİL DÜKKÂNA ÇARPTI", baslik2="5 KİŞİ YARALANDI", icerik=TTS,
+                        tts_plani=["olay"], tts=TTS)
+    monkeypatch.setattr("apps.news_studio.ai.clients.generate",
+                        lambda *args, **kwargs: prompts.append(args[4]) or (output, {"input_tokens": 100}))
+    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines", lambda *a, previous=(), instruction="": (
+        headline_calls.append(instruction) or (SimpleNamespace(baslik1="YENİ", baslik2="İKİNCİ"), {})))
     at = start()
-    at.text_area(key="ex_Mizahi Haber Dili").set_value("Örnek mizahi haber").run()
-    assert load_preferences()["news_examples"]["Mizahi Haber Dili"] == "Örnek mizahi haber"
-    fresh = start()  # yeni oturum
-    assert fresh.session_state["examples"]["Mizahi Haber Dili"] == "Örnek mizahi haber"
+    assert not any(s.label == "Üslup" for s in at.sidebar.selectbox) and not any("Üslup" in e.label for e in at.expander)
+    assert at.text_input(key="_w_talimat").value == ""
+    at.session_state["raw_text"] = "Bayrampaşa'da otomobil berber dükkânına çarptı, 5 kişi yaralandı."
+    at.run()
+    button(at, "Haberi işle").click().run()
+    first_run = len(prompts)  # haber + gerekirse düzeltme çağrısı
+    assert not any("<editor_talimati>" in prompt for prompt in prompts)  # boş: standart haber, istem büyümez
+    at.text_input(key="_w_talimat").input("Tepkili anlat, yaralı sayısını başa al").run()
+    button(at, "Haberi işle").click().run()
+    button(at, "Evet, baştan üret").click().run()
+    assert len(prompts) == 2 * first_run and all(  # düzeltme çağrısı da talimatı alır
+        "<editor_talimati>\nTepkili anlat, yaralı sayısını başa al\n</editor_talimati>" in p for p in prompts[first_run:])
+    button(at, "↻ Başlıkları yeniden üret").click().run()
+    assert headline_calls == ["Tepkili anlat, yaralı sayısını başa al"]
+    at.session_state["last_audio_bytes"] = b"mp3"
+    at.session_state["last_audio_text"] = TTS
+    at.run()
+    button(at, "Sadece kaydet").click().run()
+    saved = store.load_news_project(store.list_news_projects()[0])[0]
+    assert saved.metadata["talimat"] == "Tepkili anlat, yaralı sayısını başa al"
+    assert corrections.entries()[0]["talimat"] == "Tepkili anlat, yaralı sayısını başa al"
+    button(at, "Yeni haber").click().run()
+    assert at.text_input(key="_w_talimat").value == ""  # yeni haberde boş (editör kararı)
 
 
 def test_stale_audio_blocks_saving(local_env):
@@ -421,12 +453,12 @@ def test_settings_are_remembered_between_sessions(local_env):
     at = start()
     at.slider(key="speed").set_value(0.95).run()
     at.selectbox(key="thinking").select("Orta").run()
-    at.selectbox(key="news_style").select("Son Dakika Dili").run()
+    at.selectbox(key="duration_label").select(list(at.selectbox(key="duration_label").options)[0]).run()
 
     again = start()
     assert again.slider(key="speed").value == 0.95
     assert again.selectbox(key="thinking").value == "Orta"
-    assert again.selectbox(key="news_style").value == "Son Dakika Dili"
+    assert again.selectbox(key="duration_label").value == at.selectbox(key="duration_label").options[0]
 
 
 def test_settings_survive_page_switch(local_env):
