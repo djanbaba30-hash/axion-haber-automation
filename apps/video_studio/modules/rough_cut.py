@@ -501,12 +501,15 @@ def plan_rough_cut(
     previous_tokens: list[str] = []
     headline_tokens = _tokens(f"{project.news.headline_1} {project.news.headline_2}")
     cuts = prep.cuts
+    carried_f: int | None = None  # önceki sahne erken bittiyse bu sahne oradan başlar (kısa artık sahne olmasın)
+    last_slot = len(cuts) - 2
     for slot, (start, end) in enumerate(zip(cuts, cuts[1:])):
         # Sahne, o sırada söylenen kelimelere göre seçilir (sessiz uzatmada son söylenenlere göre).
         tokens = _tokens(_spoken_text(project, start, end)) or previous_tokens
         previous_tokens = tokens
         segment_id = _segment_at(project, start)
-        cursor_f = intro_end_f + round(start * fps)
+        cursor_f = carried_f if carried_f is not None else intro_end_f + round(start * fps)
+        carried_f = None
         end_f = broll_end_f if end >= broll_s else intro_end_f + round(end * fps)
         while cursor_f < end_f:
             need = (end_f - cursor_f) / fps
@@ -521,8 +524,14 @@ def plan_rough_cut(
                 best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need, story), -c.order))
                 prefer, origin = None, ClipOrigin.RULE
             source_in, available, _ = _source_range(best, usage, need, prefer)
-            # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur.
+            # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur. Kalan MIN_CLIP_SECONDS'tan
+            # kısaysa ayrı sahne olmaz (editörün Eymen videosu, v3.7.2: 1 sn'lik ara sahne): bu sahne erken biter,
+            # sonraki sahne o kadar erken başlar (kesme duraklamadan biraz kayar).
             duration_f = max(1, min(end_f - cursor_f, math.floor(available * fps)))
+            short_rest = 0 < (end_f - cursor_f - duration_f) < MIN_CLIP_SECONDS * fps
+            if short_rest and slot < last_slot and duration_f >= MIN_CLIP_SECONDS * fps:
+                end_f = cursor_f + duration_f
+                carried_f = end_f
             source_out = source_in + duration_f / fps
             clips.append(
                 Clip(

@@ -201,7 +201,11 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.7.1
+## Nerede kaldık (2026-09-26) — Sürüm 3.7.2
+
+**3.7.2:** editörün ikinci Luna kurgusu (Eymen, 29 çekim, 255 sn) sorunsuz; olay örgüsü ve aşamalar doğru. Düzeltme:
+seçilen çekim sahneye yetmez ve artık < 2 sn ise ayrı sahne açılmaz, sonraki sahne erken başlar (`plan_rough_cut`
+`carried_f`). Gerçek maliyet (uzun haber): ~$0,013 (metin 4 çağrı, 40 kare analiz, sahne seçimi).
 
 **3.7.1:** tablette ekran kapanınca oturum 2 dk'da siliniyordu (Streamlit `disconnectedSessionTTL` varsayılanı) →
 3 saat (config.toml; tarayıcıda koparma testiyle doğrulandı). Boştaki sayfada fragment'lar (güncelleme satırı,

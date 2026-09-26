@@ -1,3 +1,15 @@
+# v3.7.2 — Kısa çekimde 1 sn'lik ara sahne yok — 2026-09-26
+
+Editörün Eymen haberi (255 sn, 29 çekimlik DHA paketi; teşhis dosyasıyla): "ufak metin düzeltmeleri dışında her şey
+sorunsuz". Luna 9 sahnenin 9'unu seçti, olay örgüsünü doğru kurdu, tekrar yok. Maliyet: haber metni 4 çağrı $0,0046
+(iki kez "Haberi işle", ikisinde de düzeltme çağrısı), görüntü analizi 40 kare $0,0066, sahne seçimi $0,0018.
+
+## Fixed
+- **1 sn'lik ara sahne:** Luna 3 sn'lik bir çekimi 4,2 sn'lik sahneye seçmişti; kalan 1 sn kurallarla başka bir
+  çekimden geldi. Artık kalan süre 2 sn'den (en kısa sahne) azsa ayrı sahne açılmaz: sahne erken biter, sonraki sahne
+  o kadar erken başlar (kesme seslendirmedeki duraklamadan biraz kayar; son sahnede olmaz). Editörün verisiyle yeniden
+  kuruldu: 9 sahnenin hepsi Luna'dan, en kısası 2,7 sn. Regresyon testi.
+
 # v3.7.1 — Tablette ekran kapanınca yazılanlar kaybolmaz; boştaki sayfa daha sakin — 2026-09-26
 
 Editör: "sayfa inaktifken arada kendini mi yeniliyor?"

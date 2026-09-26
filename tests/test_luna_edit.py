@@ -140,3 +140,15 @@ def test_windows_carry_place_text_and_people_hints(tmp_path):
     rows = {row.split(" |")[0]: row for row in prompt.splitlines() if row.startswith("P")}
     assert "insan var" in rows["P4"] and "mekân: cadde" in rows["P4"] and "yazı:" not in rows["P4"]  # yalnız "DHA"
     assert "yazı: AMBULANS" in rows["P3"] and "insan var" not in rows["P3"]
+
+
+def test_short_window_does_not_leave_a_one_second_filler_scene(tmp_path, luna):
+    """Editörün Eymen videosu (v3.7.1): Luna 3 sn'lik bir çekimi 4,2 sn'lik sahneye seçti; kalan 1 sn kurallarla başka
+    çekimden geldi (ara sahne). Artık sahne erken biter, sonraki sahne o kadar erken başlar; video yine kesintisiz."""
+    scenes = [{"parca": 1, "pencere": "P12", "kaynak_bas": 68.7}]  # 68,68–71,56: 2,9 sn'lik çekim, 1. sahne 4,0 sn
+    result, _, _ = run(tmp_path, scenes)
+    clips = video_clips(result)
+    fps = 25
+    assert clips[0]["origin"] == "llm" and clips[0]["shot_id"].endswith("012")
+    assert all(c["duration_f"] >= 2 * fps for c in clips[:-1])  # son sahne dışında hiçbiri 2 sn'den kısa değil
+    assert all(a["start_f"] + a["duration_f"] == b["start_f"] for a, b in zip(clips, clips[1:]))  # boşluk yok
