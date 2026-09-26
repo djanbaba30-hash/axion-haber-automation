@@ -164,7 +164,7 @@ yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalış
    Çalışma zamanında ek model çağrısı yok.
 5. **Müzik altlığı:** haber videolarında kullanılan türden sözsüz arka plan müzikleri (telifsiz, data/varliklar'a
    eklenir); seslendirme ve kesit sesinin altında kısılır; editör seçer ya da kapatır.
-6. **Kapak = videonun ilk karesi:** ayrı kapak yüklemek yok. İlk karede başlık tam görünür (giriş animasyonunun son
+6. **Kapak = videonun ilk karesi — yapıldı (v4.0.0-alpha.3):** ayrı kapak yüklemek yok. İlk karede başlık tam görünür (giriş animasyonunun son
    hâli) ve kapak sahnesi (v3.1 "ilk sahne = kapak"); Reels/Shorts kapak seçiminde ilk kare hazır olur.
 7. **Durum paneli** (Geliştirici bilgileri): disk alanı, ElevenLabs'ta kalan karakter (ücretsiz sorgu), FFmpeg ve
    donanım kodlayıcı; **günlük/aylık toplam maliyet** (haber + görüntü analizi; aylık için silinmeyen özet).

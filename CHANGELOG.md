@@ -1,3 +1,22 @@
+# v4.0.0-alpha.3 — Kapak = videonun ilk karesi — 2026-09-26
+
+Editör: "ayrı bir kapak görseli yüklemek boşa iş olur"; Reels/Shorts kapağı olarak videonun ilk karesi kullanılır.
+
+## Added
+- **İlk karede başlık hep tam:** Tasarım Stüdyosu'nda 1. başlığa giriş animasyonu (kayarak, daktilo, birleşme…)
+  seçilse de videonun ilk karesinde başlık animasyonun son hâliyle tam görünür; animasyon ikinci kareden her zamanki
+  gibi başlar (tek kare, 1/30 sn). Varsayılan şablonda 1. başlığın girişi "yok" olduğu için orada zaten tamdı. Tuval
+  (önizleme) 0. saniyede aynısını gösterir.
+- **İlk kare kapak sahnesinden:** seslendirmenin önüne kaynak sesli kesit konmuşsa video kesitle açılıyordu (kapak
+  kesitin ilk karesi oluyordu). Artık ilk kare 1. seslendirme sahnesinden (kapak sahnesi: Luna/kurallar olayı en net
+  gösteren görüntüyü seçer), kesit bir kare geç başlar; ses ve süre değişmez.
+- Sahne ızgarasında 1. sahne "kapak" diye işaretli ("1. sahne videonun ilk karesi, yani paylaşımdaki kapak"): kapağı
+  değiştirmek için o sahne değiştirilir.
+
+## Notes
+- Denendi: gerçek son video (1080x1920) 0. karede tam başlık; kesitli kurguda 0. kare kapak sahnesi, 1. kare kesit,
+  süre aynı (testli). Tuval tarayıcıda hatasız açıldı.
+
 # v4.0.0-alpha.2 — Kurguda sahne değiştirme — 2026-09-26
 
 ## Added

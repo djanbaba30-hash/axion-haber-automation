@@ -316,6 +316,7 @@ def test_editor_swaps_one_scene_without_api(local_env, monkeypatch, tmp_path):
     before = [(c["scene"], c["shot_id"], c["source_in_s"]) for c in video_clips(at.session_state["edit_project"])]
     scene_buttons = [b for b in at.button if b.key and b.key.startswith("sahne_") and b.key != "sahne_vazgec"]
     assert len(scene_buttons) == len({c[0] for c in before}) >= 3
+    assert "kapak" in scene_buttons[0].label and "kapak" not in scene_buttons[1].label  # ilk kare = kapak
     button(at, scene_buttons[1].label).click().run()
     options = [b for b in at.button if b.key and b.key.startswith("secenek_")]
     assert 1 <= len(options) <= 4 and not at.exception

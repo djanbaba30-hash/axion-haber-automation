@@ -102,7 +102,7 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); fotoğraf:
-                               EXIF yönü + yavaş yakınlaşma (zoompan, v4.0); ses: parça
+                               EXIF yönü + yavaş yakınlaşma (zoompan, v4.0); ilk kare kapak sahnesi (v4.0); ses: parça
                                başına ölçülmüş sabit kazanç (TTS -18, kesit -20 LUFS), kenar yumuşatma, -2 dBFS sınırlayıcı
   jobs.py                      Videoyu arka planda üretme: sahne seçimi (Luna, PlanRequest) → kaba kurgu → son video (aynı haberin tasarım üretimi önce
                                durdurulur); sayfa saniyede bir durumu yeniler, tablet kapansa da sürer
@@ -205,7 +205,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.2 → sıradaki: alpha.3 (kapak = ilk kare)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.3 → sıradaki: alpha.4 (müzik altlığı)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -227,8 +227,10 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    (`plan_rough_cut(user=, pick_origin=)`; user klip `_chronological`'da yerinde); imza değişince/yeniden seçte düşer.
    Sayfa: `page.scene_picker` (toggle `scene_swap_keep` ile açık kalır). Testler `tests/test_scene_swap.py` +
    AppTest `test_editor_swaps_one_scene_without_api`. Tarayıcıda (Playwright, 1180 px) ızgara ve seçenekler denendi.
-3. `alpha.3` **Kapak = ilk kare:** videonun ilk karesinde başlık tam görünür (giriş animasyonunun son hâli) + kapak
-   sahnesi; ayrı kapak yüklemek yok (Reels/Shorts kapak seçiminde ilk kare hazır).
+3. `alpha.3` **Kapak = ilk kare — YAPILDI:** `template.Scene.items` 0. karede 1. başlığı giriş sonu hâliyle çizer
+   (`editor.js` `visibleItems` aynısı); `render.build_render_command` önde kesit varsa ilk kareyi `scene == 0`
+   klibinden alır (`split` + `trim`, kesit 1 kare geç). Sahne ızgarasında 1. sahne "kapak". Testler
+   `tests/test_cover.py`, `test_design_studio.test_first_frame_is_the_cover_with_the_full_headline`.
 4. `alpha.4` **Müzik altlığı:** sözsüz, telifsiz haber müzikleri (data/varliklar'a eklenir); seslendirme/kesit sesinin
    altında kısılır; editör seçer ya da kapatır.
 5. `alpha.5` **Düzeltmelerden öğrenme (kayıt):** model çıktısı ↔ editörün son hâli farkı silinmeyen küçük kayda

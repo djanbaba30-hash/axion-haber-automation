@@ -337,7 +337,9 @@ function setup(root, S) {
   const blurCenter = (b) => { const s = D().slot; return [s.x + (b.x + b.w / 2) * s.w, s.y + (b.y + b.h / 2) * s.h]; };
   function visibleItems(t, frame) {  // Python Scene.items ile aynı sıra
     const out = [], dd = d(), T = D().times;
-    const h1 = textState(dd.headline_1.enter, dd.headline_1.exit, D().blocks.h1.lines, 0, T.h1_end, t);
+    // Kapak (v4.0): ilk karede 1. başlık tam görünür (Python Scene.items ile aynı)
+    const h1t = Math.round(t * D().fps) === 0 ? Math.max(t, enterSeconds(dd.headline_1.enter, D().blocks.h1.lines)) : t;
+    const h1 = textState(dd.headline_1.enter, dd.headline_1.exit, D().blocks.h1.lines, 0, T.h1_end, h1t);
     if (h1) out.push({ kind: 'h1', state: h1 });
     if (dd.slogans.enabled) D().slogans.forEach((it, i) => { const st = sloganState(dd.slogans.effect, it.start, it.end, t, frame); if (st) out.push({ kind: 'slogans', i, state: st }); });
     const h2 = textState(dd.headline_2.enter, dd.headline_2.exit, D().blocks.h2.lines, T.h2_start, dur() + 1, t);

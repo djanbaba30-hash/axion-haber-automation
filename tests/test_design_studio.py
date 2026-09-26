@@ -260,6 +260,24 @@ def test_text_layers_are_drawn_where_the_editor_put_them():
     assert 1600 + top < 0.9 * 1920 < 1600 + bottom
 
 
+@pytest.mark.parametrize("effect", ["merge", "slide", "typewriter", "pop", "fade"])
+def test_first_frame_is_the_cover_with_the_full_headline(effect, tmp_path):
+    """v4.0.0-alpha.3: Reels/Shorts kapak seçiminde ilk kare hazır: 1. başlık giriş animasyonunun son hâliyle."""
+    design = load_design({"version": 2, "headline_1": {"enter": effect}}, "Mansur Yavaş CHP'den istifa etti", "B", 20.0)
+    scene = template.build_scene(design, 20.0)
+    full = fx.enter_seconds(effect, scene.headline_1.lines)
+    cover, second = dict(scene.items(0.0, 0)), dict(scene.items(1 / 30, 1))
+    assert fx.state_key(cover["h1"]) == fx.state_key(dict(scene.items(full + 0.5, 90))["h1"])
+    assert fx.state_key(second.get("h1")) != fx.state_key(cover["h1"])  # animasyon ikinci kareden başlar
+    box = (60, 260, 1020, 420)
+    assert scene.render(0.0, 0).crop(box).getbbox() == scene.render(full + 0.5, 90).crop(box).getbbox()
+    layers = template.write_layers(tmp_path, design, assets.backgrounds()[0], 30, 20.0)
+    lines = layers.graphics.read_text().splitlines()
+    assert lines[2] == f"duration {1 / 30:.6f}"  # kapak tek kare
+    first, second_file = (tmp_path / lines[1][6:-1]), (tmp_path / lines[3][6:-1])
+    assert first.read_bytes() != second_file.read_bytes()
+
+
 def _concat_seconds(path: Path) -> float:
     return sum(float(v) for v in re.findall(r"^duration ([\d.]+)$", path.read_text(), re.M))
 

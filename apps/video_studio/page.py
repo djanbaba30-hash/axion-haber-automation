@@ -168,10 +168,12 @@ def scene_picker(project: NewsProject, edit_project: dict, media_library: dict, 
                 if thumb:
                     st.image(str(thumb), width="stretch")
                 mark = "✋ " if scene.user else ""
-                if st.button(f"{mark}{scene.number + 1} · {scene.seconds:.1f} sn", key=f"sahne_{scene.number}",
+                cover = " · kapak" if scene.number == 0 else ""  # ilk kare = Reels/Shorts kapağı (v4.0)
+                if st.button(f"{mark}{scene.number + 1}{cover} · {scene.seconds:.1f} sn", key=f"sahne_{scene.number}",
                              width="stretch", type="primary" if selected == scene.number else "secondary"):
                     ss.swap_scene = selected = scene.number
-    st.caption("✋ = elle değiştirdiğin sahne. Sahneye dokun, yerine konabilecek görüntüler gelsin.")
+    st.caption("✋ = elle değiştirdiğin sahne. 1. sahne videonun ilk karesi, yani paylaşımdaki kapak. Sahneye dokun, "
+               "yerine konabilecek görüntüler gelsin.")
     if selected is None:
         return
     prep = luna_edit.prepare(edit_project, media_library, soundbites)

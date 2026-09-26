@@ -174,8 +174,16 @@ def build_render_command(edit_project: dict[str, Any], media_library: dict[str, 
     has_audio = {asset.asset_id: getattr(asset, "audio", None) is not None for asset in library.assets}
     tts_index = len(clips)
     command += ["-i", project.audio.path]
-    joined = "".join(f"[v{i}]" for i in range(len(clips)))
-    filters.append(f"{joined}concat=n={len(clips)}:v=1:a=0[video]")
+    labels = [f"[v{i}]" for i in range(len(clips))]
+    cover = next((i for i, c in enumerate(clips) if c.scene == 0 and not c.use_source_audio), None)
+    if cover and clips[0].use_source_audio and clips[0].duration_f > 1:
+        # Kapak (v4.0): seslendirmenin önünde kaynak sesli kesit varsa videonun ilk karesi yine kapak sahnesinden
+        # (Reels/Shorts kapağı ilk kare); kesit bir kare geç başlar, ses ve süreler değişmez.
+        filters[cover] = filters[cover].replace(f"[v{cover}]", f"[vk{cover}];[vk{cover}]split=2[v{cover}][kapak0]")
+        filters.append("[kapak0]trim=end_frame=1,setpts=PTS-STARTPTS[kapak]")
+        filters.append("[v0]trim=start_frame=1,setpts=PTS-STARTPTS[v0k]")
+        labels[0] = "[kapak][v0k]"
+    filters.append(f"{''.join(labels)}concat=n={len(clips) + (labels[0] != '[v0]')}:v=1:a=0[video]")
 
     # Ses: [öncesi kesitler (kendi sesi)] + [seslendirme, dolgu süresince; sonu sessiz] + [sonrası kesitler].
     # Her parça ölçülüp hedef yüksekliğe sabit kazançla getirilir; kesitlerin kenarı yumuşak (çıt yok); sonda sınırlayıcı.

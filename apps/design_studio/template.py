@@ -321,7 +321,10 @@ class Scene:
     def items(self, t: float, frame: int) -> list[tuple[str, object]]:
         d = self.design
         out: list[tuple[str, object]] = []
-        h1 = fx.text_state(d.headline_1.enter, d.headline_1.exit, self.headline_1.lines, 0.0, HEADLINE_1_END, t)
+        # Kapak (v4.0): videonun ilk karesinde 1. başlık giriş animasyonunun son hâliyle tam görünür; Reels/Shorts kapak
+        # seçiminde ilk kare hazır, ayrı kapak yüklemek gerekmez. Animasyon ikinci kareden her zamanki gibi başlar.
+        h1_t = max(t, fx.enter_seconds(d.headline_1.enter, self.headline_1.lines)) if frame == 0 and t < 1e-3 else t
+        h1 = fx.text_state(d.headline_1.enter, d.headline_1.exit, self.headline_1.lines, 0.0, HEADLINE_1_END, h1_t)
         if h1:
             out.append(("h1", h1))
         if d.slogans.enabled:
