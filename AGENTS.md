@@ -59,6 +59,8 @@ apps/axion_local/
                                önceki sürüm data/guncelleme_onceki.txt, geri dönüş uyarısı; sürüm = CHANGELOG ilk başlığı
   self_check.py                Açılış kontrolü (bekçi güncellemeden sonra çalıştırır): derle, içe aktar, 3 sayfayı AppTest
                                ile çiz (boş veri klasörü); geçmezse bekçi önceki sürüme döner
+  diagnostics.py               Teşhis dosyası: projenin kurgu JSON'ları + günlüğün sonu tek JSON (Video Stüdyosu → Geliştirici
+                               bilgileri → İndir; internete gönderilmez, editör sohbette yollar)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
                                İndirilenler'deki TXT'ler (DHA "TXT indir" → Haber Stüdyosu)
@@ -197,18 +199,17 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.6.0
+## Nerede kaldık (2026-09-26) — Sürüm 3.6.1
+
+**3.6.1:** teşhis dosyası (editörün seçimi; repo herkese açık olduğu için hiçbir şey internete gönderilmez): Video
+Stüdyosu → Geliştirici bilgileri → "📦 Teşhis dosyasını indir" = tek JSON (`diagnostics.package`: projenin
+news_package, media_library, edit_project, kesitler, kurgu_plani, tasarim + axion.log/olcumler son 60 KB). Editör
+tabletten indirip sohbette gönderir. Kurgu sorunlarında önce bunu iste.
 
 **3.6.0 = Faz 4 (editör kararı: 4.0'dan önceki son büyük güncelleme):** sahneleri Luna seçer (`luna_edit.py`; ayrıntı
 CHANGELOG). Gerçek Luna ile denenmedi (sandbox'ta anahtar yok); editörün ilk gerçek haberi: sahne tablosu + token.
 Kurallı kurgu artık yedek; kurallarını ayrıca geliştirme (editör). Aynı çekimin parçaları yine kaynak sırasına dizilir
 (`_chronological`, Luna'nın seçtiği parçalar da; etiket `origin` parçayla taşınır).
-**Açık (editörün kararı bekleniyor): teşhis dosyaları.** Editör "uzaktan güncellediğimde proje dosyaları (media_library,
-edit_project) repoya gitsin, bir gün tutulsun" dedi. Repo **herkese açık**; taslak (ayrı `teshis` dalı, geçmişsiz tek
-commit, DHA ham metni çıkarılmış, 24 saatte silinir, `GITHUB_TOKEN` gerekir) yazıldı ama commit edilmedi: anahtarı
-yükleme koduna bağlarken ortamın izin denetimi durdurdu; editöre soruldu (herkese açık repo, token, alternatif:
-repoyu özel yapmak ya da tablete indirilecek teşhis paketi).
-
 **3.5.1 (editörün tablet denemesi):** seçim kutuları yazmasız (`filter_mode=None`, klavye açılmaz; test kaynağı
 tarar), Tarayıcı'da kaymış kalan görüntü 0,8 sn'de yerine oturur (`viewer.js` `settle`), "yeniden üret" başlıkları
 önceki başlıkları görür (`clients.HEADLINE_RETRY`, gerçek modelle denenmedi). **Açık:** kurguda aynı görüntü tekrarı

@@ -1,3 +1,13 @@
+# v3.6.1 — Teşhis dosyası — 2026-09-26
+
+## Added
+- **"📦 Teşhis dosyasını indir"** (Video Stüdyosu → Geliştirici bilgileri): editör tabletteyken projenin dosyalarına
+  erişemiyordu. Tek JSON dosyası iner: projenin `news_package`, `media_library`, `edit_project`, `kesitler`,
+  `kurgu_plani`, `tasarim` dosyaları ve `axion.log`/`olcumler.jsonl`'un son 60 KB'ı (video ve ses yok). Hiçbir şey
+  internete gönderilmez (repo herkese açık; editörün seçimi); editör dosyayı Claude'a/GPT'ye sohbette yollar.
+- Uzaktan güncellemede proje dosyalarını repoya yükleme fikri (herkese açık repo nedeniyle) bırakıldı; o iş için
+  yazılan taslak hiç yayımlanmadı ve silindi.
+
 # v3.6.0 — Faz 4: sahneleri Luna seçer — 2026-09-26
 
 Editör kararı: "kurguyla, yanlış kesilmiş videolarla sürekli uğraşmayalım; bu işi Luna yapsın, verimli olsun.

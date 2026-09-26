@@ -125,8 +125,9 @@ kontrolü kaldırmak değil, hızlandırmak.
 10. **v3.5.1** (editörün tablet denemesi, yapıldı): seçim kutularında klavye açılmaz, Tarayıcı'da kaymış görüntü yerine
    oturur, "yeniden üret" başlıkları önceki başlıkları görür (gerçek modelle denenmesi bekleniyor).
 11. **v3.6.0 = Faz 4** (editör kararı, 2026-09-26: "4.0'dan önceki son büyük güncelleme"): sahneleri Luna seçer
-   (yukarıdaki Faz 4 satırı). Gerçek Luna ile ilk deneme editörde. Açık: teşhis dosyalarının (proje JSON'ları)
-   uzaktan güncellemede repoya gitmesi — repo herkese açık; editörün kararı bekleniyor (AGENTS "Nerede kaldık").
+   (yukarıdaki Faz 4 satırı). Gerçek Luna ile ilk deneme editörde.
+12. **v3.6.1:** teşhis dosyası tabletten indirilir, editör sohbette geliştiriciye yollar (editör seçti: repo herkese
+   açık, dosyalar repoya yüklenmez; uzaktan güncellemede otomatik yükleme fikri bırakıldı).
 
 Gerekmeyenler: Windows açılışında otomatik başlatma; Windows'ta otomatik test (GitHub Actions); güncellemeden sonra
 "Yenilikler"; yatay/kare çıktı (yalnız Reels/Shorts paylaşılıyor). (Haber metni: DHA'nın "metni kopyala"sı uzaktan

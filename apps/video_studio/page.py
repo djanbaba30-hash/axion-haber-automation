@@ -13,6 +13,7 @@ import streamlit as st
 from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.metrics import timed
 from apps.axion_local.project_picker import project_selector, selected_project
+from apps.axion_local import diagnostics, update_check
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
@@ -414,6 +415,12 @@ with st.expander("4. Video", expanded=True):
 if media_library:
     usage = ss.get("analysis_usage") or {}
     with st.expander("Geliştirici bilgileri"):
+        if project:  # editör tabletteyken proje dosyalarına erişemez: tek dosya iner, sohbette geliştiriciye yollanır
+            st.download_button(
+                "📦 Teşhis dosyasını indir", lambda: diagnostics.package(project.folder, update_check.version()),
+                file_name=diagnostics.filename(project.folder), mime="application/json", on_click="ignore",
+                help="Kurgu dosyaları ve günlüğün sonu (video ve ses yok). İnternete gönderilmez; Claude'a/GPT'ye sen yollarsın.",
+            )
         cols = st.columns(4)
         cols[0].metric("Girdi token", f"{usage.get('input_tokens', 0):,}")
         cols[1].metric("Çıktı token", f"{usage.get('output_tokens', 0):,}")

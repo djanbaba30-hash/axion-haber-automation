@@ -968,3 +968,21 @@ def test_select_boxes_do_not_open_the_tablet_keyboard():
                 if node.func.attr == "multiselect":
                     assert getattr(keywords.get("select_all"), "value", None) is False, where
     assert len(found) >= 10
+
+
+def test_diagnostics_file_for_the_developer(local_env):
+    """Editör (v3.6.1): tablette proje dosyalarına erişemez; Geliştirici bilgileri'nden tek dosya iner (internete gitmez)."""
+    from apps.axion_local import diagnostics
+
+    project = saved_project(media_library())
+    store.save_project_json(project, "kurgu_plani.json", {"sahneler": [{"parca": 1, "pencere": "P1", "kaynak_bas": 0.5}]})
+    (store.data_dir() / "axion.log").write_text("x" * 70_000 + "SON SATIR\n", encoding="utf-8")
+    data = json.loads(diagnostics.package(project.folder, "3.6.1"))
+    assert data["surum"] == "3.6.1" and data["proje"] == project.folder.name
+    assert {"news_package.json", "media_library.json", "kurgu_plani.json"} <= set(data["dosyalar"])
+    assert data["dosyalar"]["kurgu_plani.json"]["sahneler"][0]["pencere"] == "P1"
+    assert data["gunluk"]["axion.log"].endswith("SON SATIR\n") and len(data["gunluk"]["axion.log"]) <= 60_000
+    assert diagnostics.filename(project.folder).startswith("teshis_") and diagnostics.filename(project.folder).endswith(".json")
+    at = open_page(project)
+    assert not at.exception
+    assert any(b.label == "📦 Teşhis dosyasını indir" for b in at.get("download_button"))
