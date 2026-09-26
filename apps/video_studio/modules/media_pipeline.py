@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from shared.media_models import MediaLibrary
 
-from .framing import detect_content_region
+from .framing import detect_content_region, motion_region
 from .local_media import LocalMediaFile
 from .media_library import build_image_asset, build_media_library, detect_media_type
 from .representative_sampling import extract_representative_frames, split_into_windows
@@ -84,6 +84,9 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
         shot["shot_id"] = f"{asset_id}_shot_{int(shot['shot_number']):03d}"
         for number, window in enumerate(shot["analysis_windows"], 1):
             window["window_id"] = f"{shot['shot_id']}_w{number:02d}"
+            if region is None:  # yanları dolgulu dikey çekimde kadraj sabit; hareket gerekmez
+                moving = motion_region(proxy_path, float(window["start_seconds"]), float(window["end_seconds"]))
+                window["motion_region"] = moving.model_dump() if moving else None
     return metadata, shots
 
 

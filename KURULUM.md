@@ -91,8 +91,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
      İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
      **📝 Konuşmaları yazıya dök:** videodaki konuşma bu bilgisayarda yazıya dökülür (internet ve ücret yok; ilk
-     seferde dil modeli bir kez iner, ~1,6 GB). Cümleler zamanlarıyla listelenir: bir cümleye dokun → kesit o cümle;
-     ikinci bir cümleye dokun → iki cümlenin arası. Yanlış duyulan kelime olabilir; kesiti videodan dinleyerek seç.
+     seferde dil modeli bir kez iner, ~1,6 GB). Cümleler zamanlarıyla listelenir: bir cümleye dokun → kesit o cümle
+     (video oynarken de); "Önceki/Sonraki cümleyi de ekle" ile uzat. Yanlış duyulan kelime olabilir; kesiti videodan
+     dinleyerek seç.
    - **4. Video:** **Videoyu oluştur** → sahneleri Luna seçer (olay sırasıyla, aynı görüntü tekrarlanmadan, ilk sahne
      kapak; haber başına tek küçük çağrı, ~$0,001). Beğenmezsen **🔀 Sahneleri yeniden seç**: Luna farklı bir
      kurgu yapar. **Videoyu yeniden oluştur** aynı sahnelerle yeniden üretir (yeni çağrı yok).

@@ -145,9 +145,9 @@ def invalidate_cut(project: NewsProject) -> None:
     (project.folder / FINAL_VIDEO_FILENAME).unlink(missing_ok=True)
 
 
-def transcript_picker(project: NewsProject, source: Path) -> None:
-    """Yerel yazıya dökme (v4.0, API yok): konuşmalar zamanlı cümleler; cümleye dokun → kesit aralığı o cümle, ikinci
-    dokunuş iki cümlenin arasını seçer."""
+def transcript_picker(project: NewsProject, source: Path, chosen: tuple[float, float]) -> None:
+    """Yerel yazıya dökme (v4.0, API yok): konuşmalar zamanlı cümleler; cümleye dokun → kesit yalnız o cümle;
+    "önceki/sonraki cümleyi de ekle" aralığı uzatır. `chosen`: kaydırıcıdaki aralık (içindeki cümleler vurgulanır)."""
     result = transcribe.load(project.folder, source)
     job = transcribe.job(source, project.folder)
     if result is None and not (job and job.running):
@@ -177,19 +177,29 @@ def transcript_picker(project: NewsProject, source: Path) -> None:
         if done is None:
             return
         lines = done["cumleler"]
-        with st.expander(f"📝 Konuşmalar — {len(lines)} cümle (cümleye dokun: kesit o cümle; ikinciye dokun: arası)",
-                         expanded=True):
+        with st.expander(f"📝 Konuşmalar — {len(lines)} cümle (cümleye dokun: kesit o cümle)", expanded=True):
             if not lines:
                 st.caption("Bu videoda konuşma bulunamadı.")
-            anchor = ss.get("yazi_anchor")
+            inside = [n for n, line in enumerate(lines)
+                      if line["bas"] >= chosen[0] - 0.1 and line["son"] <= chosen[1] + 0.1]
+
+            def pick(first: int, last: int) -> None:
+                ss.kesit_from_text = transcribe.span(lines, first, last)
+                st.rerun(scope="app")
+
             for number, line in enumerate(lines):
                 label = f"{mmss(line['bas'])}–{mmss(line['son'])} · {line['metin']}"
                 if st.button(label, key=f"yazi_{number}", width="stretch",
-                             type="primary" if anchor == number else "secondary"):
-                    pair = (anchor, number) if anchor is not None and anchor != number else (number, number)
-                    ss.kesit_from_text = transcribe.span(lines, *pair)
-                    ss.yazi_anchor = None if pair[0] != pair[1] else number
-                    st.rerun(scope="app")
+                             type="primary" if number in inside else "secondary"):
+                    pick(number, number)
+            if inside:
+                before, after = st.columns(2)
+                if before.button("⬅️ Önceki cümleyi de ekle", key="cumle_onceki", width="stretch",
+                                 disabled=inside[0] == 0):
+                    pick(inside[0] - 1, inside[-1])
+                if after.button("Sonraki cümleyi de ekle ➡️", key="cumle_sonraki", width="stretch",
+                                disabled=inside[-1] == len(lines) - 1):
+                    pick(inside[0], inside[-1] + 1)
             st.caption(f"{done['video_sn']:.0f} sn'lik ses {done['sure_sn']:.0f} sn'de yazıya döküldü (bu bilgisayarda, "
                        "ücretsiz). Yanlış duyulan kelimeler olabilir; kesiti seçerken videodan dinle.")
 
@@ -412,10 +422,13 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
             # Süre dakika:saniye gösterilir (editör: 80 sn yerine 01:20; video oynatıcısıyla aynı).
             step = 0.1 if duration <= 180 else 0.5
             seconds_of = {mmss(i * step): round(i * step, 1) for i in range(int(duration / step) + 1)}
-            if ss.get("kesit_source") != source_key or any(label not in seconds_of for label in ss.get("kesit_range", ())):
+            # Cümleye dokununca kaydırıcı yeni anahtarla, o aralıkla yeniden kurulur (Session State'e yazmak Streamlit
+            # uyarısı veriyordu; aynı anahtarla `value` değişince de editörün elle seçtiği aralık sıfırlanıyordu).
+            chosen = ss.pop("kesit_from_text", None)  # yazıya dökümde cümleye dokunuldu (v4.0)
+            if ss.get("kesit_source") != source_key or chosen:
                 ss.kesit_source = source_key
-                ss.pop("kesit_range", None)  # yeni video: varsayılan aralık (olay anı)
-                ss.pop("yazi_anchor", None)
+                ss.kesit_slider = ss.get("kesit_slider", 0) + 1
+                ss.kesit_value = chosen  # None: varsayılan aralık (olay anı)
             # Varsayılan aralık olay anı (ani hareket/ses, Luna'nın "olay" sahneleri; API yok). Yoksa ilk 5 sn.
             suggested = suggested_range(preview, duration, action_windows(media_library, source.name))
 
@@ -423,18 +436,19 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                 return min(seconds_of, key=lambda label: abs(seconds_of[label] - seconds))
 
             default = (nearest(suggested[0]), nearest(suggested[1])) if suggested else (mmss(0), nearest(min(5.0, duration)))
-            chosen = ss.pop("kesit_from_text", None)  # yazıya dökümde cümleye dokunuldu (v4.0)
-            if chosen:
-                ss.kesit_range = (nearest(chosen[0]), nearest(chosen[1]))
-            start_label, end_label = st.select_slider("Kesit aralığı (dakika:saniye)", list(seconds_of), key="kesit_range",
-                                                      value=default)
-            if suggested:
+            value = ss.get("kesit_value")
+            start_label, end_label = st.select_slider(
+                "Kesit aralığı (dakika:saniye)", list(seconds_of), key=f"kesit_range_{ss.kesit_slider}",
+                value=(nearest(value[0]), nearest(value[1])) if value else default)
+            if value:
+                st.caption("📝 Aralık seçilen cümleden; gerekirse kaydırıcıyla değiştir.")
+            elif suggested:
                 st.caption(f"📍 Aralık olayın olduğu yerden seçildi ({default[0]}–{default[1]}); gerekirse değiştir.")
             else:
                 st.caption("Videoda belirgin bir olay anı bulunamadı; aralığı videoyu izleyerek seç.")
             start_s, end_s = seconds_of[start_label], seconds_of[end_label]
             range_player(preview, start_s, end_s, key="kesit_oynatici")  # yalnız seçili aralık oynar (v4.0)
-            transcript_picker(project, source)
+            transcript_picker(project, source, (start_s, end_s))
             placement_col, add_col = st.columns([2, 1], vertical_alignment="bottom")
             placement = placement_col.segmented_control(
                 "Nereye", list(PLACEMENT_LABELS), key="kesit_placement", default="before",

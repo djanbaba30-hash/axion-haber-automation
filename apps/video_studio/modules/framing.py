@@ -8,6 +8,7 @@ keskinlik profilinden içerik sınırları bulunur. numpy ve Pillow Streamlit il
 from __future__ import annotations
 
 import math
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +30,14 @@ CENTER_TOLERANCE = 0.06
 # dikey çizgi olur. Çizgi sıradan sütunlardan bu kat güçlüyse sınır odur (en-boy tahmini gerekmez; v3.4).
 PAIR_RATIO = 8.0
 PAIR_SLACK = 2  # piksel: iki çizginin ortaya göre simetri payı
+# Sabit kamerada olayın yeri (v4.0, editör: "Heimlich anında şahıslar kenarda kalmış"): Luna'nın özne kutusu tek
+# kareden (güvenlik kamerasında masaları/vitrini gösterebilir); olay karede hareketin olduğu yerdedir.
+MOTION_SIZE = (160, 90)
+MOTION_RATE = 5  # kare/sn
+MOTION_PIXEL = 20  # bu kadar değişen piksel "hareket" (sıkıştırma gürültüsü değil)
+MOTION_STATIC = 3.0  # kare farkı medyanı bunun altındaysa kamera sabit (üstü elde çekim/kaydırma: hareket her yerde)
+MOTION_MIN_SHARE = 0.003  # hareketli piksel payı bunun altındaysa olay yok (boş sokak)
+MOTION_MASS = 0.1  # hareketin iki yandan %10'u atılır (tek geçen araç kutuyu büyütmesin)
 
 
 def _profiles(path: Path) -> tuple[np.ndarray, np.ndarray, float]:
@@ -159,3 +168,41 @@ def detect_content_region(frame_paths: list[Path]) -> Region | None:
     x, y = math.floor(x0 * 10_000) / 10_000, math.floor(y0 * 10_000) / 10_000
     # Aşağı yuvarlama: x + width 1'i hiç aşmaz (Region doğrulaması).
     return Region(x=x, y=y, width=math.floor((x1 - x) * 10_000) / 10_000, height=math.floor((y1 - y) * 10_000) / 10_000)
+
+
+def motion_from_frames(frames: np.ndarray) -> Region | None:
+    """Gri karelerden (sayı, yükseklik, genişlik) hareket bölgesi (0–1): kamera sabitse ve karede hareket varsa."""
+    if len(frames) < 3:
+        return None
+    diff = np.abs(np.diff(frames.astype(np.float32), axis=0))
+    if float(np.median(diff.mean((1, 2)))) > MOTION_STATIC:
+        return None
+    moving = (diff > MOTION_PIXEL).sum(0).astype(np.float64)
+    if moving.sum() < MOTION_MIN_SHARE * diff.size:
+        return None
+
+    def span(profile: np.ndarray) -> tuple[float, float]:
+        share = np.cumsum(profile) / profile.sum()
+        return (float(np.searchsorted(share, MOTION_MASS)) / len(profile),
+                float(np.searchsorted(share, 1 - MOTION_MASS) + 1) / len(profile))
+
+    (x0, x1), (y0, y1) = span(moving.sum(0)), span(moving.sum(1))
+    x, y = math.floor(x0 * 10_000) / 10_000, math.floor(y0 * 10_000) / 10_000
+    return Region(x=x, y=y, width=math.floor((min(x1, 1.0) - x) * 10_000) / 10_000,
+                  height=math.floor((min(y1, 1.0) - y) * 10_000) / 10_000)
+
+
+def motion_region(video: Path, start: float, end: float) -> Region | None:
+    """Videonun [start, end] aralığında sabit kamerada hareketin olduğu bölge (API yok; proxy'den, pencere başına
+    ~0,3 sn). Okunamazsa None (kadraj Luna'nın kutusuyla kalır)."""
+    width, height = MOTION_SIZE
+    try:
+        raw = subprocess.run(
+            ["ffmpeg", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{max(0.1, end - start):.3f}", "-i", str(video),
+             "-vf", f"fps={MOTION_RATE},scale={width}:{height},format=gray", "-f", "rawvideo", "-"],
+            capture_output=True, timeout=120,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    frames = np.frombuffer(raw, np.uint8)
+    return motion_from_frames(frames[: len(frames) // (width * height) * width * height].reshape(-1, height, width))

@@ -103,7 +103,7 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/scene_swap.py        Kurguda sahne değiştirme (v4.0, API yok): sahne başına küçük kare, kurallı 4 seçenek,
                                editörün seçimi kurgu_plani.json `editor` (Luna planının üstüne; girdiler değişince düşer)
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
-                               numpy/Pillow, API yok)
+                               numpy/Pillow, API yok); sabit kamerada hareket bölgesi (v4.0, `motion_region`)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/transcribe.py        Yerel yazıya dökme (v4.0; faster-whisper, API yok): kesit cümleden seçilir; model data/modeller
   modules/speech.py            Seste konuşma var mı (kepstrum, API yok): müzik altlığı konuşmalı kesitte kısılır (v4.0)
@@ -219,7 +219,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.1 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.2 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -267,7 +267,7 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    çağır. Testler `tests/test_status.py`.
 7. `alpha.7` **Yerel yazıya dökme — YAPILDI:** `video_studio/modules/transcribe.py` (faster-whisper large-v3-turbo,
    CPU int8, tr, VAD; tembel içe aktarma; model `data/modeller`; sonuç `<proje>/yazi/*.json`; `start` arka plan işi),
-   sayfa `transcript_picker` (3. adım; cümleye dokun → `kesit_from_text` → kaydırıcı; ikinci dokunuş arası). Testler
+   sayfa `transcript_picker` (3. adım; cümleye dokun → `kesit_from_text` → kaydırıcı). Testler
    `tests/test_transcribe.py` + AppTest `test_soundbite_is_picked_from_the_transcript`. **Türkçe doğruluk/hız sandbox'ta
    ölçülemedi (HuggingFace kapalı): editörün bilgisayarında Artvin videosuyla** (DHA 1524777.mp4 + TXT; röportaj
    42–70 sn). Yavaşsa MODEL="small". İleride: müzik altlığının konuşma tespiti (`speech.py`) dökümden alınabilir.
@@ -276,10 +276,17 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    özel adlar `hotwords` (`transcribe.hints`, ham haberden), döküm biçimi `VERSION=2`; kesit oynatıcısı
    `video_studio/range_player.py` (components v2: yalnız aralık, her oynatma baştan, dışarı sarılmaz); sahne bölümü
    düğmeyle açılır (anahtar tablette açılmıyordu).
+   alpha.7.2 (editörün ikinci denemesi): noktasız konuşma 7 sn'den uzunsa en uzun nefes arasından bölünür
+   (`transcribe._split`), özel ad düzeltmesi (`transcribe.fix_names`, okunuş karşılaştırması; hotwords yetmedi),
+   `VERSION=3`; cümleye dokunmak yalnız o cümle (ikinci dokunuş "arası" idi, editör başka cümleye geçemiyordu),
+   "önceki/sonraki cümleyi de ekle"; kaydırıcı cümle seçilince yeni anahtarla (`kesit_slider` sayacı; Session State'e
+   yazmak uyarı veriyordu). Kadraj: sabit kamerada hareket bölgesi (`framing.motion_region` →
+   `AnalysisWindow.motion_region`, analizde proxy'den) alana sığıyorsa kadraj onun ortasına (`rough_cut._view_regions`;
+   Artvin güvenlik kamerasında Luna'nın kutusu vitrindi, kişiler kenarda kalıyordu). Yalnız yeni analizlerde.
 Sonra: genel repo taraması → `v4.0.0`.
 
-**Açık notlar:** editör Axion'u henüz masaüstü simgesiyle yeniden açmadı → geri dönüş bekçisi (v3.5.0) etkin değil
-(bozuk güncellemede evde `guncelle.bat`). Blur ayrıntılı denenmedi. Luna kurgusu gerçek haberlerle doğrulandı
+**Açık notlar:** editör Axion'u güncelleyip masaüstü simgesiyle yeniden açtı (2026-09-26) → geri dönüş bekçisi
+(v3.5.0) artık etkin. Blur ayrıntılı denenmedi. Luna kurgusu gerçek haberlerle doğrulandı
 (Sultangazi, Eymen); sorunlarda önce teşhis dosyasını iste (Video Stüdyosu → Geliştirici bilgileri).
 
 **3.7.2:** editörün ikinci Luna kurgusu (Eymen, 29 çekim, 255 sn) sorunsuz; olay örgüsü ve aşamalar doğru. Düzeltme:

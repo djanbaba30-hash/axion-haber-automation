@@ -1,3 +1,29 @@
+# v4.0.0-alpha.7.2 — Kısa cümleler, özel adlar, cümleden kesit seçimi, güvenlik kamerasında kadraj — 2026-09-26
+
+Editörün alpha.7.1 denemesi (Artvin, teşhis dosyasıyla): ilk cümle doğru yerden başlıyor, kesitler kelime ortasında
+bitmiyor. Bulduğu sorunlar bu sürümde.
+
+## Fixed
+- **"Parça parça değil, upuzun cümleler":** Whisper konuşma dilinde çoğu zaman nokta koymuyor; röportaj iki 14 sn'lik
+  cümle olmuştu. 7 sn'den uzun parça en uzun nefes arasından bölünür (virgülden sonraki ara öne alınır), parçalar en
+  az 1,5 sn. Eski dökümler bir kez yeniden yapılır (döküm biçimi v3).
+- **"Heimlich doğru yazılmamış"** ("Hemlik"; modele ipucu yetmedi): dökümdeki kelime, haberin metnindeki bir özel ada
+  okunuşça çok benziyorsa (yabancı yazım Türkçe okunuşla karşılaştırılır: "ch" → "k") haberdeki yazımla değişir; ek
+  korunur ("Hemlik'in" → "Heimlich'in"). Adın eki ("Artvinli") ve adın başı olan kelime ("yılma" ↔ "Yılmaz")
+  değişmez. API yok.
+- **"Video oynarken başka kesit seçemiyorum":** ikinci dokunuş "iki cümlenin arası" demekti; iki cümlelik dökümde öteki
+  cümleye dokunmak hep ikisini birden seçiyordu. Artık **cümleye dokunmak yalnız o cümleyi seçer** (oynarken de: video
+  durur, yeni kesitin başına gider); aralığı uzatmak için "⬅️ Önceki cümleyi de ekle" / "Sonraki cümleyi de ekle ➡️".
+  Kaydırıcıdaki aralığın içindeki cümleler vurgulu. Tarayıcıda (dokunmatik) oynarken 5 kez cümle değiştirilerek
+  denendi. Günlükteki "kesit_range … Session State API" uyarısı da giderildi (kaydırıcı cümle seçilince yeni anahtarla
+  kurulur).
+- **"Heimlich anında şahıslar kenarda kalmış":** Luna'nın özne kutusu tek kareden (güvenlik kamerasında vitrini ve
+  masaları gösteriyordu, x 0,25–0,55); olay karenin 0,41–0,87'sindeydi, kadraj 0,18–0,62 → kişiler sağ kenarda.
+  Görüntü analizi artık sabit kamerada **hareketin olduğu bölgeyi** ölçer (`framing.motion_region`, proxy'den pencere
+  başına, API yok; elde çekimde ve hiçbir şey kıpırdamıyorsa ölçülmez); hareket alana sığıyorsa kadraj onun ortasına
+  (Artvin: 0,42–0,86, kişiler ortada). Hareket alandan genişse (röportajda el kol) Luna'nın kutusu kalır. Yalnız yeni
+  analizlerde: eski haberde "Görüntüleri yeniden analiz et".
+
 # v4.0.0-alpha.7.1 — Yazıya dökme ve kesit oynatıcısı düzeltmeleri — 2026-09-26
 
 Editörün Artvin denemesi (teşhis dosyasıyla): "kelimeleri bazı ufak hatalar dışında doğru tanıdı"; 71 sn'lik video

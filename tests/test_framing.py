@@ -3,9 +3,10 @@
 import shutil
 import subprocess
 
+import numpy as np
 import pytest
 
-from apps.video_studio.modules.framing import detect_content_region
+from apps.video_studio.modules.framing import detect_content_region, motion_from_frames
 from apps.video_studio.modules.rough_cut import Candidate, clip_framing
 from shared.media_models import EditorialRole, FocusPoint, Region, VisualType
 
@@ -254,3 +255,36 @@ def test_vertical_footage_never_moves_and_full_frame_may_pan_any_way():
     full.subject = Region(x=0.0, y=0.0, width=1.0, height=1.0)
     start, end = _view_regions(full, 960 / 1226, seconds=4.0, direction=1)
     assert end is not None and start.x != end.x  # tam karede yatay kaydırma serbest
+
+
+def moving_frames(x0, x1, shake=0.0, count=20, seed=1):
+    """Sabit sahne (gürültülü gri) + x0–x1 arasında gezen koyu kişi; `shake` > 0 ise tüm kare titrer (elde çekim)."""
+    rng = np.random.default_rng(seed)
+    base = rng.integers(60, 200, size=(90, 160)).astype(np.float32)
+    frames = []
+    for i in range(count):
+        image = np.roll(base, int(rng.integers(-3, 4)), axis=1) if shake else base.copy()
+        left = int(160 * (x0 + (x1 - x0 - 0.05) * i / (count - 1)))
+        image[40:75, left:left + 6] = 40
+        frames.append(image + rng.normal(0, 1, image.shape))
+    return np.clip(np.array(frames), 0, 255).astype(np.uint8)
+
+
+def test_motion_of_a_static_camera_is_where_the_people_are():
+    """Artvin (editör: "Heimlich anında şahıslar kenarda kalmış"): güvenlik kamerasında kişiler karenin %55–85'inde."""
+    region = motion_from_frames(moving_frames(0.55, 0.85))
+    assert 0.55 <= region.x <= 0.62 and 0.78 <= region.x + region.width <= 0.88 and 0.42 <= region.y <= 0.5
+    assert motion_from_frames(moving_frames(0.55, 0.85, shake=1)) is None  # elde çekim: hareket her yerde
+    assert motion_from_frames(np.repeat(moving_frames(0.5, 0.6)[:1], 10, axis=0)) is None  # hiçbir şey kıpırdamıyor
+
+
+def test_view_follows_motion_instead_of_lunas_box_on_a_static_camera():
+    """Artvin'in gerçek değerleri: Luna'nın kutusu vitrin (x 0,25–0,55), hareket 0,41–0,87 → kadraj 0,42–0,86."""
+    item = candidate(None)
+    item.frame_aspect, item.subject = 16 / 9, Region(x=0.25, y=0.08, width=0.30, height=0.54)
+    assert clip_framing(item).view_region.x == pytest.approx(0.18, abs=0.01)  # eski: kişiler sağ kenarda
+    item.motion = Region(x=0.4125, y=0.1222, width=0.4562, height=0.7222)
+    view = clip_framing(item).view_region
+    assert view.x == pytest.approx(0.42, abs=0.01) and view.x + view.width == pytest.approx(0.86, abs=0.01)
+    item.motion = Region(x=0.2125, y=0.3, width=0.7, height=0.63)  # röportaj: hareket geniş (el kol) → Luna'nın kutusu
+    assert clip_framing(item).view_region.x == pytest.approx(0.18, abs=0.01)

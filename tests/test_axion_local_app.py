@@ -630,9 +630,9 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
     button(at, "▶️ Videoyu izle ve kesit seç").click().run()
     assert not at.exception
     assert list((project.folder / "onizleme").glob("*.mp4"))
-    assert "00:08.5" in at.select_slider(key="kesit_range").options  # dakika:saniye (80 sn değil 01:20)
+    assert "00:08.5" in at.select_slider[0].options  # dakika:saniye (80 sn değil 01:20)
     assert any("olay" in caption.value for caption in at.caption)  # varsayılan aralık: olay anı ya da "bulunamadı"
-    at.select_slider(key="kesit_range").set_range("00:03.0", "00:08.5").run()
+    at.select_slider[0].set_range("00:03.0", "00:08.5").run()
     at.segmented_control(key="kesit_placement").set_value("after").run()
     button(at, "➕ Kesiti ekle").click().run()
     assert not at.exception
@@ -649,8 +649,8 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
 
 
 def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
-    """v4.0.0-alpha.7: konuşmalar bu bilgisayarda yazıya dökülür; cümleye dokun → kesit aralığı o cümle, ikinci
-    dokunuş iki cümlenin arası (testte sahte model)."""
+    """v4.0.0-alpha.7: konuşmalar bu bilgisayarda yazıya dökülür; cümleye dokun → kesit aralığı yalnız o cümle (başka
+    cümleye dokunmak ona geçer), "sonraki cümleyi de ekle" uzatır (testte sahte model)."""
     import subprocess
     from types import SimpleNamespace
 
@@ -681,9 +681,13 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
                                         "00:03.5–00:05.3 · Hemen fark ettim.", "00:05.9–00:09.7 · Heimlich manevrası uyguladım."]
     assert any("yazıya döküldü" in c.value for c in at.caption)
     lines[1].click().run()
-    assert at.select_slider(key="kesit_range").value == ("00:03.5", "00:05.3")
-    next(b for b in at.button if b.key == "yazi_2").click().run()  # ikinci dokunuş: 2. ve 3. cümlenin arası
-    assert at.select_slider(key="kesit_range").value == ("00:03.5", "00:09.7")
+    assert at.select_slider[0].value == ("00:03.5", "00:05.3")
+    assert next(b for b in at.button if b.key == "yazi_1").proto.type == "primary"  # seçili cümle vurgulu
+    next(b for b in at.button if b.key == "yazi_2").click().run()  # başka cümle: yalnız o (alpha.7.1'de arası seçiliyordu)
+    assert at.select_slider[0].value == ("00:05.9", "00:09.7")
+    next(b for b in at.button if b.key == "cumle_onceki").click().run()
+    assert at.select_slider[0].value == ("00:03.5", "00:09.7")
+    assert next(b for b in at.button if b.key == "cumle_sonraki").disabled  # son cümle zaten içinde
     assert not at.exception and not at.warning
     button(at, "➕ Kesiti ekle").click().run()
     from apps.video_studio.modules.soundbites import SOUNDBITES_FILENAME

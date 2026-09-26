@@ -87,6 +87,7 @@ def build_video_asset(
                 end_seconds=float(window["end_seconds"]),
                 frames=[AnalysisFrame(**frame) for frame in window.get("frames", [])],
                 visual=window_visuals.get(window["window_id"]),
+                motion_region=window.get("motion_region"),
             )
             for window in shot.get("analysis_windows", [])
         ]

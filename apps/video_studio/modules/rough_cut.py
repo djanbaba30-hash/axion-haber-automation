@@ -95,6 +95,7 @@ class Candidate:
     visible_text: str = ""
     people: bool | None = None
     photo: bool = False  # hareketsiz kare (v4.0): kaynak aralığı sanal, render yakınlaşmayla gösterir
+    motion: Region | None = None  # sabit kamerada hareketin olduğu bölge (v4.0): kadraj olayın olduğu yere
 
 
 @dataclass
@@ -119,10 +120,10 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
         for shot in asset.shots:
             windows = shot.analysis_windows or []
             spans = [(w.start_seconds, w.end_seconds, w.visual or shot.visual,
-                      [f.timestamp_seconds for f in w.frames]) for w in windows]
+                      [f.timestamp_seconds for f in w.frames], w.motion_region) for w in windows]
             if not spans:
-                spans = [(shot.start_seconds, shot.end_seconds, shot.visual, [])]
-            for start, end, visual, seen in spans:
+                spans = [(shot.start_seconds, shot.end_seconds, shot.visual, [], None)]
+            for start, end, visual, seen, motion in spans:
                 description = visual.description if visual else ""
                 items.append(
                     Candidate(
@@ -148,6 +149,7 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
                         location=visual.location if visual else "",
                         visible_text=visual.visible_text if visual else "",
                         people=visual.visible_people if visual else None,
+                        motion=motion,
                     )
                 )
     for asset_id in {c.asset_id for c in items}:
@@ -291,7 +293,13 @@ def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, dire
     c = candidate.content_region or Region(x=0, y=0, width=1, height=1)
     cx, cy, cw, ch = c.x * a, c.y, c.width * a, c.height
     view_w, view_h = (ch * slot_aspect, ch) if cw / ch > slot_aspect else (cw, cw / slot_aspect)
-    if candidate.subject:
+    m = candidate.motion
+    # Sabit kamerada olay hareketin olduğu yerdedir: hareket alana sığıyorsa (kaydırmasız) kadraj onun ortasına
+    # (Luna'nın kutusu tek kareden; güvenlik kamerasında vitrini/masaları gösterip olayı kenarda bırakıyordu).
+    if m is not None and m.width * a <= view_w * PAN_MIN_RATIO and m.height <= view_h * PAN_MIN_RATIO:
+        sx0, sx1 = max(cx, m.x * a), min(cx + cw, (m.x + m.width) * a)
+        sy0, sy1 = max(cy, m.y), min(cy + ch, m.y + m.height)
+    elif candidate.subject:
         s = candidate.subject
         sx0, sx1 = max(cx, s.x * a), min(cx + cw, (s.x + s.width) * a)
         sy0, sy1 = max(cy, s.y), min(cy + ch, s.y + s.height)

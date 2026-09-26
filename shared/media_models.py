@@ -204,6 +204,8 @@ class AnalysisWindow(BaseModel):
     end_seconds: float
     frames: list[AnalysisFrame] = Field(default_factory=list)
     visual: VisualMetadata | None = None
+    # Sabit kamerada hareketin olduğu bölge (0–1; v4.0, API yok): kadraj olayın olduğu yere. None: yok/elde çekim.
+    motion_region: Region | None = None
 
     @model_validator(mode="after")
     def validate_range(self) -> "AnalysisWindow":

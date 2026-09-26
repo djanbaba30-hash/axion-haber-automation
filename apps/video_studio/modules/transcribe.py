@@ -10,6 +10,7 @@ Uzun sürebildiği için arka planda (`start`), tablet kapansa da sürer.
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import importlib.util
 import json
@@ -25,11 +26,16 @@ from apps.axion_local.store import data_dir
 MODEL = "large-v3-turbo"
 LANGUAGE = "tr"
 FOLDER = "yazi"
-VERSION = 2  # döküm biçimi (v2: kelime zamanlarından cümleler); değişince eski dökümler yeniden yapılır
+VERSION = 3  # döküm biçimi (v3: kısa parçalar, özel ad düzeltmesi); değişince eski dökümler yeniden yapılır
 PAD_START, PAD_END = 0.1, 0.25  # kesit cümlenin biraz önce/sonrasından (ilk/son hece kesilmesin)
 NEXT_WORD_MARGIN = 0.08  # ...ama sonraki kelimeye taşmadan (editör: "sonraki kelimenin ortasında bitiyor")
 SENTENCE_GAP = 1.2  # kelimeler arası bu kadar sessizlik varsa yeni cümle
-MAX_SENTENCE = 15.0
+# Konuşma dilinde Whisper çoğu zaman nokta koymaz (editör: "upuzun cümleler"): uzun parça en uzun nefes arasından
+# (virgül öne alınır) bölünür; parçalar en az MIN_PART sn.
+MAX_SENTENCE = 7.0
+MIN_PART = 1.5
+COMMA_BONUS = 0.3  # sn: virgülden sonraki ara bu kadar daha uzun sayılır
+NAME_MATCH = 0.8  # özel ad düzeltmesi: okunuşu bu kadar benzeyen kelime haberdeki yazımla değişir
 # Whisper'ın sessizlikte uydurduğu (altyazı ekiplerinden öğrendiği) kalıplar: gösterilmez.
 HALLUCINATION = re.compile(r"altyaz[ıi]|abone ol|izlediğiniz için|teşekkürler izlediğiniz", re.IGNORECASE)
 NAME = re.compile(r"[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,}")
@@ -102,17 +108,60 @@ def hints(text: str, limit: int = 20) -> str:
     return " ".join(found[:limit])
 
 
+def _sound(word: str) -> str:
+    """Karşılaştırma için okunuş: küçük harf, Türkçe harfler sadeleşir, yabancı yazım Türkçe okunuşa (ch → k)."""
+    word = word.replace("I", "ı").replace("İ", "i").lower()
+    for old, new in (("sch", "ş"), ("ch", "k"), ("ph", "f"), ("th", "t"), ("sh", "ş"), ("w", "v"), ("q", "k"),
+                     ("x", "ks")):
+        word = word.replace(old, new)
+    return word.translate(str.maketrans("ıiöüşçğâîû", "iiouscgaiu"))
+
+
+def fix_names(words: list[tuple[float, float, str]], names: str) -> list[tuple[float, float, str]]:
+    """Haberdeki özel adlara okunuşu benzeyen kelimeler haberdeki yazımla (Whisper "Heimlich"i "Hemlik" yazıyordu;
+    `hotwords` yetmedi). Ek kesme işaretinden sonra korunur ("Hemlik'in" → "Heimlich'in"); API yok."""
+    known = [(name, _sound(name)) for name in names.split()]
+    fixed = []
+    for start, end, text in words:
+        match = re.fullmatch(r"(\s*)([^\W\d_]+)((?:['’][^\W\d_]+)?[^\w]*)", text)
+        if match and len(match.group(2)) >= 4:
+            root, sound = match.group(2), _sound(match.group(2))
+            for name, name_sound in known:
+                # Adın kendisi ya da eki ("Artvinli") ve adın başı olan kelime ("yılma" ↔ "Yılmaz") değişmez.
+                if (not sound.startswith(name_sound) and not name_sound.startswith(sound) and sound[0] == name_sound[0]
+                        and difflib.SequenceMatcher(None, sound, name_sound).ratio() >= NAME_MATCH):
+                    text = match.group(1) + name + match.group(3)
+                    break
+        fixed.append((start, end, text))
+    return fixed
+
+
+def _split(group: list[tuple[float, float, str]]) -> list[list[tuple[float, float, str]]]:
+    """Uzun parçayı en uzun aradan (virgül öne) böler; iki yan en az MIN_PART sn."""
+    if group[-1][1] - group[0][0] <= MAX_SENTENCE:
+        return [group]
+    best, cut = -1.0, 0
+    for i in range(1, len(group)):
+        if group[i - 1][1] - group[0][0] < MIN_PART or group[-1][1] - group[i][0] < MIN_PART:
+            continue
+        gap = group[i][0] - group[i - 1][1] + (COMMA_BONUS if group[i - 1][2].rstrip().endswith((",", ";")) else 0)
+        if gap > best:
+            best, cut = gap, i
+    return _split(group[:cut]) + _split(group[cut:]) if cut else [group]
+
+
 def sentences(words: list[tuple[float, float, str]], duration: float) -> list[dict[str, Any]]:
-    """Kelimelerden cümleler: nokta/soru/ünlemde, uzun sessizlikte ya da 15 sn'de kesilir. Kesit payı: biraz önce başlar,
-    biraz sonra biter ama sonraki kelimeye taşmaz."""
-    groups: list[list[tuple[float, float, str]]] = []
+    """Kelimelerden cümleler: nokta/soru/ünlemde, uzun sessizlikte; 7 sn'den uzunsa en uzun nefes arasından bölünür.
+    Kesit payı: biraz önce başlar, biraz sonra biter ama sonraki kelimeye taşmaz."""
+    sentences_: list[list[tuple[float, float, str]]] = []
     for word in words:
-        current = groups[-1] if groups else None
+        current = sentences_[-1] if sentences_ else None
         if (current is None or current[-1][2].rstrip().endswith((".", "?", "!", "…"))
-                or word[0] - current[-1][1] > SENTENCE_GAP or word[1] - current[0][0] > MAX_SENTENCE):
-            groups.append([word])
+                or word[0] - current[-1][1] > SENTENCE_GAP):
+            sentences_.append([word])
         else:
             current.append(word)
+    groups = [part for group in sentences_ for part in _split(group)]
     result = []
     for number, group in enumerate(groups):
         text = "".join(w[2] for w in group).strip()
@@ -146,7 +195,7 @@ def transcribe(source: Path, folder: Path, progress: Callable[[float], None] = l
             if duration:
                 progress(min(1.0, segment.end / duration))
     result = {"model": MODEL, "surum": VERSION, "sure_sn": round(time.monotonic() - started, 1),
-              "video_sn": round(duration, 1), "cumleler": sentences(words, duration)}
+              "video_sn": round(duration, 1), "cumleler": sentences(fix_names(words, hints(context)), duration)}
     path = _path(folder, source)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")

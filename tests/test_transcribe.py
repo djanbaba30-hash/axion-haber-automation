@@ -37,7 +37,7 @@ def segment(start, end, text):
 
 SEGMENTS = [(42.1, 46.8, " Geçtiğimiz günlerde müşterimiz yemek yerken boğazına yemek kaçtı."),
             (47.0, 50.2, " Ben de durumu hemen fark ettim."), (50.5, 51.0, "  "),
-            (51.3, 58.9, " Daha önce eğitimini aldığım Heimlich manevrasını uyguladım.")]
+            (51.3, 56.9, " Daha önce eğitimini aldığım Hemlik manevrasını uyguladım.")]
 
 
 def video(tmp_path, name="1524777.mp4", data=b"mp4"):
@@ -59,7 +59,7 @@ def test_transcript_is_saved_turkish_with_vad_word_times_and_reused(tmp_path):
     first = result["cumleler"][0]
     assert first["bas"] == 42.0  # ilk kelimeden 0,1 sn önce
     assert first["son"] <= 47.0 - transcribe.NEXT_WORD_MARGIN  # sonraki cümlenin ilk kelimesine taşmaz
-    assert shares[-1] == pytest.approx(58.9 / 70.7) and result["video_sn"] == 70.7 and result["surum"] == 2
+    assert shares[-1] == pytest.approx(56.9 / 70.7) and result["video_sn"] == 70.7 and result["surum"] == 3
     assert transcribe.load(tmp_path / "proje", source) == result
     source.write_bytes(b"baska video")  # dosya değişti: eski döküm kullanılmaz
     assert transcribe.load(tmp_path / "proje", source) is None
@@ -73,6 +73,32 @@ def test_sentences_split_on_punctuation_and_silence_with_padding():
     assert lines[0] == {"bas": 0.9, "son": 2.62, "metin": "Evet, çok korktuk."}  # sonraki kelime 2,7'de: 2,62'de biter
     assert lines[1]["son"] == 4.15 and lines[2]["son"] == 7.65  # sessizlik varsa tam pay (0,25 sn)
     assert transcribe.sentences([(7.9, 8.4, " son")], 8.0)[0]["son"] == 8.0  # videonun sonunu geçmez
+
+
+def test_unpunctuated_speech_is_split_at_breaths_into_short_parts():
+    """Editör (alpha.7.1): Artvin röportajı noktasız döküldü, iki upuzun cümle (14 sn) oldu. 7 sn'den uzun parça en uzun
+    nefes arasından (virgül öne alınır) bölünür; parçalar en az 1,5 sn."""
+    text = ("müşterimiz yemek yerken boğazına yemek kaçtı ben de hemen fark ettim yanına koştum, daha önce eğitimini "
+            "aldığım manevrayı uyguladım yemek çıktı müşterimiz rahatladı").split()
+    words, time = [], 42.9
+    for number, token in enumerate(text):
+        pause = {10: 0.5, 12: 0.1, 18: 0.4}.get(number, 0.05)  # "ettim", "koştum," ve "uyguladım" sonrası nefes
+        words.append((time, time + 0.55, " " + token))
+        time += 0.55 + pause
+    lines = transcribe.sentences(words, 70.7)
+    assert [line["metin"] for line in lines] == [
+        "müşterimiz yemek yerken boğazına yemek kaçtı ben de hemen fark ettim",
+        "yanına koştum, daha önce eğitimini aldığım manevrayı uyguladım",  # "yanına koştum," tek başına çok kısa
+        "yemek çıktı müşterimiz rahatladı"]
+    assert all(line["son"] - line["bas"] <= transcribe.MAX_SENTENCE + 0.4 for line in lines)
+
+
+def test_names_from_the_news_fix_misheard_words_only():
+    names = transcribe.hints("Hopa'da restoran işleten Muzaffer Yazıcı, Heimlich manevrası yaptı. Artvin'de.")
+    words = [(0, 1, " Hemlik'in,"), (1, 2, " muzafer"), (2, 3, " yazıcı"), (3, 4, " Artvinli"), (4, 5, " hemen")]
+    assert [w[2] for w in transcribe.fix_names(words, names + " Yılmaz")] == [
+        " Heimlich'in,", " Muzaffer", " yazıcı", " Artvinli", " hemen"]
+    assert transcribe.fix_names([(0, 1, " yılma")], "Yılmaz")[0][2] == " yılma"  # adın başı olan kelime değişmez
 
 
 def test_hallucinated_subtitle_credits_and_words_after_the_end_are_dropped(tmp_path):
