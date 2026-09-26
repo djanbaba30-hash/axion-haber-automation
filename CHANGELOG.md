@@ -1,3 +1,31 @@
+# v3.6.3 — Seslendirmede isim kontrolü, "baştan üret" onayı, yalnız seslendirmeyi yeniden üret — 2026-09-26
+
+Editörün Sultangazi haberi ve tablet notları.
+
+## Fixed
+- **Seslendirmede sivil isim:** ilk seslendirmede "Abdullah K.", "Ömer Ş." gibi isimler vardı (kural: seslendirmede
+  sivil isim ve baş harf yok). Deterministik kontrol (`civil_names_in_tts`, API yok): seslendirmedeki "Ad S." ve "A.K."
+  biçimleri ile ham haberdeki bu kişilerin adları hata sayılır → haber işlenirken mevcut tek düzeltme çağrısı giderir.
+  Regresyon testi editörün gerçek haberiyle.
+- **Haber kendiliğinden baştan üretildi:** günlüğe göre "Haberi işle" ikinci kez çalışmış (08:26 ve 08:27); tablette
+  seslendirmeyi düzeltirken dokunuş düğmeye gelmiş olmalı (klavye açılınca sayfa kayar). Ekranda haber varken
+  "Haberi işle" artık önce sorar: "…silinip baştan üretilecek; düzeltmelerin kaybolur. Emin misin?" (Evet / Vazgeç).
+
+## Added
+- **"↻ Yeniden üret" (Seslendirme başlığının yanında, küçük):** yalnız seslendirme metnini yeniden yazar; başlıklar ve
+  paylaşım metni kalır. Haber çağrısının sistem komutu ve istemi aynen gider (önbellek tutar, kurallar aynı), sonuna
+  "önceki seslendirme beğenilmedi, farklı yaz" notu. Aynı temizlik ve kontroller (okunuş, plaka, sivil isim, uzunluk);
+  sorun varsa kutunun altında "Kontrol et" notu (ek düzeltme çağrısı yok). Ses sonra yeniden üretilir ("Seslendir").
+
+## Changed
+- **Luna'ya "plakadan kaçın" denmiyor** (editör: "gerekirse ben blur eklerim"); pencerelerde "plaka" notu da gitmez.
+  Sistem komutu değiştiği için eski projelerde "Videoyu yeniden oluştur" bir kez yeni sahne seçimi yapar.
+
+## Editörün notları (değişiklik gerekmedi)
+- "Başlıkları yeniden üret" yeni başlık veriyor; kalitesi orta, editör küçük düzeltmeler yapıyor (4.0'daki
+  "düzeltmelerden öğrenme" bunu kaydedecek). Tasarım Stüdyosu'nda elle değişiklik sorunsuz; kaynak sesli kesit seçimi
+  sorunsuz; Tarayıcı DHA girişini sorunsuz kaydediyor. Blur henüz ayrıntılı denenmedi.
+
 # v3.6.2 — Haberin toplam maliyeti, son sahnede "göz kırpması" yok — 2026-09-26
 
 Editörün ilk Luna kurgusu (Sultangazi, "eşimle telefonda görüştün"): "sorunsuz çalıştı, ürünü beğendim, paylaştım".

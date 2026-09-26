@@ -97,6 +97,25 @@ def find_tts_repetitions(tts: str) -> list[str]:
     return found
 
 
+_UPPER, _LOWER = "A-ZÇĞİÖŞÜ", "a-zçğıöşü"
+# DHA yazımıyla sivil isim: ad + soyadın baş harfi ("Ömer Ş.'yi", "Abdullah K'nin") ya da yalnız baş harfler ("A.K.").
+_INITIAL_NAME = re.compile(rf"\b([{_UPPER}][{_LOWER}]{{2,}})\s+[{_UPPER}](?:\.|['’]|\s*\()")
+_INITIALS = re.compile(rf"(?<![{_UPPER}{_LOWER}])[{_UPPER}]\.\s?[{_UPPER}]\.")
+
+
+def civil_names_in_tts(tts: str, raw_text: str) -> list[str]:
+    """Seslendirmede geçen sivil isimler (editör kuralı: seslendirmede sivil isim ve baş harf yok). Ham haberdeki
+    "Ad S." biçimli kişilerin adları ve seslendirmedeki her baş harfli isim yakalanır; API yok."""
+    initials = list(_INITIALS.finditer(tts))
+    found = [m.group(0).rstrip("('’ ").strip() for m in _INITIAL_NAME.finditer(tts)
+             if not any(i.start() < m.end() and m.start() < i.end() for i in initials)]  # "Şüpheli A.K." → "A.K."
+    found += [m.group(0) for m in initials]
+    for name in dict.fromkeys(m.group(1) for m in _INITIAL_NAME.finditer(raw_text)):
+        if re.search(rf"(?<![{_UPPER}{_LOWER}]){re.escape(name)}(?![{_LOWER}])", tts) and not any(f.startswith(name) for f in found):
+            found.append(name)
+    return list(dict.fromkeys(found))
+
+
 def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> ValidationResult:
     """Çıktıyı temizler (büyük harf, plaka, okunuş) ve kontrol eder. Hatalar tek düzeltme çağrısına gider, uyarılar
     editöre gösterilir."""
@@ -159,6 +178,10 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
         errors.append("Seslendirme metni (tts), paylaşım metninden (caption) belirgin şekilde uzun.")
     if cap and tts >= cap:
         warnings.append("Seslendirme metni, paylaşım metni kadar uzun veya daha uzun; kontrol etmen önerilir.")
+    names = civil_names_in_tts(result.tts, raw_text)
+    if names:
+        errors.append("Seslendirme metninde sivil isim var (" + ", ".join(names) + "); seslendirmede isim ve baş harf "
+                      "kullanma, genel ifade kullan (ör. \"44 yaşındaki adam\", \"şüpheli\").")
     warnings.extend(find_tts_repetitions(result.tts))
     return ValidationResult(errors, warnings, headline_errors)
 

@@ -46,8 +46,8 @@ Kurallar (önem sırasıyla):
 3. İlk sahne videonun kapağıdır: başlıktaki olayı en net gösteren, öznesi belli pencere; manzara, grafik, genel
    görüntü ya da konuşan kişi (röportaj) değil.
 4. Konuşan kişi (portre/röportaj) görüntüsünü ancak seslendirme o kişiden söz ediyorsa ya da başka seçenek yoksa seç.
-5. Öznesi olmayan genel görüntüler (boş yol, ağaçlık, genel trafik) yalnız başka seçenek yoksa. Plakası okunan
-   görüntüyü mümkünse seçme. KESİT diye işaretli pencereleri seçme (başka yerde kaynak sesiyle kullanılıyor).
+5. Öznesi olmayan genel görüntüler (boş yol, ağaçlık, genel trafik) yalnız başka seçenek yoksa. KESİT diye
+   işaretli pencereleri seçme (başka yerde kaynak sesiyle kullanılıyor).
 6. kaynak_bas: sahnenin kaynaktaki başlangıç anı (saniye, pencerenin içinde). Sahne süresi kadar görüntü kalacak
    şekilde seç; "görülen an" açıklamanın kesin doğru olduğu andır.
 
@@ -75,8 +75,6 @@ def build_prompt(prep: Prepared) -> str:
         if c.role is not EditorialRole.UNKNOWN:
             notes.append(f"{c.visual_type.value}/{c.role.value}")
         notes.append("genel görüntü" if _generic(c) else "özne var")
-        if c.plate:
-            notes.append("plaka")
         if any(a == c.asset_id and s < c.end and c.start < e for a, s, e in prep.blocked):
             notes.append("KESİT")
         last = rows[-1] if rows else None

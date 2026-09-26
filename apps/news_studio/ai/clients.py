@@ -1,5 +1,5 @@
 """OpenAI ve Claude çağrıları: haber (tek çağrı + gerekirse tek düzeltme çağrısı; yalnız başlık hatalıysa küçük başlık
-çağrısı) ve başlık yenileme.
+çağrısı), başlık yenileme ve yalnız seslendirme metnini yenileme.
 
 SDK'ların kendi retry'ı kapalı; tek retry katmanı `retry_transient`. Sistem prompt'ları önbelleğe alınır
 (OpenAI `prompt_cache_key`, GPT-5.6'da en az 30 dk; Claude `cache_control` 1 saat). Fiyat/süre: `cost.py`.
@@ -13,7 +13,7 @@ import anthropic
 from openai import OpenAI
 
 from ..config import AI_TIMEOUT_SECONDS, CLAUDE_MODEL, OPENAI_MODELS
-from ..models.news import HeadlineOutput, NewsOutput
+from ..models.news import HeadlineOutput, NewsOutput, TtsOutput
 from ..prompts.news import HEADLINE_SYSTEM_PROMPT, SYSTEM_PROMPT
 from ..validation.news import turkish_upper
 from .retry import retry_transient
@@ -137,3 +137,21 @@ def regenerate_headlines(client_openai, client_claude, provider: str, model_name
     output.baslik1 = turkish_upper(output.baslik1.strip())
     output.baslik2 = turkish_upper(output.baslik2.strip())
     return output, usage
+
+
+TTS_RETRY = (
+    "\n<yalniz_seslendirme>\nBaşlık ve caption üretme; yalnız tts_plani ve tts üret (aynı TTS kurallarıyla). Editör şu "
+    "seslendirme metnini beğenmedi:\n{previous}\nFarklı bir anlatımla yeniden yaz; yeni bilgi uydurma, sivil isim ve baş "
+    "harf kullanma.\n</yalniz_seslendirme>"
+)
+
+
+def regenerate_tts(client_openai, client_claude, provider: str, model_name: str, news_prompt: str, thinking: str,
+                   previous: str) -> tuple[TtsOutput, dict[str, Any]]:
+    """Yalnız seslendirme metni (editör, v3.6.3). Haber çağrısının sistem komutu ve istemi aynen kullanılır (önbellek
+    tutar, kurallar aynı); sona "yalnız seslendirme, önceki beğenilmedi" notu eklenir."""
+    prompt = news_prompt + TTS_RETRY.format(previous=previous.strip() or "(boş)")
+    if provider == "OpenAI":
+        return _parse_openai(client_openai, OPENAI_MODELS[model_name], SYSTEM_PROMPT, prompt, TtsOutput, effort(thinking),
+                             NEWS_MAX_TOKENS, NEWS_CACHE_KEY)
+    return _parse_claude(client_claude, SYSTEM_PROMPT, prompt, TtsOutput, effort(thinking), NEWS_MAX_TOKENS)

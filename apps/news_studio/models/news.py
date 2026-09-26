@@ -12,3 +12,9 @@ class NewsOutput(BaseModel):
 class HeadlineOutput(BaseModel):
     baslik1: str
     baslik2: str
+
+
+class TtsOutput(BaseModel):
+    """Yalnız seslendirme metni ("↻ Seslendirme metnini yeniden üret", v3.6.3)."""
+    tts_plani: list[str]
+    tts: str

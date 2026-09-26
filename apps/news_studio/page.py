@@ -22,7 +22,7 @@ from apps.axion_local.store import (
     save_news_project,
 )
 from apps.news_studio.ai import cost
-from apps.news_studio.ai.clients import generate, make_anthropic, make_openai, regenerate_headlines
+from apps.news_studio.ai.clients import generate, make_anthropic, make_openai, regenerate_headlines, regenerate_tts
 from apps.news_studio.config import (
     CLAUDE_MODEL,
     CORRECTION_MAX_TOKENS,
@@ -32,6 +32,7 @@ from apps.news_studio.config import (
     TTS_TIMEOUT_SECONDS,
 )
 from apps.news_studio.integration.history import log_run
+from apps.news_studio.models.news import NewsOutput
 from apps.news_studio.prompts.news import build_correction_prompt, build_news_prompt
 from apps.news_studio.read_along import read_along
 from apps.news_studio.tts.calibration import estimate
@@ -154,7 +155,7 @@ def source_note(container, items: list[str]) -> None:
 def start_from_text(text: str) -> None:
     """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
     ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
-               "headline_history": [], "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
+               "headline_history": [], "tts_notes": [], "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
                "raw_text": text})
     for key in ("active_news_project", "loaded_news_project", "active_news_source"):
         ss.pop(key, None)
@@ -237,7 +238,21 @@ raw = ss.raw_text.strip()
 if len(raw) > 7000:
     st.warning(f"Ham haber {len(raw):,} karakter. Çok uzun metinler maliyeti artırır.")
 
-if st.button("Haberi işle", type="primary", width="stretch"):
+# Ekranda haber varken yeniden işlemek editörün düzeltmelerini siler: önce onay (editör, v3.6.3: tablette seslendirmeyi
+# düzeltirken dokunuş bu düğmeye gelmiş, haber baştan üretilmişti).
+process = st.button("Haberi işle", type="primary", width="stretch")
+if process and ss.get("icerik") and not ss.get("confirm_reprocess"):
+    ss.confirm_reprocess, process = True, False
+if ss.get("confirm_reprocess"):
+    st.warning("Ekrandaki başlıklar, paylaşım metni ve seslendirme metni silinip haber baştan üretilecek; yaptığın "
+               "düzeltmeler kaybolur. Emin misin?")
+    yes_col, no_col = st.columns(2)
+    if yes_col.button("Evet, baştan üret", type="primary", width="stretch"):
+        ss.confirm_reprocess, process = False, True
+    if no_col.button("Vazgeç", width="stretch", key="reprocess_cancel"):
+        ss.confirm_reprocess = False
+        st.rerun()
+if process:
     if not raw:
         st.error("Önce ham haber metnini yapıştır.")
     else:
@@ -286,6 +301,7 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                 ss.last_warnings = check.warnings + find_censorship_warnings(result.tts + "\n" + result.icerik)
                 ss.last_correction_reason = correction_reason
                 ss.headline_history = []  # yeni haber: "yeniden üret" geçmişi baştan
+                ss.tts_notes = []
                 ss.last_correction_diff = changed_fields(first, {name: getattr(result, name) for name in fields})
                 record("haber_yazimi", time.monotonic() - timer, model=total.get("model"), duzeltme=bool(correction_reason),
                        cagri=total.get("requests"))
@@ -346,8 +362,31 @@ if ss.icerik:
     # =================================================
     # SESLENDİRME
     # =================================================
-    st.subheader("Seslendirme")
+    title_col, retry_col = st.columns([3, 1], vertical_alignment="bottom")
+    title_col.subheader("Seslendirme")
+    if retry_col.button("↻ Yeniden üret", width="stretch", key="tts_yeniden",
+                        help="Yalnız seslendirme metnini yeniden yazar (başlıklar ve paylaşım metni kalır). Bir yapay zekâ "
+                        "çağrısı; önceki metin \"beğenilmedi\" diye gider."):
+        try:
+            with st.spinner("Seslendirme metni yeniden yazılıyor..."):
+                prompt = build_news_prompt(style, duration_label, duration_range, tts_min, tts_target, tts_max, raw, speed,
+                                           ss.examples)
+                output, tts_usage = regenerate_tts(openai_client(), anthropic_client(), provider, openai_model, prompt,
+                                                   thinking, ss.tts_metni)
+            # Aynı temizlik ve kontroller (okunuş, plaka, sivil isim, uzunluk); yalnız seslendirmeyle ilgili notlar gösterilir.
+            composed = NewsOutput(baslik1=ss.baslik1, baslik2=ss.baslik2, icerik=ss.icerik, tts_plani=output.tts_plani,
+                                  tts=output.tts)
+            check = validate_news_output(composed, raw, tts_min, tts_max)
+            ss.tts_metni = composed.tts
+            ss.tts_notes = [n for n in check.errors + check.warnings if "eslendirme" in n or "tts" in n.lower()]
+            ss.last_usage = accumulate(ss.last_usage, {**tts_usage, "provider": provider})
+            cost.touch(data_dir(), tts_usage)
+            st.rerun()
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Seslendirme metni üretilemedi: {exc}")
     bound_text(st.text_area, "Seslendirme metni", "tts_metni", height=150, label_visibility="collapsed")
+    if ss.get("tts_notes"):
+        st.warning("**Kontrol et:**\n\n" + "\n".join(f"- {note}" for note in ss.tts_notes))
     st.caption(f"{len(ss.tts_metni)} karakter · hedef {tts_min}–{tts_max} ({duration_label})")
     source_note(st, unsupported(ss.tts_metni, raw))
     if st.button("🎙️ Seslendir", type="primary", width="stretch"):

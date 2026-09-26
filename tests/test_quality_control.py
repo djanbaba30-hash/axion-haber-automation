@@ -161,3 +161,89 @@ def test_cache_counter_and_cost_after_a_news(local_env, monkeypatch):
     assert not at.exception
     assert any("Önbellek sıcak, ~" in c.value for c in at.sidebar.caption)
     assert any("tahmini maliyeti: $0.0014" in c.value and "%60'i" in c.value for c in at.caption)
+
+
+SULTANGAZI = ("Vehbi DEMİR / İSTANBUL, (DHA)- SULTANGAZİ’de Abdullah K. (44), eşiyle telefonda görüştüğünü öne sürdüğü "
+              "Ömer Ş.’yi (44) silahla sırtından ve bacaklarından vurarak yaraladı. Olayın ardından kaçmaya çalışan "
+              "Abdullah K., mahalle bekçileri tarafından yakalandı. Ömer Ş.'nin bilincinin açık olduğu ancak hayati "
+              "tehlikesinin sürdüğü öğrenildi. Abdullah K'nin, Ömer Ş.'nin eşiyle telefonda görüştüğü için olayı "
+              "gerçekleştirdiği öne sürüldü. (DHA)")
+
+
+def test_civil_names_in_voiceover_are_caught_with_the_editors_real_news():
+    """Editör (v3.6.3, Sultangazi haberi): ilk seslendirmede isim ve soyadı baş harfleri vardı; kural: seslendirmede
+    sivil isim/baş harf yok. Deterministik kontrol hata sayar → mevcut tek düzeltme çağrısı giderir."""
+    from apps.news_studio.validation.news import civil_names_in_tts
+
+    assert civil_names_in_tts("Sultangazi’de Abdullah K., Ömer Ş.’yi sırtından vurdu.", SULTANGAZI) == ["Abdullah K.", "Ömer Ş."]
+    assert civil_names_in_tts("Ömer ambulansla hastaneye kaldırıldı.", SULTANGAZI) == ["Ömer"]
+    assert civil_names_in_tts("Şüpheli A.K. yakalandı.", "") == ["A.K."]
+    final = ("İstanbul Sultangazi’de telefon görüşmesi iddiası, silahlı saldırıyla sonuçlandı. Bir kişi, tartıştığı 44 "
+             "yaşındaki erkeği sırtından ve bacaklarından vurdu. Kaçmaya çalışan şüpheliyi mahalle bekçileri yakaladı.")
+    assert civil_names_in_tts(final, SULTANGAZI) == []  # editörün yayımladığı seslendirme
+    assert civil_names_in_tts("Vali Davut Gül açıklama yaptı. Ömerli'de kaza oldu.", SULTANGAZI) == []
+
+
+def test_names_in_voiceover_trigger_the_single_correction_call(local_env, monkeypatch):
+    from apps.news_studio.models.news import NewsOutput
+
+    first = NewsOutput(baslik1="EŞİNİ ARADI DİYE VURDU", baslik2="HAYATİ TEHLİKESİ SÜRÜYOR",
+                       icerik="Sultangazi’de Abdullah K., Ömer Ş.’yi silahla vurdu. " * 12, tts_plani=["olay"],
+                       tts="Sultangazi’de Abdullah K., Ömer Ş.’yi sırtından ve bacaklarından vurdu. Ömer Ş. hastanede.")
+    fixed = first.model_copy(update={"tts": "Sultangazi’de bir kişi, tartıştığı adamı sırtından ve bacaklarından vurdu."})
+    prompts = []
+
+    def generate(client_openai, client_claude, provider, model, prompt, *args, **kwargs):
+        prompts.append(prompt)
+        return (first if len(prompts) == 1 else fixed), {"input_tokens": 1}
+
+    monkeypatch.setattr("apps.news_studio.ai.clients.generate", generate)
+    at = start()
+    at.session_state["raw_text"] = SULTANGAZI
+    at.run()
+    button(at, "Haberi işle").click().run()
+    assert not at.exception and len(prompts) == 2 and "sivil isim var (Abdullah K., Ömer Ş.)" in prompts[1]
+    assert "Abdullah" not in at.session_state["tts_metni"]
+
+
+def test_reprocessing_asks_first_and_voiceover_can_be_regenerated_alone(local_env, monkeypatch):
+    """Editör (v3.6.3, tablet): seslendirmeyi düzeltirken dokunuş "Haberi işle"ye gelmiş, haber baştan üretilmişti →
+    ekranda haber varken önce onay. Yalnız seslendirme metnini yeniden üretme düğmesi (başlık/paylaşım metni kalır)."""
+    from types import SimpleNamespace
+
+    from apps.news_studio.models.news import NewsOutput
+
+    news = NewsOutput(baslik1="EŞİNİ ARADI DİYE VURDU", baslik2="HAYATİ TEHLİKESİ SÜRÜYOR", icerik="Uzun paylaşım metni. " * 20,
+                      tts_plani=["olay"], tts="Sultangazi’de bir kişi tartıştığı adamı vurdu. Yaralının hayati tehlikesi sürüyor.")
+    calls = []
+    monkeypatch.setattr("apps.news_studio.ai.clients.generate",
+                        lambda *args, **kwargs: calls.append("haber") or (news.model_copy(), {"input_tokens": 1}))
+    at = start()
+    at.session_state["raw_text"] = SULTANGAZI
+    at.run()
+    button(at, "Haberi işle").click().run()
+    first_calls = len(calls)  # haber (+ gerekirse tek düzeltme)
+    at.session_state["baslik1"] = "EDİTÖRÜN DÜZELTTİĞİ BAŞLIK"
+    at.run()
+    button(at, "Haberi işle").click().run()  # yanlışlıkla dokunuş: üretmez, sorar
+    assert len(calls) == first_calls and any("baştan üretilecek" in w.value for w in at.warning)
+    button(at, "Vazgeç").click().run()
+    assert len(calls) == first_calls and at.session_state["baslik1"] == "EDİTÖRÜN DÜZELTTİĞİ BAŞLIK"
+
+    seen = []
+
+    def regenerate_tts(client_openai, client_claude, provider, model, prompt, thinking, previous):
+        seen.append((prompt, previous))
+        return SimpleNamespace(tts_plani=["olay"], tts="Ömer Ş. saat 22.00'de vuruldu."), {"input_tokens": 900, "output_tokens": 90}
+
+    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_tts", regenerate_tts)
+    button(at, "↻ Yeniden üret").click().run()
+    assert not at.exception and len(seen) == 1 and seen[0][1].startswith("Sultangazi’de bir kişi")
+    assert "<ham_haber>" in seen[0][0]  # haber çağrısının istemi (önbellek, aynı kurallar)
+    assert "22.00" not in at.session_state["tts_metni"]  # aynı temizlik: saat okunuşa çevrilir
+    assert at.session_state["baslik1"] == "EDİTÖRÜN DÜZELTTİĞİ BAŞLIK"  # başlık ve paylaşım metni kalır
+    assert any("sivil isim" in w.value for w in at.warning)  # kontrol notu seslendirmenin altında
+
+    button(at, "Haberi işle").click().run()
+    button(at, "Evet, baştan üret").click().run()
+    assert len(calls) > first_calls and at.session_state["baslik1"] == "EŞİNİ ARADI DİYE VURDU"
