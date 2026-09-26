@@ -13,7 +13,7 @@ import streamlit as st
 from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.metrics import timed
 from apps.axion_local.project_picker import project_selector, selected_project
-from apps.axion_local import diagnostics, update_check
+from apps.axion_local import corrections, diagnostics, update_check
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
     EDIT_PROJECT_FILENAME,
@@ -193,6 +193,11 @@ def scene_picker(project: NewsProject, edit_project: dict, media_library: dict, 
             st.caption(shorten(option.description, 80) or "—")
             if st.button("✅ Bunu koy", key=f"secenek_{option.index}", width="stretch"):
                 scene_swap.choose(project.folder, prep, edit_project, selected, option)
+                current = next(s.clip for s in items if s.number == selected)
+                corrections.scene(project.id, selected + 1, spoken,
+                                  {"aciklama": current.reason, "kaynak": current.asset_id, "an": current.source_in_s,
+                                   "secen": current.origin.value},
+                                  {"aciklama": option.description, "kaynak": option.asset_id, "an": option.start})
                 ss.pop("swap_scene", None)
                 start_video(replan=False)
     if st.button("Vazgeç", key="sahne_vazgec"):
@@ -376,6 +381,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                     placement=placement or "before",
                 )
                 save_soundbites(project, [*soundbites, bite])
+                corrections.soundbite(project.id, source.name, suggested, (bite.start_s, bite.end_s), bite.placement)
                 st.rerun()
 
     for index, bite in enumerate(soundbites):
@@ -496,6 +502,7 @@ if media_library:
                 file_name=diagnostics.filename(project.folder), mime="application/json", on_click="ignore",
                 help="Kurgu dosyaları ve günlüğün sonu (video ve ses yok). İnternete gönderilmez; Claude'a/GPT'ye sen yollarsın.",
             )
+        corrections.download_button(st)
         plan = load_project_json(project, luna_edit.PLAN_FILENAME) if project else None
         if project:  # editör: "yukarıdaki token tüm işlemlerin mi?" — hayır; üç adım ayrı, toplam burada
             news_usage = load_news_project(project)[0].metadata.get("usage") or {}

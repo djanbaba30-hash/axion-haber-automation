@@ -60,6 +60,8 @@ apps/axion_local/
                                önceki sürüm data/guncelleme_onceki.txt, geri dönüş uyarısı; sürüm = CHANGELOG ilk başlığı
   self_check.py                Açılış kontrolü (bekçi güncellemeden sonra çalıştırır): derle, içe aktar, 3 sayfayı AppTest
                                ile çiz (boş veri klasörü); geçmezse bekçi önceki sürüme döner
+  corrections.py               Düzeltmelerden öğrenme kaydı (v4.0): model çıktısı ↔ editörün son hâli, sahne/kesit
+                               değişiklikleri → data/duzeltmeler.jsonl (silinmez; Geliştirici bilgileri'nden indirilir)
   diagnostics.py               Teşhis dosyası: projenin kurgu JSON'ları + günlüğün sonu tek JSON (Video Stüdyosu → Geliştirici
                                bilgileri → İndir; internete gönderilmez, editör sohbette yollar)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
@@ -203,13 +205,14 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | `news_package.json`, `tts.mp3`, `media_library.json`, `kesitler.json`, `edit_project.json`, `kaba_kurgu.mp4`, `onizleme/`, `tasarim.json`, `son_video.mp4` | `data/projects/<zaman>_<başlık>/` | 3 iş günü sonra (`store.delete_old_projects`); `edit_project`/MP4 ayrıca haber veya görüntü değişince |
 | Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
+| Düzeltme kaydı (v4.0) | `data/duzeltmeler.jsonl` | Silinmez (internete gitmez; editör indirip yollar) |
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
 | Tarayıcı profili (DHA oturumu, çerezler) | `data/tarayici/` | Silinmez (silinirse DHA'ya yeniden giriş) |
 | Kayıtlı girişler (şifre DPAPI ile şifreli) | `data/tarayici_girisler.json` | Kenar çubuğundan "Sil" ile |
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.4.1 → sıradaki: alpha.5 (düzeltmelerden öğrenme)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.5 → sıradaki: alpha.6 (durum paneli + maliyet)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -242,10 +245,14 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    **Editör dinledi: "güzel, kullanılabilir"** → alpha.4.1: seviye zarfı (`music.speech_spans` + `duck_expression`:
    seslendirme ve konuşmalı kesit -45 LUFS, arada -27; sidechain yok), kesitte konuşma tespiti
    (`video_studio/modules/speech.py`, kepstrum, API yok; alpha.7'de yazıya dökmeyle değiştirilebilir), yumuşak piyano.
-5. `alpha.5` **Düzeltmelerden öğrenme (kayıt):** model çıktısı ↔ editörün son hâli farkı silinmeyen küçük kayda
-   (başlık, seslendirme, paylaşım metni, sahne değişiklikleri, kesit aralığı; tasarım ve kesit ekleme hariç). Geliştirici
-   belli aralıklarla okuyup istemi düzeltir (çalışma zamanında ek çağrı yok). Editör: başlık kalitesi "orta", küçük
-   düzeltmeler yapıyor.
+5. `alpha.5` **Düzeltmelerden öğrenme (kayıt) — YAPILDI:** `apps/axion_local/corrections.py` → `data/duzeltmeler.jsonl`
+   (haber: `news_studio/page.py` kaydederken `ss.model_output` [ilk üretim + `note_model_output` ile yeniden üretimler]
+   ↔ son hâl; sahne: `page.scene_picker`; kesit: önerilen ↔ seçilen). İndir: Geliştirici bilgileri → "📝 Düzeltme
+   kaydını indir". **Geliştirici için:** editör kaydı yollayınca değişen alanlara bak (hangi başlık kuralı tekrar
+   tekrar düzeltiliyor, seslendirmede ne değişiyor, Luna'nın hangi sahnesi değiştiriliyor), istemi/kuralları düzelt ve
+   gerçek örnekle regresyon testi ekle (kural 5). **Editör kararı (2026-09-26): kayıt token harcamaz ve istemi
+   büyütmez** — düzeltirken istem uzamasın (yeni kural = eski/uzun bir kuralı sadeleştir ya da çıkar; öncesi/sonrası
+   token say); kayıt çalışma zamanında modele hiç gönderilmez. Testler `tests/test_corrections.py` + AppTest.
 6. `alpha.6` **Durum paneli + günlük/aylık maliyet** (Geliştirici bilgileri): disk, ElevenLabs kalan karakter, FFmpeg
    ve kodlayıcı; maliyet için silinmeyen özet (projeler 3 günde silinir). Haber başına maliyet zaten görünüyor (v3.6.2).
 7. `alpha.7` **Yerel yazıya dökme (Whisper benzeri):** önce gerçek DHA videosuyla Türkçe doğruluk/hız denemesi; kesit

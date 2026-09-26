@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import io
 import time
-from datetime import date, datetime
+from datetime import datetime
 
 import streamlit as st
 from elevenlabs.client import ElevenLabs
 from mutagen.mp3 import MP3
 
+from apps.axion_local import corrections
 from apps.axion_local.metrics import record, timed
 from apps.axion_local.preferences import load_preferences, persist, remember, save_preferences
 from apps.axion_local.settings import require_secrets, secret
@@ -152,11 +153,20 @@ def source_note(container, items: list[str]) -> None:
                            help="Ham haberde geçmiyor. Yapay zekâ uydurmuş ya da farklı yazmış olabilir (ör. \"iki\" ↔ \"2\").")
 
 
+def note_model_output(kind: str, **fields: str) -> None:
+    """"Yeniden üret" sonrası modelin yeni çıktısı: editörün düzeltmesi bundan sayılır; kaç kez yeniden üretildiği de."""
+    if ss.get("model_output"):
+        ss.model_output = {**ss.model_output, **fields}
+    counts = dict(ss.get("regenerations") or {})
+    counts[kind] = counts.get(kind, 0) + 1
+    ss.regenerations = counts
+
+
 def start_from_text(text: str) -> None:
     """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
     ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
                "headline_history": [], "tts_notes": [], "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
-               "raw_text": text})
+               "raw_text": text, "model_output": None, "regenerations": {}})
     for key in ("active_news_project", "loaded_news_project", "active_news_source"):
         ss.pop(key, None)
 
@@ -295,6 +305,10 @@ if process:
                 if ss.get("active_news_source") != raw:
                     ss.pop("active_news_project", None)
                 ss.baslik1, ss.baslik2, ss.icerik, ss.tts_metni = result.baslik1, result.baslik2, result.icerik, result.tts
+                # Düzeltmelerden öğrenme (v4.0): kaydederken modelin son çıktısı editörün son hâliyle karşılaştırılır.
+                ss.model_output = {"baslik1": result.baslik1, "baslik2": result.baslik2, "icerik": result.icerik,
+                                   "tts": result.tts}
+                ss.regenerations = {}
                 ss.last_usage = total
                 cost.touch(data_dir(), total)
                 ss.last_validation = check.errors
@@ -347,6 +361,7 @@ if ss.icerik:
                                                              ss.icerik, previous=shown)
             ss.headline_history = shown
             ss.baslik1, ss.baslik2 = headlines.baslik1, headlines.baslik2
+            note_model_output("baslik", baslik1=headlines.baslik1, baslik2=headlines.baslik2)
             ss.last_usage = accumulate(ss.last_usage, headline_usage)
             st.rerun()
         except Exception as exc:  # noqa: BLE001
@@ -378,6 +393,7 @@ if ss.icerik:
                                   tts=output.tts)
             check = validate_news_output(composed, raw, tts_min, tts_max)
             ss.tts_metni = composed.tts
+            note_model_output("seslendirme", tts=composed.tts)
             ss.tts_notes = [n for n in check.errors + check.warnings if "eslendirme" in n or "tts" in n.lower()]
             ss.last_usage = accumulate(ss.last_usage, {**tts_usage, "provider": provider})
             cost.touch(data_dir(), tts_usage)
@@ -448,6 +464,11 @@ if ss.icerik:
         if go or save_only:
             try:
                 folder = save_news_project(package, ss.last_audio_bytes, folder=active.folder if active else None)
+                final = {"baslik1": ss.baslik1, "baslik2": ss.baslik2, "icerik": ss.icerik, "tts": ss.tts_metni}
+                rejected = [list(pair) for pair in ss.get("headline_history", []) if pair != (ss.baslik1, ss.baslik2)]
+                corrections.news(folder.name, ss.get("model_output"), final, raw, {
+                    "saglayici": usage.get("provider", ""), "model": usage.get("model", ""), "uslup": style,
+                    "yeniden_uretim": ss.get("regenerations") or {}, "reddedilen_basliklar": rejected})
                 ss.active_news_project = folder.name
                 ss.active_news_source = raw
                 ss.pop("loaded_news_project", None)
@@ -461,6 +482,7 @@ if ss.icerik:
     # GELİŞTİRİCİ BİLGİLERİ
     # =================================================
     with st.expander("Geliştirici bilgileri"):
+        corrections.download_button(st)
         cols = st.columns(4)
         cols[0].metric("Motor", usage.get("provider", "-"))
         cols[1].metric("Girdi token", f"{usage.get('input_tokens', 0):,}")

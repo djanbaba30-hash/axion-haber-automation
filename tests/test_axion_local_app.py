@@ -146,6 +146,38 @@ def test_headline_regeneration_cost_is_counted(local_env, monkeypatch):
     assert calls == [[first], [first, ("YENİ 1", "İKİNCİ")]]
 
 
+def test_corrections_are_logged_when_saving(local_env, monkeypatch):
+    """v4.0.0-alpha.5: modelin son çıktısı ↔ editörün kaydettiği (değişen alanlar), yeniden üretim sayısı ve beğenilmeyen
+    başlıklar silinmeyen kayda yazılır; aynı haber yeniden kaydedilince satır güncellenir."""
+    from types import SimpleNamespace
+
+    from apps.axion_local import corrections
+
+    usage = {"input_tokens": 50, "output_tokens": 10, "requests": 1, "provider": "OpenAI", "model": "gpt-5.6-luna"}
+    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines",
+                        lambda *a, previous=(): (SimpleNamespace(baslik1="YENİ", baslik2="5 KİŞİ YARALANDI"), usage))
+    at = start()
+    at.session_state["model_output"] = {"baslik1": "SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI",
+                                        "baslik2": "5 KİŞİ YARALANDI", "icerik": TTS, "tts": TTS}
+    at = with_generated_news(at)
+    button(at, "↻ Başlıkları yeniden üret").click().run()
+    at.text_input(key="_w_baslik1").set_value("OTOMOBİL DÜKKÂNA DALDI").run()
+    button(at, "Sadece kaydet").click().run()
+    assert not at.exception
+    [entry] = corrections.entries()
+    assert entry["tur"] == "haber" and entry["proje"] == store.list_news_projects()[0].id
+    assert entry["degisen"] == {"baslik1": {"model": "YENİ", "editor": "OTOMOBİL DÜKKÂNA DALDI"}}
+    assert entry["degismeyen"] == ["baslik2", "icerik", "tts"] and entry["ham_haber"] == "Ham haber"
+    assert entry["yeniden_uretim"] == {"baslik": 1}
+    assert entry["reddedilen_basliklar"] == [["SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI", "5 KİŞİ YARALANDI"]]
+    at.text_input(key="_w_baslik2").set_value("BEŞ YARALI").run()
+    button(at, "Sadece kaydet").click().run()
+    [entry] = corrections.entries()  # aynı haber: son hâl
+    assert set(entry["degisen"]) == {"baslik1", "baslik2"}
+    assert any(c.value.startswith("Düzeltme kaydı: 1 haber") for c in at.caption)
+    assert any(b.label == "📝 Düzeltme kaydını indir" for b in at.get("download_button"))
+
+
 def test_style_examples_are_remembered(local_env):
     from apps.axion_local.preferences import load_preferences
 
@@ -326,6 +358,10 @@ def test_editor_swaps_one_scene_without_api(local_env, monkeypatch, tmp_path):
     at.run()
     plan = json.loads((project.folder / luna_edit.PLAN_FILENAME).read_text(encoding="utf-8"))
     assert [e["parca"] for e in plan["editor"]] == [2] and plan["temel"]  # Luna'ya ulaşılamadı: kurgu temel alındı
+    from apps.axion_local import corrections  # v4.0 düzeltme kaydı: editörün sahne değişikliği
+
+    [entry] = [e for e in corrections.entries() if e["tur"] == "sahne"]
+    assert entry["sahne"] == 2 and entry["onceki"]["secen"] == "rule" and entry["yeni"]["aciklama"]
     after = [(c["scene"], c["shot_id"], c["source_in_s"]) for c in video_clips(at.session_state["edit_project"])]
     changed = {scene for scene in {c[0] for c in before} if [c for c in before if c[0] == scene] != [c for c in after if c[0] == scene]}
     assert changed == {1}  # yalnız o sahne
@@ -597,6 +633,11 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
     assert store.load_project_json(project, SOUNDBITES_FILENAME) == [
         {"path": str(video), "filename": "roportaj.mp4", "start_s": 3.0, "end_s": 8.5, "placement": "after"}
     ]
+    from apps.axion_local import corrections  # v4.0 düzeltme kaydı: önerilen aralık ↔ seçilen
+
+    [entry] = [e for e in corrections.entries() if e["tur"] == "kesit"]
+    assert entry["video"] == "roportaj.mp4" and entry["secilen"] == [3.0, 8.5] and entry["yer"] == "after"
+    assert entry["degisti"] is True
 
 
 def test_fresh_start_selects_nothing_and_hides_previous_days(local_env):

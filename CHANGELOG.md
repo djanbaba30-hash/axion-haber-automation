@@ -1,3 +1,29 @@
+# v4.0.0-alpha.5 — Düzeltmelerden öğrenme kaydı — 2026-09-26
+
+Editör: "benim düzeltmelerimden öğrenme mantıklı" (başlık kalitesi orta, küçük düzeltmeler yapıyor; seslendirme ve
+kurgu değişiklikleri önemli, kesit aralığı önemli olabilir; tasarım ve kesit ekleme önemsiz).
+
+## Added
+- **Düzeltme kaydı** (`apps/axion_local/corrections.py` → `data/duzeltmeler.jsonl`; projeler 3 günde silinse de
+  silinmez). Çalışma zamanında ek yapay zekâ çağrısı yok; geliştirici kaydı belli aralıklarla okuyup istemi/kuralları
+  düzeltir (regresyon testiyle).
+  - **Haber** (Haber Stüdyosu'nda kaydedince): modelin son çıktısı (ilk üretim ya da "yeniden üret" sonrası) ↔
+    editörün kaydettiği; yalnız değişen alanlar önce/sonra (1. ve 2. başlık, paylaşım metni, seslendirme), değişmeyen
+    alanların adı (kalite oranı için), ham haberin başı (2.000 karakter), model/sağlayıcı/üslup, kaç kez yeniden
+    üretildiği ve beğenilmeyip yeniden üretilen başlıklar.
+  - **Sahne** (Video Stüdyosu'nda sahne değiştirince): sahne no, o sahnede söylenen, önceki görüntü (açıklama, kaynak,
+    an, kim seçmişti: Luna/kurallar) ↔ editörün koyduğu.
+  - **Kesit** (kesit eklerken): önerilen aralık (olay anı) ↔ seçilen, değişti mi.
+  - Aynı haber, sahne ya da kesit yeniden kaydedilince satır güncellenir (son hâl). Yazılamazsa editörün işi durmaz.
+- **Geliştirici bilgileri** (Haber ve Video Stüdyosu): kaydın özeti ("N haber (1. başlık x, … kez düzeltildi) · sahne
+  değişikliği · kesit") ve **📝 Düzeltme kaydını indir** (tüm haberler). Repo herkese açık: kayıt internete
+  gönderilmez; editör indirip sohbette Claude'a/GPT'ye yollar.
+- **Token etkisi yok** (editörün sorusu): kayıt yalnız bilgisayarda bir dosyaya yazılır, hiçbir model çağrısına
+  eklenmez; haber üretiminin token sayısı değişmez. Kayda bakılarak istem düzeltilirse istem uzatılmaz (AGENTS).
+
+## Changed
+- Haber Stüdyosu'nda kullanılmayan içe aktarma (`datetime.date`) temizlendi.
+
 # v4.0.0-alpha.4.1 — Müzik: konuşmada varla yok arası, konuşmasız kesitte duyulur; yumuşak piyano — 2026-09-26
 
 Editör (müzikleri dinledi: "güzel, kullanılabilir"): "konuşma olmayan kesitlerimde duyulabilir şekilde çalsın, yüksek

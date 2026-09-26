@@ -157,7 +157,7 @@ yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalış
    videonun sesi metne çevrilir → kesit seçimi metinden (cümleye dokun); röportaj alıntısı ham haberle/sesle
    karşılaştırılabilir. İleride altyazı için de temel (altyazı şu an ürün kararı gereği yok; editör isterse açılır).
    Önce gerçek DHA videosuyla Türkçe doğruluk ve hız denenir. Boyut gerekirse sonra küçültülür.
-4. **Editörün düzeltmelerinden öğrenme:** sistemin verdiği ile editörün son hâli arasındaki fark silinmeyen küçük bir
+4. **Editörün düzeltmelerinden öğrenme — kayıt yapıldı (v4.0.0-alpha.5):** sistemin verdiği ile editörün son hâli arasındaki fark silinmeyen küçük bir
    kayda yazılır (3 gün saklamadan bağımsız). Kapsam: başlıklar, seslendirme metni, paylaşım metni, kurgudaki sahne
    değişiklikleri (1. madde), kesit aralığı düzenlemeleri. Kapsam dışı: kesit ekleme (editörün kendi işlemi), tasarım
    (zevk meselesi). Geliştirici (Claude/GPT) belli aralıklarla okuyup istemi/kuralları düzeltir, regresyon testiyle.
