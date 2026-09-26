@@ -51,6 +51,6 @@ def test_scene_and_soundbite_rows(data_dir):
 
 def test_empty_log_and_write_errors_do_not_break_work(data_dir, monkeypatch):
     assert corrections.summary() == "Düzeltme kaydı boş." and corrections.export() == b""
-    (data_dir / "dosya").write_text("klasör değil")
+    (data_dir / "dosya").write_text("klasör değil", encoding="utf-8")
     monkeypatch.setattr(corrections, "_path", lambda: data_dir / "dosya" / corrections.FILENAME)
     corrections.news("p1", MODEL, MODEL, "ham", {})  # yazılamasa da hata vermez (editörün kaydı sürer)

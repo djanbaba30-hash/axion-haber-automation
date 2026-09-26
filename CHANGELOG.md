@@ -1,3 +1,22 @@
+# v4.0.0-alpha.7.4 — GPT incelemesinin düzeltmeleri — 2026-09-26
+
+GPT'nin v4.0.0 öncesi incelemesi (`reviews/gpt-v4.md`) ve Claude'un yanıtı (`reviews/claude-v4.md`: her bulgu
+ölçümle doğrulandı, kararlar ve nedenleri).
+
+## Fixed
+- **Telefon fotoğrafı videoda yan çıkıyordu (editörün bilgisayarında):** yeni FFmpeg (winget'in kurduğu sürüm),
+  EXIF yönünü çıktı videoya "−90° döndür" etiketi olarak yazıyordu; fotoğraf zaten dik çevrildiği için oynatıcı bir
+  kez daha çeviriyordu. Etiket silinir. Sandbox'ta en yeni FFmpeg ile yeniden üretildi; düzeltmeden sonra tüm testler
+  hem FFmpeg 6.1 hem en yeni sürümle geçiyor.
+- Aynı haber iki cihazda açıkken "Konuşmaları yazıya dök" aynı anda basılırsa tek iş çalışır.
+- Yazıya döküm, aynı adlı ve aynı boyutlu videonun aynı saniye içinde değişmesini de fark eder (eski dökümler bir kez
+  yeniden yapılır).
+- Windows'ta kalan 4 test (Türkçe karakter kodlaması, satır sonu, fotoğraf yönü) ve bir test uyarısı; gürültü testleri
+  sabit tohumlu (rastgele gürültü 60'ta 1 konuşma sanılıyordu).
+
+## Changed
+- Görüntü analizinde hareket bölgesi tek geçişte ölçülür (255 sn'lik videoda 7,3 sn → 3,0 sn).
+
 # v4.0.0-alpha.7.3 — Yazıya dökümde cümleler büyük harften, kesit sesin bittiği yerde — 2026-09-26
 
 Editörün alpha.7.2 denemesi (Artvin; teşhis dosyası, düzeltme kaydı, son video): kadraj doğru ("bu sefer framing'i

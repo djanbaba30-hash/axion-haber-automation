@@ -192,3 +192,37 @@ def test_long_running_job_is_not_started_twice(tmp_path):
     first = transcribe.start(source, tmp_path / "proje", Slow(SEGMENTS))
     assert transcribe.start(source, tmp_path / "proje", Slow(SEGMENTS)) is first
     first.thread.join(5)
+
+
+def test_two_devices_starting_at_once_get_one_job(tmp_path):
+    """GPT V4-G2: aynı haber iki cihazda açıkken iki oturum aynı anda başlatırsa tek iş (kilitli)."""
+    import threading
+
+    class Slow(FakeWhisper):
+        def transcribe(self, audio, **kwargs):
+            time.sleep(0.3)
+            return super().transcribe(audio, **kwargs)
+
+    source, jobs, gate = video(tmp_path), [], threading.Barrier(8)
+
+    def begin():
+        gate.wait()
+        jobs.append(transcribe.start(source, tmp_path / "proje", Slow(SEGMENTS)))
+
+    workers = [threading.Thread(target=begin) for _ in range(8)]
+    [w.start() for w in workers]
+    [w.join(5) for w in workers]
+    assert len({id(job) for job in jobs}) == 1
+    jobs[0].thread.join(5)
+
+
+def test_same_size_file_changed_within_the_same_second_is_transcribed_again(tmp_path):
+    """GPT V4-G3: anahtar değişiklik zamanını nanosaniyeyle alır."""
+    import os
+
+    source = video(tmp_path, data=b"aaaa")
+    os.utime(source, ns=(1_000_000_000_100, 1_000_000_000_100))
+    first = transcribe._key(source)
+    source.write_bytes(b"bbbb")
+    os.utime(source, ns=(1_000_000_000_900, 1_000_000_000_900))
+    assert transcribe._key(source) != first

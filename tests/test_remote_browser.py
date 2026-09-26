@@ -13,7 +13,7 @@ from apps.remote_browser import service
 from apps.remote_browser.logins import Logins, site_of
 from apps.remote_browser.service import RemoteBrowser, find_browser, normalize_url, unique_path
 
-PAGE = b"""<!doctype html><html><body style="margin:0">
+PAGE = rb"""<!doctype html><html><body style="margin:0">
 <input id="kutu" style="position:absolute;left:100px;top:100px;width:200px;height:30px">
 <a id="indir" href="/video.mp4" download style="position:absolute;left:100px;top:200px">indir</a>
 <a id="sekme" href="/ikinci" target="_blank" style="position:absolute;left:100px;top:300px">yeni sekme</a>

@@ -192,17 +192,21 @@ def motion_from_frames(frames: np.ndarray) -> Region | None:
                   height=math.floor((min(y1, 1.0) - y) * 10_000) / 10_000)
 
 
-def motion_region(video: Path, start: float, end: float) -> Region | None:
-    """Videonun [start, end] aralığında sabit kamerada hareketin olduğu bölge (API yok; proxy'den, pencere başına
-    ~0,3 sn). Okunamazsa None (kadraj Luna'nın kutusuyla kalır)."""
+def motion_regions(video: Path, spans: list[tuple[float, float]]) -> list[Region | None]:
+    """Videonun her [başlangıç, bitiş] aralığında sabit kamerada hareketin olduğu bölge (API yok). Video bir kez çözülür
+    (pencere başına ayrı FFmpeg 255 sn'lik videoda 7,3 sn → tek geçiş 3,0 sn). Okunamazsa hepsi None (kadraj Luna'nın
+    kutusuyla kalır)."""
+    if not spans:
+        return []
     width, height = MOTION_SIZE
     try:
         raw = subprocess.run(
-            ["ffmpeg", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{max(0.1, end - start):.3f}", "-i", str(video),
+            ["ffmpeg", "-v", "error", "-i", str(video), "-t", f"{max(end for _, end in spans):.3f}",
              "-vf", f"fps={MOTION_RATE},scale={width}:{height},format=gray", "-f", "rawvideo", "-"],
-            capture_output=True, timeout=120,
+            capture_output=True, timeout=600,
         ).stdout
     except (OSError, subprocess.TimeoutExpired):
-        return None
+        return [None] * len(spans)
     frames = np.frombuffer(raw, np.uint8)
-    return motion_from_frames(frames[: len(frames) // (width * height) * width * height].reshape(-1, height, width))
+    frames = frames[: len(frames) // (width * height) * width * height].reshape(-1, height, width)
+    return [motion_from_frames(frames[round(start * MOTION_RATE):round(end * MOTION_RATE)]) for start, end in spans]

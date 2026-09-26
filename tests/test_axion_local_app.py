@@ -1177,7 +1177,7 @@ def test_diagnostics_file_for_the_developer(local_env):
 
     project = saved_project(media_library())
     store.save_project_json(project, "kurgu_plani.json", {"sahneler": [{"parca": 1, "pencere": "P1", "kaynak_bas": 0.5}]})
-    (store.data_dir() / "axion.log").write_text("x" * 70_000 + "SON SATIR\n", encoding="utf-8")
+    (store.data_dir() / "axion.log").write_bytes(b"x" * 70_000 + b"SON SATIR\n")  # Windows metin kipi CRLF yazardı
     (project.folder / "yazi").mkdir()
     (project.folder / "yazi" / "roportaj_1.json").write_text('{"cumleler": [], "bolumler": []}', encoding="utf-8")
     data = json.loads(diagnostics.package(project.folder, "3.6.1"))

@@ -138,6 +138,10 @@ def test_render_photo_cut_to_mp4_upright_and_full_frame(tmp_path, monkeypatch):
         "tts_text": text, "headline_1": "K", "headline_2": "B", "caption": "c"}), lib)
     output = tmp_path / "kaba_kurgu.mp4"
     render.render_rough_cut(project, lib, output)
+    # Yeni FFmpeg EXIF yönünü "döndür" etiketi olarak çıktıya geçiriyordu: oynatıcı yan gösterir (GPT V4-G4, Windows).
+    tags = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream_side_data",
+                           "-of", "compact", str(output)], capture_output=True, text=True).stdout
+    assert "Display Matrix" not in tags
     frame = tmp_path / "kare.png"
     subprocess.run(["ffmpeg", "-v", "error", "-ss", "1", "-i", str(output), "-frames:v", "1", str(frame)], check=True)
     with Image.open(frame) as image:

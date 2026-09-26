@@ -31,7 +31,7 @@ def test_ledger_sums_today_and_this_month(data_dir):
 
 
 def test_ledger_write_error_does_not_break_work(data_dir, monkeypatch):
-    (data_dir / "dosya").write_text("klasör değil")
+    (data_dir / "dosya").write_text("klasör değil", encoding="utf-8")
     monkeypatch.setattr(ledger, "data_dir", lambda: data_dir / "dosya")
     ledger.add("haber", 0.01)  # hata vermez
     assert ledger.totals()["ay"]["cagri"] == 0

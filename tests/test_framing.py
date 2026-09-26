@@ -6,7 +6,7 @@ import subprocess
 import numpy as np
 import pytest
 
-from apps.video_studio.modules.framing import detect_content_region, motion_from_frames
+from apps.video_studio.modules.framing import detect_content_region, motion_from_frames, motion_regions
 from apps.video_studio.modules.rough_cut import Candidate, clip_framing
 from shared.media_models import EditorialRole, FocusPoint, Region, VisualType
 
@@ -288,3 +288,17 @@ def test_view_follows_motion_instead_of_lunas_box_on_a_static_camera():
     assert view.x == pytest.approx(0.42, abs=0.01) and view.x + view.width == pytest.approx(0.86, abs=0.01)
     item.motion = Region(x=0.2125, y=0.3, width=0.7, height=0.63)  # röportaj: hareket geniş (el kol) → Luna'nın kutusu
     assert clip_framing(item).view_region.x == pytest.approx(0.18, abs=0.01)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg kurulu değil")
+def test_motion_regions_decode_the_video_once_for_all_windows(tmp_path):
+    """Sabit sahne; 0–3 sn hiçbir şey kıpırdamıyor, 3–6 sn sağ yarıda bir kutu gidip geliyor (GPT V4 verimlilik notu:
+    pencere başına ayrı FFmpeg yerine tek geçiş)."""
+    video = tmp_path / "kamera.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=gray:size=320x180:rate=25:duration=6",
+                    "-f", "lavfi", "-i", "color=black:size=8x20:rate=25:duration=6", "-filter_complex",
+                    "[0:v][1:v]overlay=x='if(lt(t,3),200,200+60*sin(4*t))':y=90", "-c:v", "libx264", str(video)],
+                   check=True)
+    still, moving = motion_regions(video, [(0.0, 3.0), (3.0, 6.0)])
+    assert still is None and 0.6 <= moving.x + moving.width / 2 <= 0.7  # kutu 140–260 px / 320: ortası ~0,62
+    assert motion_regions(tmp_path / "yok.mp4", [(0.0, 1.0)]) == [None] and motion_regions(video, []) == []

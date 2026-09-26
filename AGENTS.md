@@ -219,7 +219,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.3 → sıradaki: GPT incelemesi → onaylanan düzeltmeler + genel repo taraması → v4.0.0
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.4 → sıradaki: genel repo taraması → v4.0.0
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -290,11 +290,17 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    `test_artvin_interview_splits_where_the_editor_did` (editörün ekran görüntüsündeki döküm + seçtiği kesitler).
    **Editör (alpha.7.3): "bu sefer konuşmadaki yazıyı daha doğru çıkardı".** 4.0 özellikleri bitti.
 
-**Sıradaki (editör kararı, 2026-09-26): GPT incelemesi.** İstek `reviews/gpt-v4-istek.md` (kapsam 8365e2b..HEAD,
-öncelikli 9 alan, rapor biçimi); GPT editörün bilgisayarında yüksek düşünmeyle çalışır, kod değiştirmez, raporu
-`reviews/gpt-v4.md` olarak `main`'e koyar. Rapor gelince Claude: her bulguyu kodla/ölçümle doğrular (katılıyor /
-katılmıyor + neden), kendi genel taramasını (ölü kod, borçlar, belgeler, AGENTS 3.x geçmişini kısaltma, CHANGELOG'da
-3.x özeti) ekler, editöre tek liste sunar; onaylananlar küçük testli commit'lerle yapılır → `v4.0.0`.
+**GPT incelemesi yapıldı (2026-09-26):** istek `reviews/gpt-v4-istek.md`, rapor `reviews/gpt-v4.md`, Claude'un yanıtı
+`reviews/claude-v4.md` (bulgu başına karar + ölçüm). alpha.7.4: fotoğraf yönü (yeni FFmpeg `-noautorotate`'ta EXIF'i
+Display Matrix etiketi olarak çıktıya yazıyordu → `sidedata=mode=delete:type=DISPLAYMATRIX`; editörün FFmpeg'i
+winget Gyan = en yeni; sandbox'ta BtbN master derlemesiyle yeniden üretildi), döküm işine kilit, anahtar
+`st_mtime_ns`, hareket tek geçiş (`framing.motion_regions`), Windows test düzeltmeleri. Reddedilenler (nedenleri
+yanıtta): Luna imzasından istemi çıkarmak, `media_url` önbelleği, `levels` parça parça okuma. **Yeni FFmpeg
+davranışı dersi:** FFmpeg'e dokunan değişikliği sandbox'ta yeni sürümle de dene (GitHub'dan BtbN
+`ffmpeg-master-latest-linux64-gpl`, PATH'in başına koy).
+
+**Sıradaki: genel repo taraması → `v4.0.0`** (ölü kod, borçlar, belgeler, AGENTS "Nerede kaldık"ın 3.x geçmişini
+kısaltma, CHANGELOG'da 3.x özeti). Editöre liste sunulur, onaylananlar yapılır.
 
 **Açık notlar:** editör Axion'u güncelleyip masaüstü simgesiyle yeniden açtı (2026-09-26) → geri dönüş bekçisi
 (v3.5.0) artık etkin. Blur ayrıntılı denenmedi. Luna kurgusu gerçek haberlerle doğrulandı

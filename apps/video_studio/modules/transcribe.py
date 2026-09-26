@@ -73,6 +73,7 @@ class Job:
 
 
 _JOBS: dict[str, Job] = {}
+_JOBS_LOCK = threading.Lock()
 
 
 def available() -> bool:
@@ -87,7 +88,8 @@ def model_ready() -> bool:
 
 def _key(source: Path) -> str:
     stat = source.stat()
-    return hashlib.sha1(f"{source.name}|{stat.st_size}|{int(stat.st_mtime)}|{MODEL}|{VERSION}".encode()).hexdigest()[:16]
+    # Değişiklik zamanı nanosaniyeyle: aynı adlı, aynı boyutlu dosya aynı saniyede değişse de eski döküm kullanılmaz.
+    return hashlib.sha1(f"{source.name}|{stat.st_size}|{stat.st_mtime_ns}|{MODEL}|{VERSION}".encode()).hexdigest()[:16]
 
 
 def _path(folder: Path, source: Path) -> Path:
@@ -280,12 +282,14 @@ def transcribe(source: Path, folder: Path, progress: Callable[[float], None] = l
 
 
 def start(source: Path, folder: Path, model: Any = None, context: str = "") -> Job:
-    """Arka planda döker (zaten sürüyorsa onu döndürür)."""
+    """Arka planda döker (zaten sürüyorsa onu döndürür; aynı haber iki cihazda aynı anda başlatılsa da tek iş)."""
     key = str(_path(folder, source))
-    job = _JOBS.get(key)
-    if job and job.running:
-        return job
-    job = Job()
+    with _JOBS_LOCK:
+        job = _JOBS.get(key)
+        if job and not job.done:
+            return job
+        job = Job()
+        _JOBS[key] = job
 
     def run() -> None:
         try:
@@ -296,7 +300,6 @@ def start(source: Path, folder: Path, model: Any = None, context: str = "") -> J
             job.done = True
 
     job.thread = threading.Thread(target=run, daemon=True, name="axion-yazi")
-    _JOBS[key] = job
     job.thread.start()
     return job
 

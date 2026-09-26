@@ -120,7 +120,10 @@ def _photo_zoom_filter(index: int, framing: Framing, width: int, height: int, fp
 def _photo_input(asset: ImageAsset, source: str, clip: Clip, index: int, width: int, height: int,
                  fps: int) -> tuple[list[str], str]:
     orientation = asset.geometry.exif_orientation if asset.geometry else image_geometry(Path(source)).exif_orientation
+    # Yeni FFmpeg (7.x+, editörün Windows'u) -noautorotate'ta EXIF yönünü çıktıya "döndür" etiketi olarak geçiriyordu:
+    # pikseller zaten döndürülmüşken oynatıcı bir kez daha çevirip yan gösteriyordu (GPT V4-G4). Etiket silinir.
     turn = f"{EXIF_TURN[orientation]}," if orientation in EXIF_TURN else ""
+    turn += "sidedata=mode=delete:type=DISPLAYMATRIX,"
     if _zooms(clip.framing):  # tek kare girer, zoompan klip boyunca kare üretir
         return (["-noautorotate", "-i", source],
                 _photo_zoom_filter(index, clip.framing, width, height, fps, clip.duration_f, turn))
