@@ -283,6 +283,65 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert len(prompts) == 2 and "<onceki_kurgu>" in prompts[1] and "1: P1 @ 2.0" in prompts[1]
 
 
+def test_editor_swaps_one_scene_without_api(local_env, monkeypatch, tmp_path):
+    """v4.0.0-alpha.2: sahneye dokun → aynı görüntülerden seçenekler (fotoğraf dahil) → seç → yalnız o sahne değişir."""
+    from PIL import Image
+
+    from apps.video_studio import jobs as video_jobs
+    from apps.video_studio.modules import luna_edit
+
+    monkeypatch.setattr("apps.video_studio.modules.render.render_rough_cut",
+                        lambda edit_project, media_library, output: output.write_bytes(b"mp4") or "x264")
+    monkeypatch.setattr("apps.design_studio.pipeline.render_final",
+                        lambda rough, design, background, fps, seconds, output: output.write_bytes(b"final") or "x264")
+    photo = tmp_path / "foto.jpg"
+    Image.new("RGB", (1600, 900), "red").save(photo)
+    shots = [{"shot_id": f"video_001_shot_{n:03d}", "asset_id": "video_001", "shot_number": n,
+              "start_seconds": (n - 1) * 6.0, "end_seconds": n * 6.0, "duration_seconds": 6.0,
+              "visual": {"description": f"Görüntü {n}", "visual_type": "event", "editorial_role": "establishing"}}
+             for n in range(1, 9)]
+    library = media_library(shots)
+    library["assets"].append({
+        "asset_id": "image_001", "asset_type": "image", "analysis_prompt_version": library["assets"][0]["analysis_prompt_version"],
+        "source": {"filename": "foto.jpg", "sha256": "b" * 64, "original_path": str(photo)},
+        "geometry": {"width": 1600, "height": 900, "exif_orientation": 1},
+        "visual": {"description": "Kazanın fotoğrafı", "visual_type": "event", "editorial_role": "evidence"}})
+    project = saved_project(library)
+    at = open_page(project)
+    button(at, "🎬 Videoyu oluştur").click().run()
+    video_jobs.wait(project)
+    at.run()
+    at.toggle(key="scene_swap_open").set_value(True).run()
+    assert not at.exception
+    before = [(c["scene"], c["shot_id"], c["source_in_s"]) for c in video_clips(at.session_state["edit_project"])]
+    scene_buttons = [b for b in at.button if b.key and b.key.startswith("sahne_") and b.key != "sahne_vazgec"]
+    assert len(scene_buttons) == len({c[0] for c in before}) >= 3
+    button(at, scene_buttons[1].label).click().run()
+    options = [b for b in at.button if b.key and b.key.startswith("secenek_")]
+    assert 1 <= len(options) <= 4 and not at.exception
+    assert any("Kazanın fotoğrafı" in c.value for c in at.caption)  # fotoğraf da seçenek
+    options[0].click().run()
+    video_jobs.wait(project)
+    at.run()
+    plan = json.loads((project.folder / luna_edit.PLAN_FILENAME).read_text(encoding="utf-8"))
+    assert [e["parca"] for e in plan["editor"]] == [2] and plan["temel"]  # Luna'ya ulaşılamadı: kurgu temel alındı
+    after = [(c["scene"], c["shot_id"], c["source_in_s"]) for c in video_clips(at.session_state["edit_project"])]
+    changed = {scene for scene in {c[0] for c in before} if [c for c in before if c[0] == scene] != [c for c in after if c[0] == scene]}
+    assert changed == {1}  # yalnız o sahne
+    user = [c for c in video_clips(at.session_state["edit_project"]) if c["origin"] == "user"]
+    assert [c["scene"] for c in user] == [1]
+    assert any(b.label.startswith("✋ 2 ·") for b in at.button)  # bölüm açık kalır, değişen sahne işaretli
+    # "Sahneleri yeniden seç" editörün seçimlerini de sıfırlar.
+    button(at, "🔀 Sahneleri yeniden seç").click().run()
+    video_jobs.wait(project)
+    at.run()
+    assert all(c["origin"] != "user" for c in video_clips(at.session_state["edit_project"]))
+
+
+def video_clips(edit_project):
+    return [c for t in edit_project["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video" for c in t["clips"]]
+
+
 def test_video_render_failure_is_shown_and_can_be_retried(local_env, monkeypatch):
     from apps.video_studio import jobs as video_jobs
 

@@ -76,7 +76,8 @@ def test_local_video_and_image_become_media_library(tmp_path, monkeypatch):
     assert video.exists()
 
     rows = media_pipeline.shot_rows(library)
-    assert [(r["Sahne"], r["Başlangıç"], r["Görüntü"]) for r in rows] == [(1, "00:00.00", "vehicle"), (2, "00:04.00", "vehicle")]
+    assert [(r["Sahne"], r["Başlangıç"], r["Görüntü"]) for r in rows] == [
+        (1, "00:00.00", "vehicle"), (2, "00:04.00", "vehicle"), (None, "fotoğraf", "graphic")]  # v4.0: fotoğraf da
 
 
 def test_uploaded_image_is_kept_in_project_folder(tmp_path, monkeypatch):

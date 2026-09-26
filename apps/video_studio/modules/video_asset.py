@@ -136,6 +136,13 @@ def image_geometry(path: Path) -> ImageGeometry:
     return ImageGeometry(width=width, height=height, exif_orientation=orientation)
 
 
+def _readable_geometry(path: Path) -> ImageGeometry | None:
+    try:
+        return image_geometry(path)
+    except (OSError, ValueError):  # okunamayan görsel analizi durdurmasın; kurgu onu atlar
+        return None
+
+
 def build_image_asset_model(image: dict[str, Any], visual: dict[str, Any] | None, usage: dict[str, Any]) -> dict[str, Any]:
     path = Path(image["path"])
     return ImageAsset(
@@ -147,7 +154,7 @@ def build_image_asset_model(image: dict[str, Any], visual: dict[str, Any] | None
             original_path=str(path),
             size_bytes=path.stat().st_size,
         ),
-        geometry=image_geometry(path),
+        geometry=_readable_geometry(path),
         visual=visual,
         analysis_model=usage.get("model", ""),
         analysis_prompt_version=LUNA_PROMPT_VERSION,

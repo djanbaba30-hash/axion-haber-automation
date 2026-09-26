@@ -130,6 +130,8 @@ class Clip(BaseModel):
     # Klibin kendi sesi kullanılır (seslendirme öncesi/sonrası tanık, röportaj veya dikkat çekici kesit).
     use_source_audio: bool = False
     origin: ClipOrigin = ClipOrigin.LLM
+    # Seslendirme sahnesinin sırası (0'dan; kurgu v4.0): editör sahneyi bu numarayla değiştirir. Kesitlerde yok.
+    scene: int | None = None
     reason: str = ""
     confidence: float | None = None
     text: str | None = None

@@ -544,12 +544,15 @@ def plan_rough_cut(
     media_library: dict[str, Any],
     soundbites: list[Soundbite] | None = None,
     picks: dict[int, tuple[int, float | None]] | None = None,
+    user: set[int] | frozenset[int] = frozenset(),
+    pick_origin: ClipOrigin = ClipOrigin.LLM,
 ) -> dict[str, Any]:
     """EditProject'in video_main izini doldurur.
 
     Sıra: seslendirme öncesi kesitler → seslendirme (dolgu görüntüleriyle) → seslendirme sonrası kesitler.
     `picks`: Luna'nın seçimi (v3.6, Faz 4) {sahne no: (aday no, kaynak başlangıcı)}; verilmeyen sahne ve pencere
-    yetmezse kalan süre kurallarla seçilir.
+    yetmezse kalan süre kurallarla seçilir. `user`: editörün elle değiştirdiği sahneler (v4.0; `picks` içinde, etiketi
+    "user", kaynak sırasına dizmede yerinde kalır). `pick_origin`: öteki seçimlerin etiketi (Luna ya da kayıtlı kurallı kurgu).
     """
     prep = prepare(edit_project, media_library, soundbites)
     project, candidates, fps = prep.project, prep.candidates, prep.fps
@@ -581,7 +584,8 @@ def plan_rough_cut(
             story = (cursor_f + min(end_f - cursor_f, IDEAL_CLIP_SECONDS * fps) / 2 - intro_end_f) / max(1, broll_end_f - intro_end_f)
             pick = picks.pop(slot, None)  # Luna'nın seçimi sahnenin başında bir kez; yetmezse kalanı kurallar
             if pick is not None and 0 <= pick[0] < len(candidates):
-                best, prefer, origin = candidates[pick[0]], pick[1], ClipOrigin.LLM
+                best, prefer = candidates[pick[0]], pick[1]
+                origin = ClipOrigin.USER if slot in user else pick_origin
             else:
                 best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need, story), -c.order))
                 prefer, origin = None, ClipOrigin.RULE
@@ -607,6 +611,7 @@ def plan_rough_cut(
                     duration_f=duration_f,
                     framing=clip_framing(best, seconds=duration_f / fps, direction=1 if len(clips) % 2 else -1),
                     origin=origin,
+                    scene=slot,
                     reason=best.description,
                 )
             )
@@ -647,7 +652,8 @@ def _chronological(clips: list[Clip], candidates: list[Candidate], blocked: list
     shot_end = {c.shot_id: c.shot_end for c in candidates}
     by_shot: dict[str, list[Clip]] = {}
     for clip in clips:
-        by_shot.setdefault(clip.shot_id, []).append(clip)
+        if clip.origin != ClipOrigin.USER:  # editörün koyduğu sahne yerinde kalır
+            by_shot.setdefault(clip.shot_id, []).append(clip)
     for shot_id, group in by_shot.items():
         if len(group) < 2:
             continue

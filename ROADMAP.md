@@ -148,7 +148,7 @@ genel repo taraması → `v4.0.0`.
 Tema: Axion'u uzaktan güvenle kullanmak ve son kararı editöre hızlı verdirmek. Sıra, editörün tablet notlarından sonra
 yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalışır).
 
-1. **Kurguda sahne değiştirme:** Video Stüdyosu'nda seslendirme parçası başına küçük kare şeridi; sahneye dokun →
+1. **Kurguda sahne değiştirme — yapıldı (v4.0.0-alpha.2):** Video Stüdyosu'nda seslendirme parçası başına küçük kare şeridi; sahneye dokun →
    aynı görüntülerden 3–4 alternatif (fotoğraflar dahil) → seç → yalnız o parça yeniden kurulur (API yok; Luna'nın
    planı v3.6.0'dan beri `kurgu_plani.json`'da, elle değişiklik onun üstüne yazılır).
 2. **Fotoğraf desteği — yapıldı (v4.0.0-alpha.1)** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/

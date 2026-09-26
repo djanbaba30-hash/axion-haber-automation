@@ -22,6 +22,7 @@ from typing import Any, Literal
 from openai import OpenAI
 from pydantic import BaseModel, create_model
 
+from shared.edit_models import ClipOrigin
 from shared.media_models import EditorialRole
 
 from .rough_cut import Prepared, _generic, plan_rough_cut, prepare
@@ -174,28 +175,50 @@ def to_picks(scenes: list[dict[str, Any]], prep: Prepared) -> dict[int, tuple[in
     return picks
 
 
-def _read(folder: Path | None) -> dict[str, Any] | None:
+def read_plan(folder: Path | None) -> dict[str, Any] | None:
     try:
         return json.loads((folder / PLAN_FILENAME).read_text(encoding="utf-8")) if folder else None
     except (OSError, ValueError):
         return None
 
 
+def editor_picks(stored: dict[str, Any] | None, sig: str, prep: Prepared) -> dict[int, tuple[int, float | None]]:
+    """Editörün elle değiştirdiği sahneler (v4.0, `scene_swap.choose`); girdiler değiştiyse geçersiz (pencereler başka)."""
+    if not stored or stored.get("imza") != sig:
+        return {}
+    return to_picks(stored.get("editor", []), prep)
+
+
+def write_plan(folder: Path | None, content: dict[str, Any]) -> None:
+    if folder is not None:
+        (folder / PLAN_FILENAME).write_text(json.dumps(content, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def plan(edit_project: dict[str, Any], media_library: dict[str, Any], soundbites: list[Soundbite] | None,
          api_key: str, folder: Path | None, replan: bool = False, client: Any = None) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Kurgu planı: kayıtlı Luna planı (girdiler aynıysa), yoksa yeni Luna çağrısı, olmazsa kurallar.
+    """Kurgu planı: kayıtlı Luna planı (girdiler aynıysa), yoksa yeni Luna çağrısı, olmazsa kurallar. Editörün elle
+    değiştirdiği sahneler (girdiler aynıysa) hepsinin üstüne konur; "yeniden seç" onları da siler.
     Döndürür: (EditProject sözlüğü, bilgi {"kaynak": "luna"|"kayitli"|"kural", "not", "kullanim"})."""
     prep = prepare(edit_project, media_library, soundbites)
     prompt = build_prompt(prep)
     sig = signature(prompt)
-    stored = _read(folder)
-    if stored and stored.get("imza") == sig and not replan:
-        picks = to_picks(stored.get("sahneler", []), prep)
-        return plan_rough_cut(edit_project, media_library, soundbites, picks=picks), {
-            "kaynak": "kayitli", "not": "", "kullanim": stored.get("kullanim", {}), "secilen": len(picks)}
+    stored = read_plan(folder)
+    same = bool(stored and stored.get("imza") == sig)
+    user = {} if replan else editor_picks(stored, sig, prep)
+    edits = stored.get("editor", []) if same and user else []
+
+    def build(picks: dict[int, tuple[int, float | None]], origin: ClipOrigin = ClipOrigin.LLM) -> dict[str, Any]:
+        return plan_rough_cut(edit_project, media_library, soundbites, picks={**picks, **user}, user=set(user),
+                              pick_origin=origin)
+
+    base = (stored.get("sahneler") or stored.get("temel")) if same and not replan else None
+    if base:  # Luna'nın planı ya da editörün değiştirdiği kurgu (Luna'ya ulaşılamamıştı)
+        picks = to_picks(base, prep)
+        return build(picks, ClipOrigin.LLM if stored.get("sahneler") else ClipOrigin.RULE), {"kaynak": "kayitli", "not": "", "kullanim": stored.get("kullanim", {}),
+                              "secilen": len(picks), "editor": len(user)}
     if not api_key:
-        return plan_rough_cut(edit_project, media_library, soundbites), {
-            "kaynak": "kural", "not": "OPENAI_API_KEY yok; sahneler kurallarla seçildi.", "kullanim": {}}
+        return build({}), {"kaynak": "kural", "not": "OPENAI_API_KEY yok; sahneler kurallarla seçildi.", "kullanim": {},
+                           "editor": len(user)}
     full = prompt
     if replan and stored and stored.get("sahneler"):
         previous = "\n".join(f"{s['parca']}: {s['pencere']} @ {s['kaynak_bas']:.1f}" for s in stored["sahneler"])
@@ -203,19 +226,16 @@ def plan(edit_project: dict[str, Any], media_library: dict[str, Any], soundbites
     try:
         answer, usage = request(full, window_ids(prep), api_key, client)
     except Exception as error:  # noqa: BLE001 — ağ, kota, şema: video yine çıksın
-        return plan_rough_cut(edit_project, media_library, soundbites), {
-            "kaynak": "kural", "not": f"Luna'ya ulaşılamadı, sahneler kurallarla seçildi: {str(error)[:200]}", "kullanim": {}}
+        return build({}), {"kaynak": "kural", "not": f"Luna'ya ulaşılamadı, sahneler kurallarla seçildi: {str(error)[:200]}",
+                           "kullanim": {}, "editor": len(user)}
     scenes = answer.get("sahneler", [])
     picks = to_picks(scenes, prep)
-    if folder is not None:
-        (folder / PLAN_FILENAME).write_text(json.dumps({
-            "imza": sig, "tarih": datetime.now(timezone.utc).isoformat(timespec="seconds"), "yeniden": replan,
-            "olay_orgusu": answer.get("olay_orgusu", ""), "sahneler": scenes, "kullanim": usage},
-            ensure_ascii=False, indent=1), encoding="utf-8")
-    missing = len(prep.slots()) - len(picks)
+    write_plan(folder, {"imza": sig, "tarih": datetime.now(timezone.utc).isoformat(timespec="seconds"), "yeniden": replan,
+                    "olay_orgusu": answer.get("olay_orgusu", ""), "sahneler": scenes, "kullanim": usage,
+                    **({"editor": edits} if edits else {})})
+    missing = len(prep.slots()) - len({**picks, **user})
     note = f"Luna {missing} sahneyi boş bıraktı; onlar kurallarla seçildi." if missing else ""
-    return plan_rough_cut(edit_project, media_library, soundbites, picks=picks), {
-        "kaynak": "luna", "not": note, "kullanim": usage, "secilen": len(picks)}
+    return build(picks), {"kaynak": "luna", "not": note, "kullanim": usage, "secilen": len(picks), "editor": len(user)}
 
 
 def plan_summary(plan: dict[str, Any] | None) -> list[str]:
@@ -227,4 +247,6 @@ def plan_summary(plan: dict[str, Any] | None) -> list[str]:
               for s in plan.get("sahneler", [])]
     if scenes:
         lines.append("Sahneler: " + " · ".join(scenes))
+    if plan.get("editor"):
+        lines.append("Editörün değiştirdiği: " + " · ".join(f"{e.get('parca')}. → {e.get('pencere')}" for e in plan["editor"]))
     return lines

@@ -92,9 +92,11 @@ apps/video_studio/             VIDEO STÜDYOSU
                                başlangıç anı, enum'lu şema); plan kurgu_plani.json (imza aynıysa yeniden çağrı yok;
                                "yeniden seç" önceki kurguyu "beğenilmedi" diye gönderir); olmazsa kurallar
   modules/rough_cut.py         Faz 3 kural tabanlı kurgu (v3.6'dan beri yedek + Luna'nın bıraktığını doldurma; `prepare` ortak
-                               hazırlık, `plan_rough_cut(picks=)`): TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi
+                               hazırlık, `plan_rough_cut(picks=, user=)`): TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi
                                (v4.0: fotoğraflar da aday, yakınlaşmalı kadraj);
                                aynı çekim kaynak sırasıyla, tek uzun çekimde anlatım sırası, dikeyde sabit kadraj
+  modules/scene_swap.py        Kurguda sahne değiştirme (v4.0, API yok): sahne başına küçük kare, kurallı 4 seçenek,
+                               editörün seçimi kurgu_plani.json `editor` (Luna planının üstüne; girdiler değişince düşer)
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
                                numpy/Pillow, API yok)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
@@ -203,7 +205,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.1 → sıradaki: alpha.2 (sahne değiştirme)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.2 → sıradaki: alpha.3 (kapak = ilk kare)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -219,9 +221,12 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    boyut = yakınlaşma, özne içeride); render `_photo_input` (yakınlaşma: tek kare + `zoompan` 4x büyütülmüş karede;
    sabit/kayan: `-loop 1` + video yolu; `-noautorotate` + `EXIF_TURN`); `ImageAsset.geometry` artık dolu
    (`video_asset.image_geometry`); Luna istemi "fotoğraf N | hareketsiz". Testler `tests/test_photos.py`.
-2. `alpha.2` **Kurguda sahne değiştirme:** Video Stüdyosu'nda sahne başına küçük kare; dokun → aynı görüntülerden
-   3–4 alternatif (fotoğraflar dahil) → seç → yalnız o sahne değişir (API yok; `kurgu_plani.json` üstüne editör seçimi,
-   `origin: "user"`).
+2. `alpha.2` **Kurguda sahne değiştirme — YAPILDI:** `modules/scene_swap.py` (`scenes`, `alternatives` kurallı puan
+   `_score` + `_source_range`, `choose`, `thumbnail` → onizleme/kareler); `Clip.scene` (sahne no); seçim
+   `kurgu_plani.json` `editor` (+ Luna planı yoksa `temel` = o anki kurgu), `luna_edit.plan` üstüne koyar
+   (`plan_rough_cut(user=, pick_origin=)`; user klip `_chronological`'da yerinde); imza değişince/yeniden seçte düşer.
+   Sayfa: `page.scene_picker` (toggle `scene_swap_keep` ile açık kalır). Testler `tests/test_scene_swap.py` +
+   AppTest `test_editor_swaps_one_scene_without_api`. Tarayıcıda (Playwright, 1180 px) ızgara ve seçenekler denendi.
 3. `alpha.3` **Kapak = ilk kare:** videonun ilk karesinde başlık tam görünür (giriş animasyonunun son hâli) + kapak
    sahnesi; ayrı kapak yüklemek yok (Reels/Shorts kapak seçiminde ilk kare hazır).
 4. `alpha.4` **Müzik altlığı:** sözsüz, telifsiz haber müzikleri (data/varliklar'a eklenir); seslendirme/kesit sesinin

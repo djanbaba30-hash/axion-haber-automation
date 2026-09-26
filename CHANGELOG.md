@@ -1,3 +1,32 @@
+# v4.0.0-alpha.2 — Kurguda sahne değiştirme — 2026-09-26
+
+## Added
+- **Sahneyi elle değiştirme** (Video Stüdyosu → 4. Video → "🎞️ Sahneleri göster ve değiştir"; API yok). Her
+  seslendirme sahnesi videodaki kadrajıyla küçük kare olarak görünür (6'lı ızgara, süresiyle). Sahneye dokununca:
+  o sahnede söylenen cümle ve aynı görüntülerden (fotoğraflar dahil) en uygun 4 seçenek. Seçenekler kurallı puanla
+  sıralanır; şu anki görüntü ve videoda başka yerde kullanılan an seçenek olmaz, her seçenek başka çekimden.
+  "✅ Bunu koy" → yalnız o sahne değişir, video arka planda yeniden oluşur; elle değiştirilen sahne "✋" ile işaretli.
+  Bölüm açık kalır (art arda değiştirilebilir).
+- Editörün seçimi `kurgu_plani.json`'da `editor` satırı olarak Luna'nın planının üstüne yazılır (yeni Luna çağrısı
+  yok; klibin etiketi "user", kaynak sırasına dizmede yerinde kalır). Luna'ya ulaşılamamışsa şu anki kurgu `temel`
+  olarak kaydedilir: kurallar öteki sahneleri yeniden seçmez.
+- Haber, görüntüler ya da kesitler değişince editörün seçimi düşer (pencereler başka olur); "🔀 Sahneleri yeniden
+  seç" onları da sıfırlar (düğmenin açıklamasında yazıyor).
+- Geliştirici bilgileri: "Editörün değiştirdiği" satırı (sahne → pencere). Teşhis dosyasında zaten `kurgu_plani.json`
+  var; 4.0'ın "düzeltmelerden öğrenme" parçası bu kaydı kullanacak.
+- Küçük kareler proje klasöründe (`onizleme/kareler`, proje ile silinir); fotoğraf karesi EXIF yönüyle.
+
+## Changed
+- Kurgu klibi sahne numarasını taşır (`Clip.scene`, shared sözleşmede isteğe bağlı alan). 4.0 öncesi kurgularda
+  numara yok: bölüm görünmez, "Videoyu yeniden oluştur" sonrası gelir.
+
+## Fixed
+- Okunamayan (bozuk) fotoğraf görüntü analizini durduruyordu (alpha.1'deki boyut okuma); artık boyutu boş kalır,
+  kurgu o fotoğrafı atlar.
+- alpha.1'de sahne tablosuna fotoğraf satırı eklenince FFmpeg'li ortamda bir test (`test_media_pipeline`) bozulmuştu
+  (sandbox'ta FFmpeg olmadığı için atlanıyordu; editörün `testler.bat`'ında düşerdi). Test güncellendi; bu oturumda
+  FFmpeg/FFprobe kurulu, tüm medya testleri çalıştı.
+
 # v4.0.0-alpha.1 — Fotoğraflar kurguda — 2026-09-26
 
 4.0'ın ilk parçası (editör kararı: 4.0 parça parça ön sürümlerle; denemeler hepsi bitince).

@@ -28,7 +28,7 @@ from apps.axion_local.store import (
     save_project_json,
 )
 from apps.video_studio import jobs as video_jobs
-from apps.video_studio.modules import luna_edit
+from apps.video_studio.modules import luna_edit, scene_swap
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
@@ -47,6 +47,7 @@ from apps.video_studio.modules.soundbites import (
     total_seconds,
 )
 from apps.video_studio.modules.video_ingestion import probe_video
+from shared.media_models import MediaLibrary
 
 ANALYSIS_OPTIONS = {
     "Ekonomik — sahne başına 1 kare": 1,
@@ -137,6 +138,64 @@ def invalidate_cut(project: NewsProject) -> None:
     (project.folder / EDIT_PROJECT_FILENAME).unlink(missing_ok=True)
     (project.folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
     (project.folder / FINAL_VIDEO_FILENAME).unlink(missing_ok=True)
+
+
+def shorten(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + " …"
+
+
+def scene_picker(project: NewsProject, edit_project: dict, media_library: dict, soundbites: list[Soundbite],
+                 start_video) -> None:
+    """Kurguda sahne değiştirme (v4.0, API yok): küçük kareler; sahneye dokun → aynı görüntülerden seçenekler →
+    seç → yalnız o sahne değişir, video yeniden oluşur."""
+    items = scene_swap.scenes(edit_project)
+    if not items:
+        return
+    # Video yeniden oluşurken bu bölüm çizilmez, Streamlit düğmenin durumunu siler: açık kalsın (art arda değiştirme).
+    ss.scene_swap_keep = st.toggle("🎞️ Sahneleri göster ve değiştir", key="scene_swap_open",
+                                   value=ss.get("scene_swap_keep", False))
+    if not ss.scene_swap_keep:
+        ss.pop("swap_scene", None)
+        return
+    library = MediaLibrary.model_validate(media_library)
+    selected = ss.get("swap_scene")
+    for row in range(0, len(items), 6):
+        for column, scene in zip(st.columns(6), items[row:row + 6]):
+            with column:
+                clip = scene.clip
+                thumb = scene_swap.thumbnail(library, clip.asset_id, clip.source_in_s + 0.3, clip.framing.view_region,
+                                             project.folder)
+                if thumb:
+                    st.image(str(thumb), width="stretch")
+                mark = "✋ " if scene.user else ""
+                if st.button(f"{mark}{scene.number + 1} · {scene.seconds:.1f} sn", key=f"sahne_{scene.number}",
+                             width="stretch", type="primary" if selected == scene.number else "secondary"):
+                    ss.swap_scene = selected = scene.number
+    st.caption("✋ = elle değiştirdiğin sahne. Sahneye dokun, yerine konabilecek görüntüler gelsin.")
+    if selected is None:
+        return
+    prep = luna_edit.prepare(edit_project, media_library, soundbites)
+    options = scene_swap.alternatives(prep, edit_project, selected)
+    spoken = prep.slots()[selected][2] if selected < len(prep.slots()) else ""
+    st.markdown(f"**{selected + 1}. sahnenin yerine** — seçince yalnız bu sahne değişir, video yeniden oluşur.")
+    if spoken:
+        st.caption(f"Bu sahnede söylenen: “{spoken}”")
+    if not options:
+        st.caption("Başka uygun görüntü yok (hepsi videoda başka yerde kullanılıyor).")
+    for column, option in zip(st.columns(4), options):
+        with column:
+            thumb = scene_swap.thumbnail(library, option.asset_id, option.start + 0.3, option.framing.view_region,
+                                         project.folder)
+            if thumb:
+                st.image(str(thumb), width="stretch")
+            st.caption(shorten(option.description, 80) or "—")
+            if st.button("✅ Bunu koy", key=f"secenek_{option.index}", width="stretch"):
+                scene_swap.choose(project.folder, prep, edit_project, selected, option)
+                ss.pop("swap_scene", None)
+                start_video(replan=False)
+    if st.button("Vazgeç", key="sahne_vazgec"):
+        ss.pop("swap_scene", None)
+        st.rerun()
 
 
 def save_soundbites(project: NewsProject, soundbites: list[Soundbite]) -> None:
@@ -391,7 +450,8 @@ with st.expander("4. Video", expanded=True):
             start_video(replan=False)
         if output.exists() and not busy and st.button(
             "🔀 Sahneleri yeniden seç", width="stretch",
-            help="Luna'dan bu kurgudan farklı bir sahne seçimi ister (küçük bir yapay zekâ çağrısı), video yeniden oluşur.",
+            help="Luna'dan bu kurgudan farklı bir sahne seçimi ister (küçük bir yapay zekâ çağrısı), video yeniden oluşur. "
+                 "Elle değiştirdiğin sahneler de sıfırlanır.",
         ):
             start_video(replan=True)
         if job and job.finished and job.plan_info and job.plan_info.get("not"):
@@ -413,6 +473,7 @@ with st.expander("4. Video", expanded=True):
             if design_col.button("🎨 Tasarım Stüdyosu'nda düzenle →", width="stretch"):
                 st.switch_page(DESIGN_PAGE)
             caption_copy(news_text, key="video_paylasim_kopyala")  # videoyu paylaşırken gereken metin
+            scene_picker(project, edit_project, media_library, soundbites, start_video)
         else:
             st.caption(
                 "Sahneleri Luna seçer: olay sırasıyla, aynı görüntü tekrarlanmadan, ilk sahne kapak. Kadraj her sahnede "
