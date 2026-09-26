@@ -164,6 +164,25 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
    hızlandırması (3'ün verisiyle); **altyazı** yalnız editörün tarifinden sonra (nerede, nasıl; önce editöre sorulur).
    Blur/mozaik editör kullandıkça.
 
+## v4.2 planı (taslak; editörün isteği, 2026-09-26) — v4.1 planı bitince ilk iş
+
+1. **Üslup seçimi yerine editörün serbest talimatı** (editör: "Haber üslubu özelliğinin bir işe yaradığını görmedim;
+   üslup örneği de fazladan token"). Ham haberin yanında, fazladan yer kaplamayan kompakt bir metin kutusu
+   (sayfadaki boş bir yere; ör. "Haberi işle" satırında): editör üslubu ve basit başka talimatları yazar
+   ("daha sert başlık", "ailenin tepkisini öne çıkar", "yaralı sayısını başlığa koyma" gibi); model içeriği
+   bunu dikkate alarak üretir. **Boşsa varsayılan:** standart, objektif haber sunucusu edasıyla, viral potansiyeli
+   yüksek sosyal medya haberi.
+   - Kaldırılır (çöp bırakmadan): kenar çubuğundaki "Üslup" seçimi, "Üslup örnekleri" bölümü, sistem istemindeki
+     ÜSLUPLAR bloğu, `build_example_block`, ayarlardaki `news_style`/`news_examples` anahtarları. İstem sadeleşir;
+     öncesi/sonrası token sayılır.
+   - Talimat kullanıcı mesajına gider (sistem istemi önbellekte kalır); düzeltme çağrısı ve başlık/seslendirme
+     yenilemesi de aynı talimatı alır. Talimat üslubu ve vurguyu yönetir, **kuralları delemez** (bilgi uydurma yok,
+     isim kuralı "A.K.", plaka, başlık 2 satır/44 karakter, seslendirme süresi); istemde bu tek cümleyle yazılır.
+   - Talimat projeye (news_package metadata) ve düzeltme kaydına yazılır (hangi talimat ne sonuç verdi).
+   - Editöre sorulacak: talimat her haberde boş mu gelsin, yoksa son yazılan hatırlansın mı (ya da sık
+     kullanılanlar tek dokunuşla seçilsin mi)?
+   - Gerçek haberle test + regresyon testi (kural 5); AGENTS kural 10'daki "üslup" ifadesi güncellenir.
+
 ## Ortam
 
 - Evdeki bilgisayar Windows; güçlü (AMD işlemci ve ekran kartı), 1000 Mbps internet, iş saatlerinde açık kalabilir.

@@ -237,6 +237,9 @@ fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir pa
 - **1. madde yapıldı (`v4.1.0-alpha.1`):** okunuş sözlüğü + ElevenLabs göstergesi. Editör denerken bak: sözlükle
   okunan kelime doğru mu, 🩺 Durum'daki ElevenLabs satırı ne yazıyor (kalan okunamıyorsa neden artık açık; izin
   eksikse editör ElevenLabs sitesinde açar). Sorun yoksa 2. madde (haberdeki alıntıdan kesit önerisi).
+- Editör ElevenLabs anahtarına "User" iznini ekledi (2026-09-26; önce yalnız TTS ve Voices vardı): kalan karakterin
+  okunamamasının nedeni buydu. v4.1 planından sonraki ilk iş: ROADMAP "v4.2 planı" 1. madde (üslup seçimi yerine
+  editörün serbest talimatı).
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =
