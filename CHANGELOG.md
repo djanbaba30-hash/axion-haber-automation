@@ -1,3 +1,25 @@
+# v3.5.0 — Güncellemede geri dönüş, sürüm numarası — 2026-09-26
+
+## Added
+- **Güncellemede geri dönüş** (editör: "mantıklı, ana sürümden önce"): uygulamadan güncellenen sürüm açılamazsa Axion
+  kendiliğinden önceki sürüme döner. Güncellemeden önce çalışan sürüm `data\guncelleme_onceki.txt`'ye yazılır; bekçi
+  (`axion_calistir.ps1`) paketleri kurduktan sonra yeni sürümü **açılış kontrolünden** geçirir
+  (`python -m apps.axion_local.self_check`: bütün Python dosyaları derlenir, modüller içe aktarılır, Haber/Video/Tasarım
+  sayfaları boş bir veri klasöründe bir kez çizilir; ~3 sn, API yok, projelere dokunmaz). Kontrol geçmezse ya da yeni
+  sürüm ilk 3 dakikada çökerse bekçi önceki sürüme döner (`git reset --keep`: yerel değişikliklere dokunmaz, çakışırsa
+  dönmez ve günlüğe yazar), paketleri yeniden kurar ve Axion'u açar.
+- Geri dönüldüyse kenar çubuğunda "⚠️ Son güncelleme açılamadı; Axion önceki sürüme döndü" yazar ve aynı bozuk sürüm
+  için güncelle düğmesi çıkmaz; düzeltilmiş sürüm yayımlanınca düğme geri gelir.
+- **Sürüm numarası** kenar çubuğunda: "🟢 Axion güncel · v3.5.0" (tek kaynak: CHANGELOG'un ilk başlığı).
+- Sandbox'ta PowerShell 7 ile bekçinin kendisi sahte bir Axion'la denendi (4 senaryo): sözdizimi hatalı sürüm → geri
+  döndü; çizilirken hata veren sayfa → geri döndü; güncellemeden hemen sonra çökme → geri döndü; sağlam sürüm → kaldı.
+  Windows PowerShell 5.1'de denenmedi.
+
+## Not
+- Bekçi betiği Axion açılırken bir kez okunur: geri dönüş, bu sürüme geçtikten sonra Axion **bir kez masaüstü
+  simgesiyle yeniden açılınca** (ya da bilgisayar yeniden başlayınca) devreye girer. O zamana kadar çalışan eski bekçi
+  güncellemeyi eskisi gibi yapar.
+
 # v3.4.3 — Güncelleme daha sık kontrol edilir — 2026-09-26
 
 ## Changed

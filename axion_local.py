@@ -104,10 +104,15 @@ def update_controls() -> None:
     """🟢/🔴 satırı; 🔴 ise uygulamadan güncelle ve yeniden başlat (editör: dükkândayken bilgisayara erişim yok).
     Kendi başına yenilenir: yeni sürüm yayımlanınca sayfaya dokunmadan birkaç dakikada 🔴 görünür."""
     value = update_check.status()
-    text = update_check.label(value)
+    text = update_check.label(value, update_check.version())
     if not text:
         return
     st.caption(text, help="Bilgisayardaki Axion repodaki son sürümle karşılaştırılır (2 dakikada bir).")
+    notice = update_check.rollback_notice()
+    if value == "var" and update_check.blocked_by_rollback(notice):
+        st.caption("⚠️ Son güncelleme açılamadı; Axion önceki sürüme döndü. Düzeltilmiş sürüm gelince yeniden "
+                   "güncelleyebilirsin (Claude'a/GPT'ye `data\\axion.log`'u gönder).")
+        return
     if value != "var":
         return
     if not update_check.supervised():

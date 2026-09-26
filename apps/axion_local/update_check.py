@@ -2,11 +2,16 @@
 `main` ile karşılaştırılır. `git ls-remote` yalnız son commit numarasını sorar (indirme yok, ~1 KB); arka planda, en çok
 2 dakikada bir ve yalnız Axion bir tarayıcıda açıkken (sayfa hiç beklemez). Git yoksa, internet yoksa ya da repo
 değilse hiçbir şey gösterilmez.
+
+Geri dönüş (v3.5): uygulamadan güncellemeden önce çalışan sürüm `data/guncelleme_onceki.txt`'ye yazılır. Bekçi yeni
+sürümü açılış kontrolünden geçirir (`self_check`); açılmazsa ya da ilk dakikalarda çökerse önceki sürüme döner ve
+`data/guncelleme_geri_alindi.txt` bırakır: kenar çubuğu uyarır, aynı bozuk sürüm yeniden önerilmez.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import threading
 import time
@@ -20,9 +25,27 @@ TIMEOUT_SECONDS = 15
 PULL_TIMEOUT_SECONDS = 180
 RESTART_CODE = 3  # bekçiye: "güncellendi, paketleri kontrol et ve hemen yeniden başlat" (çökme sayılmaz)
 SUPERVISOR_ENV = "AXION_BEKCI"  # bekçi (windows/axion_calistir.ps1) Axion'u başlatırken koyar
+PREVIOUS_FILE = "guncelleme_onceki.txt"  # bekçi okur: geri dönülecek sürüm (ASCII, tek satır)
+ROLLBACK_FILE = "guncelleme_geri_alindi.txt"  # bekçi yazar: failed=<sürüm>, reason=kontrol|cokme, time=...
 
 _lock = threading.Lock()
-_state: dict[str, object] = {"checked": 0.0, "status": None, "running": False}
+_state: dict[str, object] = {"checked": 0.0, "status": None, "running": False, "remote": None, "local": None}
+
+
+def _data_dir() -> Path:
+    from apps.axion_local.store import data_dir
+
+    return data_dir()
+
+
+def version() -> str | None:
+    """Çalışan sürüm: CHANGELOG'un ilk başlığı ("# v3.5.0 — ..."); tek kaynak, ayrı sayı tutulmaz."""
+    try:
+        with (ROOT / "CHANGELOG.md").open(encoding="utf-8") as handle:
+            match = re.match(r"#\s*v(\d[\w.]*)", handle.readline())
+    except OSError:
+        return None
+    return match.group(1) if match else None
 
 
 def _git(*args: str, timeout: float = TIMEOUT_SECONDS) -> str:
@@ -45,6 +68,8 @@ def check() -> str | None:
         return None
     if not remote:
         return None
+    with _lock:
+        _state.update(remote=remote[0], local=local)
     return "guncel" if remote[0] == local else "var"
 
 
@@ -56,13 +81,38 @@ def supervised() -> bool:
 def apply_update() -> str | None:
     """Yeni sürümü indirir (`git pull --ff-only`, guncelle.bat'ın yaptığı gibi). Hata yoksa None, varsa hata metni.
     Paketleri (pip) bekçi yeniden başlatmadan önce kurar: çalışan Python'un dosyaları Windows'ta kilitlidir."""
+    previous = _data_dir() / PREVIOUS_FILE
     try:
+        head = _git("rev-parse", "HEAD")
+        previous.parent.mkdir(parents=True, exist_ok=True)
+        previous.write_text(head + "\n", encoding="ascii")  # yeni sürüm açılmazsa bekçi buna döner
         _git("pull", "--ff-only", timeout=PULL_TIMEOUT_SECONDS)
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        previous.unlink(missing_ok=True)
         return str(error).strip()[-500:] or error.__class__.__name__
+    (_data_dir() / ROLLBACK_FILE).unlink(missing_ok=True)
     with _lock:
         _state.update(status="guncel", checked=time.monotonic())
     return None
+
+
+def rollback_notice() -> dict[str, str] | None:
+    """Bekçi son güncellemeyi geri aldıysa: {"failed": sürüm, "reason": "kontrol"|"cokme", "time": ...}."""
+    try:
+        text = (_data_dir() / ROLLBACK_FILE).read_text(encoding="ascii", errors="replace")
+    except OSError:
+        return None
+    notice = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+    return notice if notice.get("failed") else None
+
+
+def blocked_by_rollback(notice: dict[str, str] | None) -> bool:
+    """Repodaki son sürüm geri alınan sürümün ta kendisiyse yeniden önerilmez (düzeltme gelene kadar)."""
+    if not notice:
+        return False
+    with _lock:
+        remote, local = _state["remote"], _state["local"]
+    return remote == notice["failed"] and local != notice["failed"]
 
 
 def _run(started: float) -> None:
@@ -86,12 +136,13 @@ def _status(now: float | None = None) -> str | None:
         return _state["status"]  # type: ignore[return-value]
 
 
-def label(value: str | None) -> str | None:
+def label(value: str | None, number: str | None = None) -> str | None:
+    suffix = f" · v{number}" if number else ""
     if value == "guncel":
-        return "🟢 Axion güncel"
+        return "🟢 Axion güncel" + suffix
     if value == "var":
-        return "🔴 Güncelleme var"
-    return None
+        return "🔴 Güncelleme var" + suffix
+    return f"Axion v{number}" if number else None
 
 
 # Yeniden başlatmadan sonra sayfa kendiliğinden yenilensin: Streamlit sunucuya yeniden bağlanır ama sayfayı yeniden

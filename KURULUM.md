@@ -211,6 +211,9 @@ Yeni sürüm olduğunu Axion kendisi gösterir: kenar çubuğunun altında **�
 Dükkândayken (bilgisayara erişim yokken) **🔴 Güncelleme var**'ın altındaki **⬇️ Güncelle ve yeniden başlat**'a bas:
 Axion yeni sürümü indirir, kendini yeniden başlatır; sayfa yarım dakika içinde kendiliğinden geri gelir. Video
 oluşturuluyorsa bitmesini bekle. Düğme, Axion masaüstündeki simgeyle açıldıysa görünür.
+Yeni sürüm açılamazsa Axion kendiliğinden önceki sürüme döner ve kenar çubuğunda **⚠️ Son güncelleme açılamadı**
+yazar; o zaman `data\axion.log`'u Claude'a/GPT'ye gönder. Kenar çubuğundaki satırda sürüm numarası da yazar
+(**🟢 Axion güncel · v3.5.0** gibi).
 Çalışan Axion'u durdurur ve yeni sürümü indirir. Axion'u kendisi açmaz: bitince masaüstündeki **Axion** simgesiyle aç.
 
 Güncelleme bilgisayardaki kodu repodakinin aynısı yapar (`git pull`): repoda silinen dosyalar bilgisayardan da silinir,

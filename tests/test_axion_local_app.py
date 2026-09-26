@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -569,7 +570,7 @@ def test_browser_page_opens_dha_news_panel(local_env, monkeypatch):
     assert not at.exception
     # Editör: işi yalnız DHA abone paneli; ana sayfa ayarı ve açıklama kenar çubuğundan kalktı (yerine gezinme paneli).
     assert fake.calls == [("goto", "https://dhaabone.dha.com.tr/news")]  # boş sekme: bir kez açılır
-    assert not at.sidebar.text_input and not at.sidebar.caption
+    assert not at.sidebar.text_input and not [c for c in at.sidebar.caption if not c.value.startswith("Axion v")]
     at.run()
     assert fake.calls == [("goto", "https://dhaabone.dha.com.tr/news")]
 
@@ -805,6 +806,13 @@ def test_watchdog_restarts_after_in_app_update():
     watchdog = (Path(__file__).resolve().parents[1] / "windows" / "axion_calistir.ps1").read_text()
     assert "$env:AXION_BEKCI = '1'" in watchdog and "if ($code -eq 3)" in watchdog
     assert "pip install" in watchdog.split("if ($code -eq 3)")[1].split("continue")[0]
+    # Geri dönüş (v3.5): açılış kontrolü geçmezse ya da hemen çökerse önceki sürüm; dosya adları Python'la aynı.
+    from apps.axion_local import update_check
+
+    after_update = watchdog.split("if ($code -eq 3)")[1]
+    assert "apps.axion_local.self_check" in after_update and "Invoke-Rollback 'kontrol'" in after_update
+    assert "Invoke-Rollback 'cokme'" in watchdog and "git reset --keep $previous" in watchdog
+    assert f"'{update_check.PREVIOUS_FILE}'" in watchdog and f"'{update_check.ROLLBACK_FILE}'" in watchdog
 
 
 def test_update_check_and_pull_with_real_git(tmp_path, monkeypatch):
@@ -830,11 +838,76 @@ def test_update_check_and_pull_with_real_git(tmp_path, monkeypatch):
     git("push", "origin", "HEAD:main", cwd=dev)
     git("clone", str(origin), str(home), cwd=tmp_path)
     monkeypatch.setattr(update_check, "ROOT", home)
+    monkeypatch.setenv("AXION_DATA_DIR", str(tmp_path / "data"))
     assert update_check.check() == "guncel"
+    old_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=home, capture_output=True, text=True).stdout.strip()
     (dev / "b.txt").write_text("2")
     git("add", ".", cwd=dev)
     git("commit", "-m", "yeni", cwd=dev)
     git("push", "origin", "HEAD:main", cwd=dev)
     assert update_check.check() == "var"
+    notice = tmp_path / "data" / update_check.ROLLBACK_FILE
+    notice.parent.mkdir(parents=True, exist_ok=True)
+    notice.write_text("failed=eski\n")
     assert update_check.apply_update() is None
     assert (home / "b.txt").read_text() == "2" and update_check.check() == "guncel"
+    # Geri dönüş (v3.5): bekçi yeni sürüm açılmazsa buna döner; eski uyarı yeni güncellemeyle kalkar.
+    assert (tmp_path / "data" / update_check.PREVIOUS_FILE).read_text().strip() == old_head
+    assert not notice.exists()
+
+
+def test_rollback_notice_blocks_the_same_broken_version(local_env, monkeypatch):
+    """Bekçi bozuk sürümden geri döndüyse aynı sürüm yeniden önerilmez; düzeltilmiş sürüm gelince düğme döner."""
+    from apps.axion_local import store, update_check
+
+    monkeypatch.setenv(update_check.SUPERVISOR_ENV, "1")
+    monkeypatch.setattr(update_check, "status", lambda now=None: "var")
+    (store.data_dir()).mkdir(parents=True, exist_ok=True)
+    (store.data_dir() / update_check.ROLLBACK_FILE).write_text("failed=bbb\nreason=kontrol\ntime=2026-09-26T09:00:00\n")
+    monkeypatch.setattr(update_check, "_state", {"checked": 1.0, "status": "var", "running": False,
+                                                 "remote": "bbb", "local": "aaa"})
+    at = start()
+    assert any("önceki sürüme döndü" in c.value for c in at.sidebar.caption)
+    assert not [b for b in at.sidebar.button if "Güncelle" in b.label]
+    update_check._state["remote"] = "ccc"  # düzeltme yayımlandı
+    at.run()
+    assert not any("önceki sürüme döndü" in c.value for c in at.sidebar.caption)
+    assert [b for b in at.sidebar.button if "Güncelle" in b.label]
+
+
+def test_version_number_in_sidebar(local_env, monkeypatch):
+    """Editör (v3.5): kenar çubuğunda sürüm numarası; tek kaynak CHANGELOG'un ilk başlığı."""
+    from apps.axion_local import update_check
+
+    number = update_check.version()
+    first = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").splitlines()[0]
+    assert number and first.startswith(f"# v{number} ")
+    monkeypatch.setattr(update_check, "status", lambda now=None: "guncel")
+    at = start()
+    assert any(c.value == f"🟢 Axion güncel · v{number}" for c in at.sidebar.caption)
+    assert update_check.label(None, number) == f"Axion v{number}" and update_check.label(None) is None
+
+
+def test_self_check_passes_on_this_version_and_catches_broken_ones(tmp_path, monkeypatch):
+    """Bekçinin açılış kontrolü: bu sürüm geçer; sözdizimi hatası ve çizilirken hata veren sayfa yakalanır."""
+    from apps.axion_local import self_check
+
+    monkeypatch.setenv("AXION_DATA_DIR", str(tmp_path / "data"))  # run() değiştirir; test sonunda eski hâli döner
+    monkeypatch.setenv("AXION_INBOX_DIR", str(tmp_path))
+    assert self_check.run() == []
+
+    broken = tmp_path / "bozuk.py"
+    broken.write_text("import streamlit as st\nst.title('x')\nraise RuntimeError('bozuk sayfa')\n")
+    assert any("bozuk sayfa" in error for error in self_check.render_pages(broken, pages=()))
+
+    root = tmp_path / "repo"
+    (root / "apps").mkdir(parents=True)
+    (root / "shared").mkdir()
+    (root / "axion_app.py").write_text("x = 1\n")
+    (root / "axion_local.py").write_text("x = 1\n")
+    (root / "apps" / "bozuk.py").write_text("def f(:\n")
+    monkeypatch.setattr(self_check, "ROOT", root)
+    monkeypatch.chdir(tmp_path)  # main() çalışma klasörünü ve sys.path'i değiştirir (sahte axion_app.py sızmasın)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    assert [e for e in self_check.compile_all() if e.startswith("apps")]
+    assert self_check.main() == 1

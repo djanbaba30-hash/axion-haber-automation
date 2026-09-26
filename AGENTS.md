@@ -55,7 +55,10 @@ apps/axion_local/
   metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
   update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 2 dk'da bir;
                                satır fragment, 30 sn'de kendiliğinden yenilenir);
-                               uygulamadan güncelleme (`git pull`, çıkış kodu 3 → bekçi pip + yeniden başlatır)
+                               uygulamadan güncelleme (`git pull`, çıkış kodu 3 → bekçi pip + yeniden başlatır);
+                               önceki sürüm data/guncelleme_onceki.txt, geri dönüş uyarısı; sürüm = CHANGELOG ilk başlığı
+  self_check.py                Açılış kontrolü (bekçi güncellemeden sonra çalıştırır): derle, içe aktar, 3 sayfayı AppTest
+                               ile çiz (boş veri klasörü); geçmezse bekçi önceki sürüme döner
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
                                İndirilenler'deki TXT'ler (DHA "TXT indir" → Haber Stüdyosu)
@@ -142,7 +145,8 @@ shared/                        Modüller arası sözleşmeler (Pydantic)
 
 windows/                       kurulum.bat, axion_baslat.vbs (konsolsuz başlatıcı) → axion_calistir.ps1 (bekçi: çökerse
                                5 sn sonra yeniden başlatır; kod 0 = Axion'u kapat, -1 = Stop-Process/güncelleme, 3 = uygulamadan
-                               güncellendi → pip + hemen yeniden başlat; AXION_BEKCI=1 koyar), guncelle.bat,
+                               güncellendi → pip + açılış kontrolü + yeniden başlat; kontrol geçmezse ya da 3 dk içinde çökerse
+                               `git reset --keep` ile önceki sürüm; AXION_BEKCI=1 koyar), guncelle.bat,
                                anahtarlar.bat, sorun_giderme.bat, testler.bat (make'siz test), kisayol.ps1, axion_x.ico
 tests/                         pytest; tests/test_axion_local_app.py uygulamayı AppTest ile uçtan uca sürer
 ```
@@ -189,7 +193,13 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.4.3
+## Nerede kaldık (2026-09-26) — Sürüm 3.5.0
+
+**3.5.0:** güncellemede geri dönüş (`self_check.py` + bekçi `Invoke-Rollback`; `update_check` önceki sürümü yazar,
+geri dönüş uyarısı, aynı bozuk sürümü yeniden önermez) ve kenar çubuğunda sürüm numarası. Bekçi sandbox'ta PowerShell 7
++ sahte Axion ile 4 senaryoda denendi; Windows PowerShell 5.1'de denenmedi. Bekçi betiği açılışta okunduğu için geri
+dönüş editörün Axion'u masaüstü simgesiyle bir kez yeniden açmasından sonra etkin. Sürüm yükseltirken CHANGELOG'un ilk
+başlığı sürüm numarasıdır (`update_check.version`).
 
 **3.4.3:** güncelleme kontrolü 2 dk'da bir (`INTERVAL_SECONDS`), kenar çubuğu satırı `@st.fragment(run_every=30)` ile
 dokunmadan yenilenir. **Editör uygulamadan güncellemeyi Windows'ta doğruladı (2026-09-26, telefondan):** sorunsuz;
@@ -210,8 +220,8 @@ başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber 
 Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı.
 
 **Sıradaki (editörle beyin fırtınası, 2026-09-26; ROADMAP "Sıradaki işler" 9 ve "Sürüm 4.0 planı"):**
-1. **v3.5.0 (şimdi):** güncellemede geri dönüş (uygulamadan güncellenen sürüm açılamazsa bekçi önceki sürüme döner)
-   + kenar çubuğunda sürüm numarası.
+1. ~~v3.5.0~~ (yapıldı): güncellemede geri dönüş + kenar çubuğunda sürüm numarası. Editör uygulamadan alır; evde
+   bir kez Axion'u kapatıp simgeyle açar (yeni bekçi).
 2. Editör dükkânda tabletten tam akışı dener (haber → ses → Tarayıcı'dan DHA → video → Tasarım → indir); notları
    4.0'dan önce küçük, testli commit'lerle yapılır.
 3. **4.0** (ROADMAP'te ayrıntı): kurguda sahne değiştirme, fotoğraf desteği, yerel yazıya dökme (kesit seçimi; ileride

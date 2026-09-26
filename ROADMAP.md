@@ -116,7 +116,7 @@ kontrolü kaldırmak değil, hızlandırmak.
    - **Yapıldı (3.4.1–3.4.3):** 🟢/🔴 güncelleme göstergesi (2 dk'da bir) + uygulamadan (tabletten) "Güncelle ve
      yeniden başlat". **Editör Windows'ta doğruladı (2026-09-26):** telefondan güncelledi, sekme kapanmadı, arayüz
      kısa süre gidip geldi.
-9. **v3.5.0** (editör kararı, 2026-09-26; 4.0'dan önceki QoL):
+9. **v3.5.0** (editör kararı, 2026-09-26; 4.0'dan önceki QoL; yapıldı):
    - **Güncellemede geri dönüş:** uygulamadan güncellenen sürüm açılamazsa (bekçinin açılış kontrolü ya da ilk
      dakikalarda çökme) bekçi önceki sürüme döner ve yeniden başlatır; kenar çubuğunda uyarı. Windows'ta otomatik
      test (GitHub) istenmedi.
