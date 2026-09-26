@@ -29,7 +29,7 @@ from apps.axion_local.store import (
     save_project_json,
 )
 from apps.video_studio import jobs as video_jobs
-from apps.video_studio.modules import luna_edit, scene_swap, transcribe
+from apps.video_studio.modules import luna_edit, quotes, scene_swap, transcribe
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
@@ -187,6 +187,12 @@ def transcript_picker(project: NewsProject, source: Path, chosen: tuple[float, f
                 ss.kesit_from_text = transcribe.span(lines, first, last)
                 st.rerun(scope="app")
 
+            # v4.1: haberdeki tırnaklı alıntı dökümde bulunduysa tek dokunuşla o cümleler (güven düşükse düğme yok).
+            for quote in quotes.suggestions(news_context(project, source=True), lines):
+                label = (f"📍 Haberdeki alıntı: {mmss(quote['bas'])}–{mmss(quote['bitis'])} · "
+                         f"“{shorten(quote['alinti'], 70)}”")
+                if st.button(label, key=f"alinti_{quote['ilk']}_{quote['son']}", width="stretch"):
+                    pick(quote["ilk"], quote["son"])
             for number, line in enumerate(lines):
                 label = f"{mmss(line['bas'])}–{mmss(line['son'])} · {line['metin']}"
                 if st.button(label, key=f"yazi_{number}", width="stretch",
@@ -460,7 +466,10 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                     placement=placement or "before",
                 )
                 save_soundbites(project, [*soundbites, bite])
-                corrections.soundbite(project.id, source.name, suggested, (bite.start_s, bite.end_s), bite.placement)
+                transcript = transcribe.load(project.folder, source)
+                found = quotes.suggestions(news_context(project, source=True), transcript["cumleler"]) if transcript else []
+                corrections.soundbite(project.id, source.name, suggested, (bite.start_s, bite.end_s), bite.placement,
+                                      [(quote["bas"], quote["bitis"]) for quote in found])
                 st.rerun()
 
     for index, bite in enumerate(soundbites):

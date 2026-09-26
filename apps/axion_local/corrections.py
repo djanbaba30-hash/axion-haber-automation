@@ -75,11 +75,13 @@ def scene(project: str, number: int, spoken: str, before: dict[str, Any], after:
 
 
 def soundbite(project: str, filename: str, suggested: tuple[float, float] | None, chosen: tuple[float, float],
-              placement: str) -> None:
-    """Kesit eklendi: önerilen aralık (olay anı) ↔ editörün seçtiği."""
+              placement: str, quoted: list[tuple[float, float]] = ()) -> None:
+    """Kesit eklendi: önerilen aralık (olay anı) ↔ editörün seçtiği; `quoted`: haberdeki alıntıların dökümdeki
+    aralıkları (v4.1; öneri doğru muydu)."""
     record("kesit", project, f"{filename}@{chosen[0]:.1f}", {
         "video": filename, "yer": placement, "onerilen": list(suggested) if suggested else None,
-        "secilen": list(chosen), "degisti": suggested is None or any(abs(a - b) > 0.25 for a, b in zip(suggested, chosen))})
+        "secilen": list(chosen), "degisti": suggested is None or any(abs(a - b) > 0.25 for a, b in zip(suggested, chosen)),
+        **({"alintilar": [list(span) for span in quoted]} if quoted else {})})
 
 
 def summary() -> str:

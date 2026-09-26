@@ -1,3 +1,19 @@
+# v4.1.0-alpha.2 — Haberdeki alıntıdan kesit önerisi — 2026-09-26
+
+v4.1 planının 2. maddesi (ROADMAP). Veri: düzeltme kaydında 7/7 kesitte önerilen başlangıç (olay anı) ~15 sn ileri
+alınmıştı; röportajlı haberde editörün istediği, DHA metnindeki alıntının söylendiği yer. API çağrısı yok.
+
+## Added
+- **📍 Haberdeki alıntı** (Video Stüdyosu → Kaynak sesli kesitler → yazıya dökümün başında): ham haberdeki tırnaklı
+  alıntılar (en az 4 kelime; kapanmayan tırnak sayılmaz) dökümün ardışık cümleleriyle karşılaştırılır. Kelimeler ilk 5
+  harfleriyle ve sırasıyla eşlenir (ekler ve Whisper'ın yanlış duyduğu kelimeler tolere edilir); alıntının en az %60'ı
+  bulunmalı, seçilen cümlelerin en az %40'ı alıntıdan olmalı. Bulunursa düğme: dokununca aralık o cümleler; kesit
+  kendiliğinden eklenmez. Güven düşükse düğme yok. Olay anı varsayılanı (güvenlik kamerası) değişmedi.
+- Düzeltme kaydında kesit satırına `alintilar` (alıntıların dökümdeki aralıkları): önerinin editörün seçimine uyup
+  uymadığı ölçülebilir.
+- Regresyon: editörün Artvin dökümü (alıntı → "Ben de durumu hemen fark ettim" + "Beyefendiye … uyguladım",
+  editörün elle seçtiği cümlelerle aynı).
+
 # v4.1.0-alpha.1 — Okunuş sözlüğü ve ElevenLabs göstergesi — 2026-09-26
 
 v4.1 planının 1. maddesi (ROADMAP). Yeni API çağrısı yok.

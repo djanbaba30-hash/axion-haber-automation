@@ -222,9 +222,9 @@ def open_page(project, page=VIDEO_PAGE, key="video_project_id"):
     return at
 
 
-def saved_project(library):
+def saved_project(library, source_text=""):
     folder = store.save_news_project(
-        NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS"), b"mp3"
+        NewsPackage(headline_1="KAZA", headline_2="B", caption="Haber", tts_text="TTS", source_text=source_text), b"mp3"
     )
     project = store.get_news_project(folder.name)
     store.save_project_json(project, store.MEDIA_LIBRARY_FILENAME, library)
@@ -650,7 +650,8 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
 
 def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
     """v4.0.0-alpha.7: konuşmalar bu bilgisayarda yazıya dökülür; cümleye dokun → kesit aralığı yalnız o cümle (başka
-    cümleye dokunmak ona geçer), "sonraki cümleyi de ekle" uzatır (testte sahte model)."""
+    cümleye dokunmak ona geçer), "sonraki cümleyi de ekle" uzatır (testte sahte model). v4.1: haberdeki tırnaklı
+    alıntı dökümde bulunursa "📍 Haberdeki alıntı" düğmesi aralığı o cümleler yapar; kesit kendiliğinden eklenmez."""
     import subprocess
     from types import SimpleNamespace
 
@@ -667,10 +668,11 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
     video = local_env / "Downloads" / "roportaj.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25:duration=12",
                     "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "12", str(video)], check=True)  # sessiz: sınırlar kelimeden
-    project = saved_project({"assets": []})
+    project = saved_project({"assets": []}, 'Yazıcı, "Hemen fark ettim, Heimlich manevrası uyguladım" dedi.')
     at = open_page(project)
     at.multiselect(key="selected_media").select(video).run()
     button(at, "▶️ Videoyu izle ve kesit seç").click().run()
+    assert not any("Haberdeki alıntı" in b.label for b in at.button)  # döküm yokken öneri yok
     button(at, "📝 Konuşmaları yazıya dök").click().run()
     transcribe.job(video, project.folder).thread.join(10)
     at.run()
@@ -680,7 +682,11 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
     assert [b.label for b in lines] == ["00:00.9–00:03.5 · Müşterimizin boğazına yemek kaçtı.",
                                         "00:03.5–00:05.3 · Hemen fark ettim.", "00:05.9–00:09.7 · Heimlich manevrası uyguladım."]
     assert any("yazıya döküldü" in c.value for c in at.caption)
-    lines[1].click().run()
+    [quote] = [b for b in at.button if b.key and b.key.startswith("alinti_")]
+    assert quote.label == "📍 Haberdeki alıntı: 00:03.5–00:09.7 · “Hemen fark ettim, Heimlich manevrası uyguladım”"
+    quote.click().run()
+    assert at.select_slider[0].value == ("00:03.5", "00:09.7") and not store.load_project_json(project, "kesitler.json")
+    next(b for b in at.button if b.key == "yazi_1").click().run()
     assert at.select_slider[0].value == ("00:03.5", "00:05.3")
     assert next(b for b in at.button if b.key == "yazi_1").proto.type == "primary"  # seçili cümle vurgulu
     next(b for b in at.button if b.key == "yazi_2").click().run()  # başka cümle: yalnız o (alpha.7.1'de arası seçiliyordu)
@@ -693,6 +699,10 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
     from apps.video_studio.modules.soundbites import SOUNDBITES_FILENAME
 
     assert [(b["start_s"], b["end_s"]) for b in store.load_project_json(project, SOUNDBITES_FILENAME)] == [(3.5, 9.7)]
+    from apps.axion_local import corrections
+
+    [entry] = [e for e in corrections.entries() if e["tur"] == "kesit"]
+    assert entry["alintilar"] == [[3.5, 9.65]]  # alıntının dökümdeki aralığı (öneri doğru muydu): düzeltme kaydında
 
 
 def test_fresh_start_selects_nothing_and_hides_previous_days(local_env):

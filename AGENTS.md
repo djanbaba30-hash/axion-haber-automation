@@ -117,6 +117,8 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/transcribe.py        Yerel yazıya dökme (v4.0; faster-whisper, API yok): kesit cümleden seçilir; model data/modeller
   modules/speech.py            Seste konuşma var mı (kepstrum, API yok): müzik altlığı konuşmalı kesitte kısılır (v4.0)
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
+  modules/quotes.py            Haberdeki tırnaklı alıntı ↔ yazıya döküm (v4.1; kelime kökleri, sıralı eşleşme, API yok):
+                               "📍 Haberdeki alıntı" önerisi; güven düşükse öneri yok, kesit kendiliğinden eklenmez
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); fotoğraf:
                                EXIF yönü + yavaş yakınlaşma (zoompan, v4.0); ilk kare kapak sahnesi (v4.0); ses: parça
                                başına ölçülmüş sabit kazanç (TTS -18, kesit -20 LUFS), kenar yumuşatma, -2 dBFS sınırlayıcı
@@ -228,18 +230,19 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.1.0-alpha.1 → sıradaki: v4.1 planı, 2. madde (ROADMAP "v4.1 planı", onaylandı)
+## Nerede kaldık (2026-09-26) — Sürüm 4.1.0-alpha.2 → sıradaki: v4.2 planı 1. madde (editör: "hemen ardından"), sonra v4.1 3. madde
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
 geri bildirim, teşhis dosyası, düzeltme kaydı. **Sıradaki iş: ROADMAP "v4.1 planı"** (editörle beyin fırtınası, GPT
 fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir parça.
-- **1. madde yapıldı (`v4.1.0-alpha.1`):** okunuş sözlüğü + ElevenLabs göstergesi. Editör denerken bak: sözlükle
-  okunan kelime doğru mu, 🩺 Durum'daki ElevenLabs satırı ne yazıyor (kalan okunamıyorsa neden artık açık; izin
-  eksikse editör ElevenLabs sitesinde açar). Sorun yoksa 2. madde (haberdeki alıntıdan kesit önerisi).
+- **v4.1 1. ve 2. madde yapıldı** (`v4.1.0-alpha.1` okunuş sözlüğü + ElevenLabs göstergesi; `alpha.2` haberdeki
+  alıntıdan kesit önerisi). Editör denerken bak: sözlükle okunan kelime, 🩺 Durum'daki ElevenLabs satırı, "📍 Haberdeki
+  alıntı" doğru cümlelere mi oturuyor (düzeltme kaydında kesit satırının `alintilar` alanı ↔ `secilen`).
 - Editör ElevenLabs anahtarına "User" iznini ekledi (2026-09-26; önce yalnız TTS ve Voices vardı): kalan karakterin
-  okunamamasının nedeni buydu. v4.1 planından sonraki ilk iş: ROADMAP "v4.2 planı" 1. madde (üslup seçimi yerine
-  editörün serbest talimatı).
+  okunamamasının nedeni buydu.
+- **Editörün isteği (2026-09-26):** 2. maddeden hemen sonra ROADMAP "v4.2 planı" 1. madde (üslup seçimi yerine
+  editörün serbest talimatı; kutu her yeni haberde boş gelir, boşsa standart haber). Sonra v4.1'e 3. maddeden devam.
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =

@@ -127,7 +127,7 @@ tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 
 ## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — ONAYLANDI (editör, 2026-09-26)
 
-Durum: 1. madde yapıldı (`v4.1.0-alpha.1`, editör denemesi bekleniyor); sıradaki **2. madde**. Biten maddeyi burada
+Durum: 1. ve 2. madde yapıldı (`v4.1.0-alpha.1`, `alpha.2`; editör denemesi bekleniyor); sıradaki **3. madde**. Biten maddeyi burada
 "— YAPILDI (sürüm)" diye işaretle.
 
 Sıra, bağımlılığa göre: önce altyapı kararını etkilemeyen küçük işler, sonra büyük kararlar için araştırma (kod yok),
@@ -142,7 +142,7 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
    zamanlar bozulmaz. Göstergede önce neden bulunur (editörden Geliştirici bilgileri → 🩺 Durum ekran görüntüsü;
    olası neden: anahtarda kullanıcı okuma izni yok) → açık mesaj; ayrıca haber başına ve günlük/aylık harcanan
    karakter (defterde zaten var) görünür. API çağrısı eklenmez.
-2. **Haberdeki alıntıdan kesit önerisi** (veri: 7/7 kesitte önerilen başlangıç ~15 sn ileri alındı). DHA metnindeki
+2. — YAPILDI (`v4.1.0-alpha.2`) **Haberdeki alıntıdan kesit önerisi** (veri: 7/7 kesitte önerilen başlangıç ~15 sn ileri alındı). DHA metnindeki
    tırnaklı alıntı ↔ yazıya döküm eşleşmesi → "📍 Haberdeki alıntı: 00:54,5–01:01,9" önerisi; güven düşükse öneri yok,
    kendiliğinden eklenmez. API yok. Olay anı önerisi (güvenlik kamerası) kalır.
 3. **Görüntü analizinin süre ölçümü** (medyan 14 sn, en uzun 45 sn): alt adımlar ayrı ölçülür (proxy, sahne tespiti,
@@ -164,7 +164,7 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
    hızlandırması (3'ün verisiyle); **altyazı** yalnız editörün tarifinden sonra (nerede, nasıl; önce editöre sorulur).
    Blur/mozaik editör kullandıkça.
 
-## v4.2 planı (taslak; editörün isteği, 2026-09-26) — v4.1 planı bitince ilk iş
+## v4.2 planı (editörün isteği, 2026-09-26) — 1. madde v4.1'in 2. maddesinden hemen sonra (editör)
 
 1. **Üslup seçimi yerine editörün serbest talimatı** (editör: "Haber üslubu özelliğinin bir işe yaradığını görmedim;
    üslup örneği de fazladan token"). Ham haberin yanında, fazladan yer kaplamayan kompakt bir metin kutusu
@@ -179,8 +179,8 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
      yenilemesi de aynı talimatı alır. Talimat üslubu ve vurguyu yönetir, **kuralları delemez** (bilgi uydurma yok,
      isim kuralı "A.K.", plaka, başlık 2 satır/44 karakter, seslendirme süresi); istemde bu tek cümleyle yazılır.
    - Talimat projeye (news_package metadata) ve düzeltme kaydına yazılır (hangi talimat ne sonuç verdi).
-   - Editöre sorulacak: talimat her haberde boş mu gelsin, yoksa son yazılan hatırlansın mı (ya da sık
-     kullanılanlar tek dokunuşla seçilsin mi)?
+   - Editör kararı (2026-09-26): kutu her yeni haberde **boş** gelir (hatırlanmaz); boş bırakılırsa standart haber.
+     Editör: v4.1'in 2. maddesinden hemen sonra yapılır.
    - Gerçek haberle test + regresyon testi (kural 5); AGENTS kural 10'daki "üslup" ifadesi güncellenir.
 
 ## Ortam

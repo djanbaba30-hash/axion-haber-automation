@@ -226,3 +226,21 @@ def test_same_size_file_changed_within_the_same_second_is_transcribed_again(tmp_
     source.write_bytes(b"bbbb")
     os.utime(source, ns=(1_000_000_000_900, 1_000_000_000_900))
     assert transcribe._key(source) != first
+
+
+def test_quote_in_the_news_is_found_in_the_artvin_transcript():
+    """v4.1.0-alpha.2: DHA metnindeki alıntı ("Ben de durumu hemen fark ettim. Beyefendiye Heimlich manevrasını
+    uyguladım") dökümdeki iki cümleye oturur (editörün elle seçtiği 55,0–62,2 ile aynı cümleler); haberde olmayan söz
+    ve kısa tırnak öneri üretmez."""
+    from apps.video_studio.modules import quotes
+
+    names = transcribe.hints(ARTVIN_NEWS)
+    lines = transcribe.sentences(transcribe.fix_names(artvin_words(), names), 70.76, names, artvin_levels())
+    [found] = quotes.suggestions(ARTVIN_NEWS, lines)
+    assert (found["bas"], found["bitis"]) == (lines[-5]["bas"], lines[-4]["son"])
+    assert lines[-5]["metin"].startswith("Ben de") and lines[-4]["metin"].endswith("uyguladım")
+    other = ('Olay "Heimlich" diye anıldı. Muhtar, "Mahallede böyle bir olay hiç yaşanmadı, çok şaşırdık" dedi. '
+             'Yazıcı "Kendisine çayını içirdik, uğurladık" dedi. Kapanmayan "tırnak burada kalır ve alıntı sayılmaz')
+    assert quotes.extract(other) == ["Mahallede böyle bir olay hiç yaşanmadı, çok şaşırdık",
+                                     "Kendisine çayını içirdik, uğurladık"]
+    assert [q["alinti"] for q in quotes.suggestions(other, lines)] == ["Kendisine çayını içirdik, uğurladık"]
