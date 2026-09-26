@@ -167,16 +167,18 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
    hızlandırması (3'ün verisiyle); **altyazı** yalnız editörün tarifinden sonra (nerede, nasıl; önce editöre sorulur).
    Blur/mozaik editör kullandıkça.
 
-## v5.0 planı — yeni arayüz (editör kararı, 2026-09-26)
+## v5.0 planı — Axion Studio (editor decision, 2026-09-26)
 
-Hedef: daha işlevsel, güzel, çok seçenekli arayüz; **tablet öncelikli** (Galaxy Tab S9+; telefon Galaxy S21 FE).
-Gerekçe ve seçenekler: `arastirma/a-altyapi-on-yuz.md` 6. bölüm. FastAPI + React/Tailwind, iş mantığı aynen, aynı repo
-ve süreç; eski sayfalar taşınmaz, esinlenerek yeniden yapılır; Streamlit yeni arayüz hazır olana kadar çalışır.
+Goal: a more functional, better-looking, option-rich UI; **tablet first** (Galaxy Tab S9+; phone Galaxy S21 FE).
+Reasoning: `arastirma/a-altyapi-on-yuz.md` section 6. **Separate clean project** in the private repository
+`axion-studio` (FastAPI + React/Tailwind, English repo, Turkish UI); code from here is copied and cleaned, nothing is
+shared at runtime. This Streamlit app is frozen at v4.2.0 (fixes only) and stays in use until the switch-over.
 
-1. Tıklanabilir prototip (claude.ai sayfası, gerçek veri yok) → editör onayı.
-2. Altyapı: uç noktalar, giriş/şifre, HTTPS (Tailscale Serve), ana ekrana ekleme (PWA), tasarım dili.
-3. Sayfa sayfa ön sürüm: Haber Stüdyosu → Video Stüdyosu → Tarayıcı (eski 5. madde) → Tasarım Stüdyosu.
-4. Streamlit ve ona bağlı yamalar (iç API'ler, AppTest'ler) silinir.
+1. ✓ Clickable prototype (approved): https://claude.ai/artifact/XvUBo5oBDthGd4GixB7A9E
+2. Infrastructure: repo skeleton, backend API, login, HTTPS (Tailscale Serve), installable web app (PWA), design system,
+   Windows installer/launcher/updater for the private repo.
+3. Screens one by one (each a pre-release): News Studio → Video Studio → Browser → Design Studio.
+4. Switch-over: settings copied once, Axion Studio becomes the daily app, this repository is archived.
 
 ## v4.2 planı (editörün isteği, 2026-09-26) — 1. madde v4.1'in 2. maddesinden hemen sonra (editör)
 

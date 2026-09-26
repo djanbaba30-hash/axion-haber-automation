@@ -2,6 +2,9 @@
 
 ROADMAP "v4.1 planı" 4. madde. Kod değiştirilmedi. Yazan: Claude, 2026-09-26. **Karar editörün.**
 
+> **Final decision (2026-09-26):** Axion Studio is built as a separate, clean project in the private repository
+> `axion-studio` (not in this repository or process); section 6's "same repo, same process" idea was replaced.
+
 ## Kısa cevap (editörün sorusundan sonra güncellendi, 6. bölüm)
 
 İlk sürümde soruyu "tablette yavaşlık" diye okudum ve "kal, ekranları tek tek düzelt" dedim. Editörün asıl hedefi

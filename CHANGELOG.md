@@ -1,3 +1,14 @@
+# v4.2.0 — Streamlit final release — 2026-09-26
+
+This is the final feature release of the Streamlit app. From now on it only receives bug fixes and small patches;
+it stays in daily use until its successor, **Axion Studio** (new private repository `axion-studio`: FastAPI backend +
+tablet-first web UI, built from scratch), is ready. Decision and reasoning: `arastirma/a-altyapi-on-yuz.md` (section 6).
+
+Contents since v4.0.0 (details in the pre-release entries below): pronunciation dictionary and clear ElevenLabs status
+(`v4.1.0-alpha.1`), soundbite suggestion from quotes in the news text (`v4.1.0-alpha.2`), free-text editor instruction
+instead of the style menu (`v4.2.0-alpha.1`), sub-step timings of image analysis (`v4.2.0-alpha.2`). Not yet tried by
+the editor with real news: `DENENECEKLER.md`.
+
 # v4.2.0-alpha.2 — Görüntü analizinin süre ölçümü — 2026-09-26
 
 v4.1 planının 3. maddesi (ROADMAP; sürüm numarası 4.2'den devam eder). Ölçümler: analiz medyan 14 sn, en uzun 45 sn;

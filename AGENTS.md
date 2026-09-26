@@ -242,33 +242,26 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Streamlit 4.2.0-alpha.2'de donduruldu → sıradaki: v5.0 yeni arayüz, 1. adım prototip
+## Nerede kaldık (2026-09-26) — v4.2.0 FINAL (Streamlit). New work happens in the `axion-studio` repository.
 
-**YENİ OTURUM BURADAN BAŞLAR.** Editör Axion'u her gün gerçek DHA haberleriyle kullanıyor (evde bilgisayardan,
-dükkânda tabletten Tailscale ile).
+**YENİ OTURUM BURADAN BAŞLAR.** This repository is frozen at **v4.2.0**: only bug fixes and small patches (the editor
+still uses it daily until Axion Studio is ready). Do not add features here.
 
-**Editörün kararları (2026-09-26, kesin):**
-- **Streamlit arayüzü son hâlinde kalır:** yalnız hata düzeltme / küçük yama; yeni özellik yok. Yeni arayüz kullanıma
-  hazır olana kadar çalışır durumda kalır (editör onu kullanıyor).
-- **v5.0: modern web arayüzü** (`arastirma/a-altyapi-on-yuz.md` 6. bölüm): FastAPI + React/Tailwind; `apps/` + `shared/`
-  iş mantığı aynen; **aynı repo, aynı süreç** (`st.App` rotaları; iki arayüz aynı verileri ve arka plan işlerini görür),
-  derlenmiş ön yüz dosyaları repoda (editörün bilgisayarına Node kurulmaz). Eski sayfalar taşınmaz: **esinlenerek
-  yeniden** yapılır. Sayfa sayfa ön sürüm; hepsi hazır olunca Streamlit ve yamaları silinir.
-- **Tablet öncelikli:** dışarıda tabletten çalışıyor (Samsung Galaxy Tab S9+), evde bilgisayar zaten rahat; telefon
-  Samsung Galaxy S21 FE. Yerleşim önce tablet (yatay ve dikey), sonra telefon ve bilgisayar.
-- HTTPS (Tailscale Serve) açılabilir; ek ücret istemeyen yol (hepsi ücretsiz yazılım, API maliyeti aynı).
-- v4.1'in kalanları: 5 (Tarayıcı iyileştirmesi) yeni arayüze kaldı; 6 (Streamlit yükseltmesi) iptal; 7 (sosyal medyaya
-  yükleme) ve 8 (istem iyileştirmesi, analiz hızlandırması, altyazı) arayüzden bağımsız, haber üretildikçe küçük
-  değişikliklerle (ikisine de yarar).
-- Denemeler ve düzeltmeler gerekince (`DENENECEKLER.md`).
+**Editor decisions (2026-09-26, final):**
+- **Axion Studio (v5)** is a **separate, clean project** in a new **private** repository `djanbaba30-hash/axion-studio`:
+  FastAPI backend + React/Tailwind web UI (built files committed; no Node on the editor's PC). Built from scratch;
+  useful code from this repo is **copied and cleaned**, never imported or shared. Own data folder, own address and
+  desktop icon; the only shared thing is the Downloads inbox (read-only). At switch-over the editor's settings
+  (pronunciation dictionary, voice settings, calibration) are copied once.
+- **Tablet first** (Samsung Galaxy Tab S9+; phone Galaxy S21 FE; home PC last). Axion navy, light, modern; sliding
+  panels, collapsible sections, bottom sheets, live progress, toasts. Approved prototype:
+  https://claude.ai/artifact/XvUBo5oBDthGd4GixB7A9E
+- **English** in the new repository (code, docs, terms); the UI stays Turkish; chat with the editor in Turkish.
+- Private repo: the editor's PC signs in to GitHub once (Git Credential Manager) so clone/pull/update work.
+- Plan: ROADMAP "v5.0 planı" (prototype ✓ → infrastructure → News → Video → Browser → Design → switch-over).
 
-**v5.0 sıradaki adım: tıklanabilir prototip** (ürün kodu yok; editörün tabletinde açılan sayfa, gerçek veri yok) →
-editör onayı → altyapı (uç noktalar, giriş/şifre, HTTPS, PWA, tasarım dili) → sayfa sayfa (Haber → Video → Tarayıcı →
-Tasarım). Prototip repoya değil, claude.ai sayfası (Artifact) olarak paylaşılır (güncelleme gerekmez).
-
-**Streamlit'in son özellikleri (editörün denemesi bekleniyor, `DENENECEKLER.md`):** okunuş sözlüğü + ElevenLabs
-göstergesi (`v4.1.0-alpha.1`; editör anahtara "User" iznini ekledi), haberdeki alıntıdan kesit önerisi (`alpha.2`),
-üslup yerine talimat kutusu (`v4.2.0-alpha.1`), görüntü analizinin alt adım süreleri (`alpha.2`; hızlandırma bu veriyle).
+**Last Streamlit features (waiting for the editor's real-news test, `DENENECEKLER.md`):** pronunciation dictionary +
+ElevenLabs status, quote-based soundbite suggestion, editor instruction box, image-analysis sub-step timings.
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =
