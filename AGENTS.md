@@ -53,7 +53,8 @@ apps/axion_local/
   copy_button.py               📋 Paylaşım metnini kopyala (components v2; http'de pano API'si yoksa execCommand yedeği)
   presence.py                  Aynı haber iki cihazda açık mı (oturum → haber; bağlı mı: Streamlit oturum yöneticisi)
   metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
-  update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 30 dk'da bir);
+  update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 2 dk'da bir;
+                               satır fragment, 30 sn'de kendiliğinden yenilenir);
                                uygulamadan güncelleme (`git pull`, çıkış kodu 3 → bekçi pip + yeniden başlatır)
   preferences.py               Son kullanılan ayarlar (üslup, model, spiker, ses ince ayarları) → data/ayarlar.json
   store.py                     Proje klasörü (data/projects/...), 02:00 iş günü, 3 gün saklama, gelen kutusu (İndirilenler),
@@ -188,7 +189,12 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-25) — Sürüm 3.4.2
+## Nerede kaldık (2026-09-26) — Sürüm 3.4.3
+
+**3.4.3:** editör sabah `guncelle.bat` ile v3.4.2'yi aldı (Axion açık). İsteği: güncelleme kontrolü daha sık → 2 dk'da
+bir (`INTERVAL_SECONDS`), kenar çubuğu satırı `@st.fragment(run_every=30)` ile dokunmadan yenilenir. Editör bu sürümü
+telefondan "⬇️ Güncelle ve yeniden başlat" ile almayı deneyecek (Windows'ta bekçinin kod 3 yolunun ilk gerçek denemesi;
+çalışan v3.4.2 yarım saatte bir kontrol ediyor ve satırı yalnız dokununca yeniler). Sonuç bekleniyor.
 
 **3.4.1–3.4.2:** kenar çubuğunda güncelleme göstergesi + "⬇️ Güncelle ve yeniden başlat" (editör isteği; tabletten
 de): `update_check.apply_update` (git pull --ff-only) → çıkış kodu 3 → bekçi pip kurar, yeniden başlatır; sayfa
@@ -207,7 +213,7 @@ başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber 
 Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı.
 
 **Sıradaki (4.0'dan önce, editörün onayladığı liste; ROADMAP "Sıradaki işler" 8):**
-1. Editör sabah ilk iş `guncelle.bat` + masaüstü simgesi (v3.4.2: gösterge + uygulamadan güncelleme gelsin; 🟢 görmeli).
+1. ~~Editör sabah `guncelle.bat`~~ (yapıldı, 2026-09-26); telefondan 3.4.3'e uzaktan güncelleme denemesi sürüyor.
 2. Editör dükkânda tabletten tam akışı dener (haber → ses → Tarayıcı'dan DHA → video); notlarını getirir → yapılır.
 3. Günlük/aylık toplam maliyet (Geliştirici bilgileri; history.sqlite3 + media_library analiz kayıtları).
 4. Bunlar bitince sürüm 4.0 (CHANGELOG, belgeler). Bir sonraki sürüm yayımlanınca editör tabletten "⬇️ Güncelle ve

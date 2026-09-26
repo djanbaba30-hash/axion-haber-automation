@@ -743,7 +743,7 @@ def test_update_check_compares_local_and_remote_and_runs_in_background(monkeypat
     monkeypatch.setattr(update_check, "_git", offline)
     assert update_check.check() is None  # gösterilmez
 
-    # Arka planda: ilk çağrı beklemeden None döner, kontrol bitince sonuç görünür; 30 dk dolmadan yeniden sorulmaz.
+    # Arka planda: ilk çağrı beklemeden None döner, kontrol bitince sonuç görünür; 2 dk dolmadan yeniden sorulmaz.
     calls = []
     monkeypatch.setattr(update_check, "_state", {"checked": 0.0, "status": None, "running": False})
     monkeypatch.setattr(update_check, "check", lambda: calls.append(1) or "var")

@@ -116,8 +116,8 @@ kontrolü kaldırmak değil, hızlandırmak.
      sunucuda; editör çoğunlukla tabletten kullanıyor), değiştirilmedi.
    - Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
    - **Yapıldı (editör isteği, 3.4.1–3.4.2):** 🟢/🔴 güncelleme göstergesi + uygulamadan (tabletten) "Güncelle ve yeniden
-     başlat". Editör sabah bir kez `guncelle.bat` + masaüstü simgesiyle alacak; ilk gerçek uzaktan güncelleme bir
-     sonraki sürümde.
+     başlat". Editör 2026-09-26 sabahı `guncelle.bat` ile aldı; 3.4.3 (kontrol 2 dk'da bir, satır kendiliğinden
+     yenilenir) ilk gerçek uzaktan güncelleme denemesi.
    - **4.0'dan önce yapılacaklar (editörün onayladığı liste):** (1) günlük/aylık maliyet (g), (2) editörün dükkândaki
      tablet denemesinin notları. Bunlar bitince sürüm 4.0. İsteğe bağlı sonra: Luna ile sahne düzenleme (i).
 

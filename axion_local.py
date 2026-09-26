@@ -99,13 +99,15 @@ def restart_after_update() -> None:
     threading.Timer(1.5, stop).start()
 
 
+@st.fragment(run_every=update_check.REFRESH_SECONDS)
 def update_controls() -> None:
-    """🟢/🔴 satırı; 🔴 ise uygulamadan güncelle ve yeniden başlat (editör: dükkândayken bilgisayara erişim yok)."""
+    """🟢/🔴 satırı; 🔴 ise uygulamadan güncelle ve yeniden başlat (editör: dükkândayken bilgisayara erişim yok).
+    Kendi başına yenilenir: yeni sürüm yayımlanınca sayfaya dokunmadan birkaç dakikada 🔴 görünür."""
     value = update_check.status()
     text = update_check.label(value)
     if not text:
         return
-    st.caption(text, help="Bilgisayardaki Axion repodaki son sürümle karşılaştırılır (yarım saatte bir).")
+    st.caption(text, help="Bilgisayardaki Axion repodaki son sürümle karşılaştırılır (2 dakikada bir).")
     if value != "var":
         return
     if not update_check.supervised():

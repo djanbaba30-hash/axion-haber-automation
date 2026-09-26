@@ -1,3 +1,14 @@
+# v3.4.3 — Güncelleme daha sık kontrol edilir — 2026-09-26
+
+## Changed
+- **Güncelleme kontrolü 30 dk yerine 2 dk'da bir** (editör: "zararı yoksa daha sık"). Zararı yok: `git ls-remote`
+  yalnız son commit numarasını sorar (~1 KB, indirme yok, arka planda, sayfa beklemez) ve yalnız Axion bir tarayıcıda
+  açıkken çalışır.
+- Kenar çubuğundaki 🟢/🔴 satırı kendi başına yenilenir (30 sn'de bir, yalnız o satır): yeni sürüm yayımlanınca sayfaya
+  dokunmadan birkaç dakika içinde 🔴 görünür (önce bir tıklama/sayfa değişimi gerekiyordu).
+- Sandbox'ta tarayıcıyla denendi: 🟢/🔴 dokunmadan ~30 sn'de göründü; 🔴 → "⬇️ Güncelle ve yeniden başlat" → onay →
+  yeni sürüm indi → Axion 3 koduyla çıktı.
+
 # v3.4.2 — Uygulamadan güncelle ve yeniden başlat — 2026-09-25
 
 ## Added

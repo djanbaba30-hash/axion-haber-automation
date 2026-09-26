@@ -1,6 +1,7 @@
 """Güncelleme var mı (editör: "PC'de güncellemeyi unutursam görünsün"): bilgisayardaki sürüm (git HEAD) repodaki
-`main` ile karşılaştırılır. `git ls-remote` yalnız son commit numarasını sorar (indirme yok); arka planda, en çok
-30 dakikada bir. Git yoksa, internet yoksa ya da repo değilse hiçbir şey gösterilmez (sayfa hiç beklemez).
+`main` ile karşılaştırılır. `git ls-remote` yalnız son commit numarasını sorar (indirme yok, ~1 KB); arka planda, en çok
+2 dakikada bir ve yalnız Axion bir tarayıcıda açıkken (sayfa hiç beklemez). Git yoksa, internet yoksa ya da repo
+değilse hiçbir şey gösterilmez.
 """
 
 from __future__ import annotations
@@ -13,7 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BRANCH = "main"
-INTERVAL_SECONDS = 30 * 60
+INTERVAL_SECONDS = 2 * 60
+REFRESH_SECONDS = 30  # kenar çubuğundaki satır dokunmadan bu sıklıkla yenilenir (kontrolün sonucu görünsün)
 TIMEOUT_SECONDS = 15
 PULL_TIMEOUT_SECONDS = 180
 RESTART_CODE = 3  # bekçiye: "güncellendi, paketleri kontrol et ve hemen yeniden başlat" (çökme sayılmaz)
