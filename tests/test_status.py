@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from elevenlabs.core.api_error import ApiError
+
 from apps.axion_local import ledger, status
 
 
@@ -26,8 +28,7 @@ def test_ledger_sums_today_and_this_month(data_dir):
     spent = ledger.totals(date(2026, 9, 26))
     assert spent["gun"]["usd"] == pytest.approx(0.0112) and spent["gun"]["cagri"] == 3
     assert spent["gun"]["karakter"] == 812 and spent["ay"]["usd"] == pytest.approx(0.0212)
-    assert ledger.describe(spent["gun"]) == ("$0.011 · 3 çağrı · 812 ses karakteri "
-                                             "(görüntü analizi $0.007, haber metni $0.005, sahne seçimi $0.000)")
+    assert ledger.describe(spent["gun"]) == "$0.011 · 3 çağrı (görüntü analizi $0.007, haber metni $0.005, sahne seçimi $0.000)"
 
 
 def test_ledger_write_error_does_not_break_work(data_dir, monkeypatch):
@@ -45,8 +46,9 @@ class FakeElevenLabs:
 
     def get(self):
         self.calls += 1
-        if self.fail:
-            raise RuntimeError("401 yetkisiz")
+        if self.fail:  # SDK hatasının metni başlıklarla başlar; panel nedeni yazar (v4.1.0-alpha.1)
+            raise ApiError(headers={"date": "Sat, 26 Sep 2026"}, status_code=401, body={"detail": {
+                "status": "missing_permissions", "message": "The API key is missing the permission user_read"}})
         return SimpleNamespace(character_count=self.used, character_limit=self.limit,
                                next_character_count_reset_unix=datetime(2026, 10, 3, 12).timestamp())
 
@@ -70,11 +72,16 @@ def test_panel_lines_warn_about_low_characters(monkeypatch):
     status.elevenlabs("k", FakeElevenLabs(used=95_000), wait=True)
     monkeypatch.setattr(status, "ffmpeg", lambda: {"surum": "7.1", "ffprobe": True, "amd": True})
     ledger.add("haber", 0.004)
+    ledger.add("ses", 0.0, characters=1234)
     rows = status.lines("k")
     assert rows[0].startswith("**Disk:**") and "GB boş" in rows[0]
-    assert rows[1] == "⚠️ **ElevenLabs:** 5.000 karakter kaldı / 100.000 · yenilenme 03.10.2026"
+    assert rows[1] == ("⚠️ **ElevenLabs:** 5.000 karakter kaldı / 100.000 · yenilenme 03.10.2026 · "
+                       "Axion bugün 1.234, bu ay 1.234 karakter harcadı")
     assert rows[2] == "**FFmpeg:** 7.1 · kodlayıcı AMD donanım (h264_amf)"
     assert rows[3].startswith("**Bugün:** $0.004 · 1 çağrı") and rows[4].startswith("**Bu ay:**")
     status._ELEVENLABS.clear()
     status.elevenlabs("k2", FakeElevenLabs(fail=True), wait=True)
-    assert "okunamadı (401 yetkisiz)" in status.lines("k2")[1]
+    # Editör (v4.1): "kullanılan kredi yazmıyordu": neden açıkça yazılır, Axion'un harcadığı yine görünür.
+    assert status.lines("k2")[1] == ('**ElevenLabs:** kalan karakter okunamadı: API anahtarında "User → Read" izni yok '
+                                     "(ElevenLabs sitesi → Developers → API Keys → anahtarı düzenle → izni aç) · "
+                                     "Axion bugün 1.234, bu ay 1.234 karakter harcadı")

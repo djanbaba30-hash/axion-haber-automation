@@ -733,6 +733,53 @@ def test_edited_news_texts_survive_reruns_and_page_switch(local_env):
     assert at.text_input(key="_w_baslik1").value == "YENİ BAŞLIK"
 
 
+def test_pronunciation_dictionary_changes_only_what_elevenlabs_reads(local_env, monkeypatch):
+    """v4.1.0-alpha.1 (editör: "bazen yanlış okuyor, sırf o yüzden sesi yeniden üretiyorum"): sözlük kenar çubuğunda
+    doldurulur, hatırlanır; ElevenLabs'a okunuşu gider, ekrandaki ve kaydedilen metin aynı kalır, zamanlar ona göre."""
+    import base64
+    from types import SimpleNamespace
+
+    import streamlit as st
+
+    from apps.axion_local import ledger
+    from apps.news_studio.tts import pronunciation
+
+    sent = []
+
+    def convert(**kwargs):
+        sent.append(kwargs["text"])
+        text = kwargs["text"]
+        return SimpleNamespace(audio_base_64=base64.b64encode(b"mp3").decode(), alignment=SimpleNamespace(
+            characters=list(text), character_start_times_seconds=[i / 10 for i in range(len(text))],
+            character_end_times_seconds=[(i + 1) / 10 for i in range(len(text))]))
+
+    fake = SimpleNamespace(text_to_speech=SimpleNamespace(convert_with_timestamps=convert), voices=SimpleNamespace(
+        get_all=lambda: SimpleNamespace(voices=[SimpleNamespace(name="Cavit Presenter", voice_id="v1")])))
+    monkeypatch.setattr("elevenlabs.client.ElevenLabs", lambda **kwargs: fake)
+    st.cache_resource.clear()
+    st.cache_data.clear()
+    try:
+        text = "Heimlich manevrasıyla kurtarıldı."
+        at = with_generated_news(start(), tts=text, audio_text=None)
+        at.sidebar.text_area(key="okunus_sozlugu").input("Heimlich = Haymlih\nbozuk").run()
+        assert pronunciation.load() == {"Heimlich": "Haymlih"}
+        assert any("bozuk" in w.value for w in at.sidebar.warning)
+        button(at, "🎙️ Seslendir").click().run()
+        assert not at.exception
+        assert sent == ["Haymlih manevrasıyla kurtarıldı."]
+        assert at.session_state["tts_metni"] == text and at.session_state["last_audio_text"] == text
+        assert "".join(at.session_state["last_audio_alignment"]["characters"]) == text
+        assert any(c.value == "Okunuş sözlüğüyle okundu: Heimlich → Haymlih" for c in at.caption)
+        assert ledger.totals()["gun"]["karakter"] == len(sent[0])
+        assert any("Bu haberin sesi: ElevenLabs'ta 32 karakter (1 kez seslendirildi)" == c.value for c in at.caption)
+        button(at, "Sadece kaydet").click().run()
+        saved = store.load_news_project(store.list_news_projects()[0])[0]
+        assert saved.tts_text == text and saved.metadata["tts_characters"] == 32
+    finally:
+        st.cache_resource.clear()
+        st.cache_data.clear()
+
+
 BROWSER_PAGE = "apps/remote_browser/page.py"
 
 

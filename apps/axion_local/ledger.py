@@ -72,7 +72,5 @@ def totals(today: date | None = None) -> dict[str, dict[str, Any]]:
 
 def describe(bucket: dict[str, Any]) -> str:
     parts = [f"{KINDS.get(kind, kind)} ${usd:.3f}" for kind, usd in sorted(bucket["turler"].items(), key=lambda i: -i[1])]
-    text = f"${bucket['usd']:.3f} · {bucket['cagri']} çağrı"
-    if bucket["karakter"]:
-        text += f" · {bucket['karakter']:,} ses karakteri".replace(",", ".")
+    text = f"${bucket['usd']:.3f} · {bucket['cagri']} çağrı"  # ElevenLabs karakteri durum panelinin kendi satırında
     return text + (f" ({', '.join(parts)})" if parts else "")

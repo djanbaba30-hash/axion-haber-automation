@@ -39,7 +39,8 @@ from apps.news_studio.read_along import read_along
 from apps.news_studio.tts.calibration import estimate
 from apps.news_studio.tts.calibration import load as load_calibration
 from apps.news_studio.tts.calibration import update as update_calibration
-from apps.news_studio.tts.service import synthesize
+from apps.news_studio.tts import pronunciation
+from apps.news_studio.tts.service import error_message, synthesize
 from apps.news_studio.validation.diff import STYLE as DIFF_STYLE
 from apps.news_studio.validation.diff import changed_fields, word_diff_html
 from apps.news_studio.validation.news import find_censorship_warnings, validate_news_output
@@ -62,8 +63,10 @@ PREFERENCES = {
     "speed": 1.11, "stability": 0.50, "similarity": 0.65, "style_strength": 0.10, "boost": True,
 }
 # Ses zamanları dict olarak tutulur: Streamlit modülü yeniden yüklerse eski sınıfın nesnesi NewsPackage'a girmez.
+# tts_characters/tts_runs: bu haber için ElevenLabs'ta harcanan karakter ve seslendirme sayısı (Geliştirici bilgileri).
 AUDIO_STATE = {"last_audio_bytes": None, "last_audio_duration": None, "last_audio_text": None,
-               "last_audio_alignment": None, "last_audio_filename": "axion_haber_ses.mp3"}
+               "last_audio_alignment": None, "last_audio_filename": "axion_haber_ses.mp3", "last_audio_readings": [],
+               "tts_characters": 0, "tts_runs": 0}
 USAGE_KEYS = ("input_tokens", "output_tokens", "cached_input_tokens", "cache_creation_input_tokens", "reasoning_tokens", "requests")
 
 ss = st.session_state
@@ -162,6 +165,11 @@ def note_model_output(kind: str, **fields: str) -> None:
     ss.regenerations = counts
 
 
+def save_lexicon() -> None:
+    entries, ss.okunus_hatali = pronunciation.parse(ss.okunus_sozlugu)
+    pronunciation.save(entries)
+
+
 def start_from_text(text: str) -> None:
     """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
     ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
@@ -181,10 +189,11 @@ if ss.get(NEWS_IMPORT_KEY) is not None:  # Tarayıcı'daki "📰 Haber Stüdyosu
 # =================================================
 remember(ss, PREFERENCES, {"news_style": STYLES, "duration_label": list(TTS_DURATION_PRESETS), "ai_provider": PROVIDERS,
                            "openai_model": list(OPENAI_MODELS), "thinking": THINKING_LEVELS})
+voices_error = ""
 try:
     voices = fetch_voices()
-except Exception:  # noqa: BLE001 — anahtar/bağlantı sorunu: kenar çubuğunda uyarı
-    voices = []
+except Exception as error:  # noqa: BLE001 — anahtar/bağlantı sorunu: kenar çubuğunda uyarı
+    voices, voices_error = [], error_message(error)
 names = [name for name, _ in voices]
 if names and ss.voice_name not in names:
     ss.voice_name = next((n for n in names if "Cavit" in n and "Presenter" in n), next((n for n in names if "Cavit" in n), names[0]))
@@ -208,7 +217,7 @@ with st.sidebar:
         voice_name = st.selectbox("Spiker", names, key="voice_name", filter_mode=None)
         voice_id = dict(voices)[voice_name]
     else:
-        st.warning("ElevenLabs sesleri alınamadı. API anahtarını kontrol et.")
+        st.warning(f"ElevenLabs sesleri alınamadı: {voices_error}")
         voice_name = voice_id = ""
     with st.expander("Ses ince ayarları"):
         speed = st.slider("Hız", 0.7, 1.2, step=0.01, key="speed")
@@ -216,6 +225,14 @@ with st.sidebar:
         similarity = st.slider("Benzerlik", 0.0, 1.0, step=0.01, key="similarity")
         style_strength = st.slider("Stil", 0.0, 1.0, step=0.01, key="style_strength")
         boost = st.toggle("Ses netliği artırma", key="boost", help="ElevenLabs Speaker Boost: spikere benzerliği artırır, biraz yavaşlatır.")
+    with st.expander("Okunuş sözlüğü"):
+        st.caption("Spikerin yanlış okuduğu kelimeler, her satıra bir tane: `yazılış = okunuş` (ör. Heimlich = Haymlih). "
+                   "Yalnız sese uygulanır; ekrandaki metin değişmez. Hatırlanır.")
+        ss.setdefault("okunus_sozlugu", pronunciation.to_text(pronunciation.load()))
+        st.text_area("Okunuş sözlüğü", key="okunus_sozlugu", on_change=save_lexicon, height=110,
+                     label_visibility="collapsed", placeholder="Heimlich = Haymlih")
+        if ss.get("okunus_hatali"):
+            st.warning("Anlaşılmayan satır (kaydedilmedi; `yazılış = okunuş` olmalı): " + " · ".join(ss.okunus_hatali[:3]))
     with st.expander("Üslup örnekleri"):
         st.caption("İsteğe bağlı: seçilen üslup için örnek bir haber metni. Model yalnızca tonu örnek alır. Hatırlanır.")
         for name in STYLES:
@@ -415,23 +432,25 @@ if ss.icerik:
         elif not tts_text:
             st.error("Seslendirme metni boş.")
         else:
+            lexicon = pronunciation.load()
             try:
                 with st.spinner("Ses üretiliyor..."), timed("seslendirme", karakter=len(tts_text)):
-                    audio, alignment = synthesize(elevenlabs_client(), tts_text, voice_id, speed, stability, similarity,
-                                                  style_strength, boost)
-                ledger.add("ses", 0.0, characters=len(tts_text))  # abonelik: karakter sayılır
+                    audio, alignment, spoken = synthesize(elevenlabs_client(), tts_text, voice_id, speed, stability,
+                                                          similarity, style_strength, boost, lexicon)
+                ledger.add("ses", 0.0, characters=len(spoken))  # abonelik: okunan metnin karakteri sayılır
                 try:
                     duration = float(MP3(io.BytesIO(audio)).info.length)
                 except Exception:  # noqa: BLE001
                     duration = None
                 ss.tts_metni = tts_text
                 ss.update({"last_audio_bytes": audio, "last_audio_text": tts_text, "last_audio_alignment": alignment.model_dump() if alignment else None,
-                           "last_audio_duration": duration})
+                           "last_audio_duration": duration, "tts_characters": ss.tts_characters + len(spoken),
+                           "tts_runs": ss.tts_runs + 1, "last_audio_readings": pronunciation.used(tts_text, lexicon)})
                 if duration:
                     ss.tts_calibration = update_calibration(ss.tts_calibration, voice_id, speed, len(tts_text), duration)
                 st.rerun()
             except Exception as exc:  # noqa: BLE001
-                st.error(f"Ses üretilemedi: {exc}")
+                st.error(f"Ses üretilemedi: {error_message(exc)}")
 
     audio_stale = bool(ss.last_audio_bytes) and ss.get("last_audio_text") != ss.tts_metni
     if ss.last_audio_bytes:
@@ -445,6 +464,8 @@ if ss.icerik:
                                  width="stretch")
         if ss.last_audio_duration:
             st.caption(f"Ses süresi {ss.last_audio_duration:.1f} sn · hedef {duration_range[0]:g}–{duration_range[1]:g} sn")
+        if ss.last_audio_readings and not audio_stale:
+            st.caption("Okunuş sözlüğüyle okundu: " + " · ".join(ss.last_audio_readings))
 
     # =================================================
     # PROJEYE KAYDET
@@ -460,7 +481,9 @@ if ss.icerik:
             headline_1=ss.baslik1, headline_2=ss.baslik2, caption=ss.icerik, tts_text=ss.tts_metni, source_text=raw,
             provider=usage.get("provider", ""), model=usage.get("model", ""), tts_duration_target=duration_label,
             tts_actual_duration_seconds=ss.last_audio_duration, tts_voice_id=voice_id or "", tts_speed=speed,
-            tts_alignment=ss.last_audio_alignment if ss.last_audio_bytes else None, metadata={"style": style, "usage": {**usage, "estimated_cost_usd": cost.cost_usd(usage)} if usage else usage},
+            tts_alignment=ss.last_audio_alignment if ss.last_audio_bytes else None,
+            metadata={"style": style, "usage": {**usage, "estimated_cost_usd": cost.cost_usd(usage)} if usage else usage,
+                      "tts_characters": ss.tts_characters},
         )
         go_col, save_col = st.columns([3, 1])
         go = go_col.button("Kaydet ve Video Stüdyosu'na geç", type="primary", width="stretch")
@@ -506,5 +529,8 @@ if ss.icerik:
             alignment = TTSAlignment.model_validate(ss.last_audio_alignment) if ss.last_audio_alignment else None
             st.caption("Seslendirme zaman bilgisi: "
                        + (f"var ({len(alignment.characters)} karakter, {alignment.duration_seconds():.1f} sn)" if alignment else "yok"))
+        if ss.tts_runs:
+            st.caption(f"Bu haberin sesi: ElevenLabs'ta {ss.tts_characters:,} karakter".replace(",", ".")
+                       + f" ({ss.tts_runs} kez seslendirildi)")
         if active:
             st.caption(f"Proje klasörü: {active.folder}")

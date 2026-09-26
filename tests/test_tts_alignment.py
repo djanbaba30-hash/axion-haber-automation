@@ -42,8 +42,8 @@ def test_invalid_alignment_times_are_dropped():
 def test_synthesize_returns_audio_and_alignment_in_one_call():
     tts = FakeTTS(raw_alignment("Bayrampaşa'da kaza."))
     client = SimpleNamespace(text_to_speech=tts)
-    audio, alignment = synthesize(client, "Bayrampaşa'da kaza.", "voice", 1.11, 0.5, 0.65, 0.1, True)
-    assert audio == b"mp3-bytes"
+    audio, alignment, spoken = synthesize(client, "Bayrampaşa'da kaza.", "voice", 1.11, 0.5, 0.65, 0.1, True)
+    assert audio == b"mp3-bytes" and spoken == "Bayrampaşa'da kaza."
     assert len(tts.calls) == 1 and tts.calls[0]["voice_id"] == "voice"
     package = NewsPackage(headline_1="A", headline_2="B", caption="C", tts_text="Bayrampaşa'da kaza.", tts_alignment=alignment)
     assert package.tts_alignment.characters[-1] == "."

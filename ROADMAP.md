@@ -127,14 +127,16 @@ tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 
 ## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — ONAYLANDI (editör, 2026-09-26)
 
-Durum: hiçbiri başlamadı; sıradaki **1. madde** (editörden 🩺 Durum ekran görüntüsü istenir; gelmeden de sözlükle
-başlanabilir). Biten maddeyi burada "— YAPILDI (sürüm)" diye işaretle.
+Durum: 1. madde yapıldı (`v4.1.0-alpha.1`, editör denemesi bekleniyor); sıradaki **2. madde**. Biten maddeyi burada
+"— YAPILDI (sürüm)" diye işaretle.
 
 Sıra, bağımlılığa göre: önce altyapı kararını etkilemeyen küçük işler, sonra büyük kararlar için araştırma (kod yok),
 sonra kararlara göre geliştirme. Her parça ayrı ön sürüm (`v4.1.0-alpha.N`); taşınma kararı çıkarsa o `v5.0`.
 Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli, kaliteden ödün yok).
 
-1. **Okunuş sözlüğü + ElevenLabs kullanım göstergesi** (editör: "bazen yanlış okuyor, sırf o yüzden sesi yeniden
+1. — YAPILDI (`v4.1.0-alpha.1`; göstergenin nedeni: SDK hata metni başlıklarla başlayıp kesiliyordu, asıl neden
+   görünmüyordu; editör güncelleyince panelde yazan nedeni bildirir) **Okunuş sözlüğü + ElevenLabs kullanım
+   göstergesi** (editör: "bazen yanlış okuyor, sırf o yüzden sesi yeniden
    üretiyorum"; "kullanılan kredi yazmıyordu"). Kalıcı, editörün doldurduğu küçük liste (`data/`; ör. Heimlich →
    Haymlih); yalnız ElevenLabs'a giden metne uygulanır, ekrandaki/paylaşım metni değişmez; okuyarak dinleme ve
    zamanlar bozulmaz. Göstergede önce neden bulunur (editörden Geliştirici bilgileri → 🩺 Durum ekran görüntüsü;

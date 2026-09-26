@@ -1,3 +1,30 @@
+# v4.1.0-alpha.1 — Okunuş sözlüğü ve ElevenLabs göstergesi — 2026-09-26
+
+v4.1 planının 1. maddesi (ROADMAP). Yeni API çağrısı yok.
+
+## Added
+- **Okunuş sözlüğü** (Haber Stüdyosu → kenar çubuğu → "Okunuş sözlüğü"): editör spikerin yanlış okuduğu kelimeleri
+  `yazılış = okunuş` satırlarıyla yazar (ör. `Heimlich = Haymlih`; `data/okunus.json`, silinmez). Yalnız
+  ElevenLabs'a giden metne uygulanır (tam kelime, büyük/küçük harf fark etmez, "Heimlich'i" gibi ekli yazım da);
+  ekrandaki/kaydedilen seslendirme metni ve paylaşım metni değişmez. ElevenLabs'ın karakter zamanları ekrandaki
+  metne geri taşınır (değiştirilen kelimenin harfleri okunuşunun süresine yayılır): okuyarak dinleme ve kurgunun
+  duraklamada kesmesi bozulmaz. Sesin altında "Okunuş sözlüğüyle okundu: Heimlich → Haymlih".
+- **Haber başına ses karakteri:** Geliştirici bilgileri'nde "Bu haberin sesi: ElevenLabs'ta N karakter (K kez
+  seslendirildi)"; projeye de yazılır (`news_package.json` → `metadata.tts_characters`).
+
+## Changed
+- **Durum paneli, ElevenLabs satırı:** kalan karakterin yanında Axion'un bugün ve bu ay harcadığı karakter (maliyet
+  defterinden) her zaman görünür, kalan okunamasa da. Bu yüzden "Bugün/Bu ay" satırlarından ses karakteri çıktı
+  (tekrar etmesin).
+- Maliyet defterine yazılan ses karakteri, ElevenLabs'a giden (okunuşlu) metnin uzunluğu.
+
+## Fixed
+- **"Kullanılan kredi yazmıyordu":** ElevenLabs hatası panelde SDK'nın hata metniyle gösteriliyordu; o metin HTTP
+  başlıklarıyla (headers) başladığı ve 160 karakterde kesildiği için asıl neden hiç görünmüyordu. Artık neden açık:
+  anahtarda izin eksik (ör. "User → Read": kalan karakteri okumak için gerekir; ElevenLabs sitesinde anahtarın
+  izinlerinden açılır), anahtar geçersiz, kota bitti, istek sınırı, internet yok. Aynı açık mesaj "Ses üretilemedi"
+  ve "ElevenLabs sesleri alınamadı" uyarılarında da.
+
 # v4.0.0 — Uzaktan güvenle ve hızlı karar: fotoğraf, sahne değiştirme, kapak, müzik, yazıya dökme — 2026-09-26
 
 4.0 parça parça ön sürümlerle yayımlandı (`v4.0.0-alpha.1` … `alpha.7.4`, ayrıntılar aşağıda) ve editör gerçek

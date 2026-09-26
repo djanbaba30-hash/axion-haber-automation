@@ -68,6 +68,10 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      dolmadan gelen haberde bu kısım ~%10 fiyatına gider. **🟢 Önbellek sıcak, ~N dk** tahminidir (Luna 30 dk, Claude
      1 saat; her haberde baştan). Haberin tahmini maliyeti ve önbellekten gelen pay **Geliştirici bilgileri**'nde.
    - **Okuyarak dinle:** ses çalarken söylenen kelime yeşil yanar; bir kelimeye dokununca oradan çalar.
+   - **Okunuş sözlüğü** (kenar çubuğunda, kapalı bölüm): spiker bir kelimeyi yanlış okuyorsa her satıra
+     `yazılış = okunuş` yaz (ör. `Heimlich = Haymlih`) ve yeniden **Seslendir**. Yalnız sese uygulanır: ekrandaki
+     seslendirme metni, paylaşım metni ve videodaki yazılar değişmez. Sözlük hatırlanır; eşleşen kelimeler sesin
+     altında "Okunuş sözlüğüyle okundu" diye yazar.
    - **🔁 Düzeltme çağrısı neyi değiştirdi:** ilk sonuç düzeltildiyse silinenler kırmızı, eklenenler yeşil.
 2. Sayfanın altında **Kaydet ve Video Stüdyosu'na geç**. Haber, ses ve metin projeye kaydedilir; Video Stüdyosu bu projeyle açılır.
    - Seslendirmede saat, tarih ve ondalık sayılar okunabilir biçime çevrilir ("18.00'de" → "akşam 6'da").
@@ -100,7 +104,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      kurgu yapar. **Videoyu yeniden oluştur** aynı sahnelerle yeniden üretir (yeni çağrı yok).
      Kurguda bir sorun görürsen: sayfanın altındaki **Geliştirici bilgileri** → **📦 Teşhis dosyasını indir**; inen
      dosyayı Claude'a/GPT'ye sohbette gönder (internete kendiliğinden hiçbir şey gitmez). Aynı bölümde:
-     **🩺 Durum ve maliyet** (disk, ElevenLabs'ta kalan karakter, FFmpeg, bugünkü ve bu ayki tahmini maliyet) ve
+     **🩺 Durum ve maliyet** (disk, ElevenLabs'ta kalan karakter ve Axion'un bugün/bu ay harcadığı karakter,
+     FFmpeg, bugünkü ve bu ayki tahmini maliyet; kalan karakter okunamazsa nedeni yazar, ör. API anahtarında
+     "User → Read" izni yoksa ElevenLabs sitesinde anahtarın izinlerinden açılır) ve
      **📝 Düzeltme kaydını indir** (başlık, seslendirme, sahne ve kesit düzeltmelerin; ara sıra geliştiriciye yolla,
      istemi senin düzeltmelerine göre iyileştirsin. Kayıt ücretsizdir, yapay zekâya gönderilmez).
      Canva şablonundaki video alanının ölçüsünde (960×1226) MP4 hazırlanır.

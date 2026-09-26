@@ -67,7 +67,8 @@ apps/axion_local/
                                ile çiz (boş veri klasörü); geçmezse bekçi önceki sürüme döner
   corrections.py               Düzeltmelerden öğrenme kaydı (v4.0): model çıktısı ↔ editörün son hâli, sahne/kesit
                                değişiklikleri → data/duzeltmeler.jsonl (silinmez; Geliştirici bilgileri'nden indirilir)
-  status.py, ledger.py         Durum paneli (disk, ElevenLabs kalan karakter [arka planda, 10 dk], FFmpeg) ve maliyet
+  status.py, ledger.py         Durum paneli (disk, ElevenLabs kalan karakter [arka planda, 10 dk] + Axion'un bugün/bu ay
+                               harcadığı karakter, okunamazsa neden; FFmpeg) ve maliyet
                                defteri data/maliyet.jsonl (günlük/aylık; v4.0; Geliştirici bilgileri)
   diagnostics.py               Teşhis dosyası: projenin kurgu JSON'ları + günlüğün sonu tek JSON (Video Stüdyosu → Geliştirici
                                bilgileri → İndir; internete gönderilmez, editör sohbette yollar)
@@ -87,7 +88,10 @@ apps/news_studio/              HABER STÜDYOSU
   ai/clients.py, ai/retry.py   OpenAI/Claude çağrıları (tek retry katmanı; SDK retry kapalı); yalnız başlık hatalıysa
                                tam düzeltme yerine küçük başlık çağrısı
   ai/cost.py                   Tarihli fiyat tablosu, haber başına tahmini maliyet, önbellek sayacı (data/onbellek.json)
-  tts/service.py, calibration.py  ElevenLabs sesi, karakter/saniye kalibrasyonu
+  tts/service.py, calibration.py  ElevenLabs sesi, karakter/saniye kalibrasyonu; `error_message` (ElevenLabs hatasının
+                               açık nedeni: izin eksik, anahtar geçersiz, kota, internet)
+  tts/pronunciation.py         Okunuş sözlüğü (v4.1) data/okunus.json: yalnız ElevenLabs'a giden metne uygulanır,
+                               karakter zamanları ekrandaki metne geri taşınır (`remap`)
   integration/history.py       SQLite üretim geçmişi (data/history.sqlite3)
 
 apps/video_studio/             VIDEO STÜDYOSU
@@ -214,7 +218,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Şablon katmanları ve blur maskeleri (PNG + concat listesi) | Sistem geçici klasörü | Son video bitince veya hata olunca (`design_studio/render.py`) |
 | `news_package.json`, `tts.mp3`, `media_library.json`, `kesitler.json`, `kurgu_plani.json`, `edit_project.json`, `kaba_kurgu.mp4`, `onizleme/`, `yazi/`, `tasarim.json`, `son_video.mp4` | `data/projects/<zaman>_<başlık>/` | 3 iş günü sonra (`store.delete_old_projects`); `edit_project`/MP4 ayrıca haber veya görüntü değişince |
 | Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
-| Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
+| Ayarlar, seslendirme hız kalibrasyonu, okunuş sözlüğü (v4.1), günlük | `data/ayarlar.json`, `data/*.json` (`okunus.json`), `data/axion.log` | Silinmez |
 | Yazıya dökme modeli (v4.0, ~1,6 GB) | `data/modeller/` | Silinmez (ilk kullanımda bir kez iner) |
 | Düzeltme kaydı (v4.0) | `data/duzeltmeler.jsonl` | Silinmez (internete gitmez; editör indirip yollar) |
 | Maliyet defteri (v4.0) | `data/maliyet.jsonl` | Silinmez (çağrı başına ~100 bayt) |
@@ -224,12 +228,15 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0 → sıradaki: v4.1 planı, 1. madde (ROADMAP "v4.1 planı", onaylandı)
+## Nerede kaldık (2026-09-26) — Sürüm 4.1.0-alpha.1 → sıradaki: v4.1 planı, 2. madde (ROADMAP "v4.1 planı", onaylandı)
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
 geri bildirim, teşhis dosyası, düzeltme kaydı. **Sıradaki iş: ROADMAP "v4.1 planı"** (editörle beyin fırtınası, GPT
 fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir parça.
+- **1. madde yapıldı (`v4.1.0-alpha.1`):** okunuş sözlüğü + ElevenLabs göstergesi. Editör denerken bak: sözlükle
+  okunan kelime doğru mu, 🩺 Durum'daki ElevenLabs satırı ne yazıyor (kalan okunamıyorsa neden artık açık; izin
+  eksikse editör ElevenLabs sitesinde açar). Sorun yoksa 2. madde (haberdeki alıntıdan kesit önerisi).
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =
