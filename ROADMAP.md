@@ -128,6 +128,8 @@ kontrolü kaldırmak değil, hızlandırmak.
    oturur, "yeniden üret" başlıkları önceki başlıkları görür (gerçek modelle denenmesi bekleniyor).
 11. **v3.6.0 = Faz 4** (editör kararı, 2026-09-26: "4.0'dan önceki son büyük güncelleme"): sahneleri Luna seçer
    (yukarıdaki Faz 4 satırı). Gerçek Luna ile ilk deneme editörde.
+14. **v3.7.1–3.7.2:** tablette oturum 3 saat korunur; kısa çekimde 1 sn'lik ara sahne yok. Editör iki
+   gerçek haberde Luna kurgusunu doğruladı (Sultangazi, Eymen).
 13. **v3.6.4–3.7.0:** isim kuralı ("A.K."; suç/reşit olmayan/masumiyet karinesi) ve Luna kurgusunun haberi bilmesi
    (olay örgüsü, sahne aşamaları, görüntü analizine haber bağlamı).
 12. **v3.6.1:** teşhis dosyası tabletten indirilir, editör sohbette geliştiriciye yollar (editör seçti: repo herkese
@@ -138,6 +140,10 @@ Gerekmeyenler: Windows açılışında otomatik başlatma; Windows'ta otomatik t
 tablete gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)
 
 ## Sürüm 4.0 planı (editörle beyin fırtınası, 2026-09-26; henüz yapılmadı)
+
+Yayın biçimi (editör kararı): parça parça ön sürümler `v4.0.0-alpha.1` … `alpha.7` (sıra AGENTS "Nerede kaldık":
+fotoğraf → sahne değiştirme → kapak → müzik → düzeltmelerden öğrenme → durum paneli + maliyet → yazıya dökme); sonra
+genel repo taraması → `v4.0.0`.
 
 Tema: Axion'u uzaktan güvenle kullanmak ve son kararı editöre hızlı verdirmek. Sıra, editörün tablet notlarından sonra
 yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalışır).

@@ -42,7 +42,7 @@ def version() -> str | None:
     """Çalışan sürüm: CHANGELOG'un ilk başlığı ("# v3.5.0 — ..."); tek kaynak, ayrı sayı tutulmaz."""
     try:
         with (ROOT / "CHANGELOG.md").open(encoding="utf-8") as handle:
-            match = re.match(r"#\s*v(\d[\w.]*)", handle.readline())
+            match = re.match(r"#\s*v(\d[\w.]*(?:-[\w.]+)?)", handle.readline())  # ön sürüm: 4.0.0-alpha.1
     except OSError:
         return None
     return match.group(1) if match else None

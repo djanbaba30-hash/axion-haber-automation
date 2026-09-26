@@ -931,6 +931,12 @@ def test_version_number_in_sidebar(local_env, monkeypatch):
     at = start()
     assert any(c.value == f"🟢 Axion güncel · v{number}" for c in at.sidebar.caption)
     assert update_check.label(None, number) == f"Axion v{number}" and update_check.label(None) is None
+    # 4.0 ön sürümleri (editör: parça parça, alpha): "# v4.0.0-alpha.1 — ..." tam okunur.
+    import io
+    from unittest import mock
+
+    with mock.patch("pathlib.Path.open", return_value=io.StringIO("# v4.0.0-alpha.1 — Fotoğraf desteği\n")):
+        assert update_check.version() == "4.0.0-alpha.1"
 
 
 def test_self_check_passes_on_this_version_and_catches_broken_ones(tmp_path, monkeypatch):

@@ -201,7 +201,40 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.7.2
+## Nerede kaldık (2026-09-26) — Sürüm 3.7.2 → sıradaki: 4.0 parça parça
+
+**YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
+sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
+CHANGELOG başlığı `# v4.0.0-alpha.N — <özellik> — <tarih>` (kenar çubuğu bunu "v4.0.0-alpha.N" diye gösterir;
+`update_check.version` ön sürümü okur, test var). Her parça: küçük, testli commit'ler; `make test`; doğrudan `main`;
+editör tabletten "Güncelle" ile alır ve dener. Özellikler bitince **genel repo taraması** (ölü kod, borçlar, belgeler,
+AGENTS "Nerede kaldık"ın 3.x geçmişini kısaltma, CHANGELOG'da 3.x özeti) → `v4.0.0`.
+Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede kaldık"a yaz.
+
+**4.0 parçaları (sıra; ayrıntı ROADMAP "Sürüm 4.0 planı"):**
+1. `alpha.1` **Fotoğraf desteği:** kurgu fotoğrafları da kullanır (yavaş yakınlaşma/kaydırma, alan tam dolu, bulanık
+   dolgu yok); Luna'nın sahne seçimine fotoğraflar da gider (`_candidates` şu an `VideoAsset` dışını atlıyor;
+   görüntü analizi fotoğrafları zaten analiz ediyor: `media_library` `images`).
+2. `alpha.2` **Kurguda sahne değiştirme:** Video Stüdyosu'nda sahne başına küçük kare; dokun → aynı görüntülerden
+   3–4 alternatif (fotoğraflar dahil) → seç → yalnız o sahne değişir (API yok; `kurgu_plani.json` üstüne editör seçimi,
+   `origin: "user"`).
+3. `alpha.3` **Kapak = ilk kare:** videonun ilk karesinde başlık tam görünür (giriş animasyonunun son hâli) + kapak
+   sahnesi; ayrı kapak yüklemek yok (Reels/Shorts kapak seçiminde ilk kare hazır).
+4. `alpha.4` **Müzik altlığı:** sözsüz, telifsiz haber müzikleri (data/varliklar'a eklenir); seslendirme/kesit sesinin
+   altında kısılır; editör seçer ya da kapatır.
+5. `alpha.5` **Düzeltmelerden öğrenme (kayıt):** model çıktısı ↔ editörün son hâli farkı silinmeyen küçük kayda
+   (başlık, seslendirme, paylaşım metni, sahne değişiklikleri, kesit aralığı; tasarım ve kesit ekleme hariç). Geliştirici
+   belli aralıklarla okuyup istemi düzeltir (çalışma zamanında ek çağrı yok). Editör: başlık kalitesi "orta", küçük
+   düzeltmeler yapıyor.
+6. `alpha.6` **Durum paneli + günlük/aylık maliyet** (Geliştirici bilgileri): disk, ElevenLabs kalan karakter, FFmpeg
+   ve kodlayıcı; maliyet için silinmeyen özet (projeler 3 günde silinir). Haber başına maliyet zaten görünüyor (v3.6.2).
+7. `alpha.7` **Yerel yazıya dökme (Whisper benzeri):** önce gerçek DHA videosuyla Türkçe doğruluk/hız denemesi; kesit
+   seçimi metinden; ileride altyazı temeli (altyazı şu an ürün kararı gereği yok). Boyut sorun değil (32 GB RAM).
+Sonra: genel repo taraması → `v4.0.0`.
+
+**Açık notlar:** editör Axion'u henüz masaüstü simgesiyle yeniden açmadı → geri dönüş bekçisi (v3.5.0) etkin değil
+(bozuk güncellemede evde `guncelle.bat`). Blur ayrıntılı denenmedi. Luna kurgusu gerçek haberlerle doğrulandı
+(Sultangazi, Eymen); sorunlarda önce teşhis dosyasını iste (Video Stüdyosu → Geliştirici bilgileri).
 
 **3.7.2:** editörün ikinci Luna kurgusu (Eymen, 29 çekim, 255 sn) sorunsuz; olay örgüsü ve aşamalar doğru. Düzeltme:
 seçilen çekim sahneye yetmez ve artık < 2 sn ise ayrı sahne açılmaz, sonraki sahne erken başlar (`plan_rough_cut`
@@ -274,14 +307,6 @@ başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber 
 ≈ $0.0013. Haber başına toplam ~$0.002.
 Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı.
 
-**Sıradaki (editörle beyin fırtınası, 2026-09-26; ROADMAP "Sıradaki işler" 9 ve "Sürüm 4.0 planı"):**
-1. ~~v3.5.0~~ (yapıldı): güncellemede geri dönüş + kenar çubuğunda sürüm numarası. Editör uygulamadan alır; evde
-   bir kez Axion'u kapatıp simgeyle açar (yeni bekçi).
-2. Editör dükkânda tabletten tam akışı dener (haber → ses → Tarayıcı'dan DHA → video → Tasarım → indir); notları
-   4.0'dan önce küçük, testli commit'lerle yapılır.
-3. **4.0** (ROADMAP'te ayrıntı): kurguda sahne değiştirme, fotoğraf desteği, yerel yazıya dökme (kesit seçimi; ileride
-   altyazı), editör düzeltmelerinden öğrenme (başlık, seslendirme, paylaşım metni, sahne, kesit aralığı; tasarım ve
-   kesit ekleme hariç), müzik altlığı, kapak = ilk kare, durum paneli + günlük/aylık maliyet.
 İstenmeyenler ve sonraya kalanlar ROADMAP'te (tekrar önerme). Yeni oturum AGENTS.md + ROADMAP'ten başlar.
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:
