@@ -115,8 +115,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    Video Stüdyosu'ndan **Son videoyu indir** yeterli. Tasarım Stüdyosu Canva gibi düzenlenmiştir:
    - **Sol kenar çubuğu:** son videonun durumu ("hazır ve güncel" / "değişiklikler işlenmedi"), **Yeniden oluştur**,
      **İndir**, iki başlığın metni (Enter ile satırı böl), **🎵 Müzik** ve **Yazı tipi / arka plan ekle**.
-   - **🎵 Müzik (altlık):** son videoda seslendirmenin altında sözsüz müzik çalar; seslendirme ve kesit konuşurken
-     kısılır, sessiz kısımlarda biraz açılır, video bitene kadar döner. Varsayılan **Gündem**; **Gerilim** (asayiş,
+   - **🎵 Müzik (altlık):** son videoda sözsüz müzik çalar, video bitene kadar döner. Seslendirme, röportaj ya da
+     konuşmalı kesit boyunca "varla yok arası"; konuşmasız kesitlerde ve sessiz kısımda duyulur ama yüksek değil
+     (kesitte konuşma olup olmadığını Axion sesten anlar). Varsayılan **Gündem**; **Gerilim** (asayiş,
      son dakika), **Sakin** (insan hikâyesi) ya da **Kapalı** seçilebilir, seçmeden önce dinlenebilir. **Kendi
      müziğini ekle** ile MP3/M4A/WAV/OGG eklersen yalnız bu bilgisayarda kalır (GitHub'a gitmez). Değiştirince
      **Yeniden oluştur**.

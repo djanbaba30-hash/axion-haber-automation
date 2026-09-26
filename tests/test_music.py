@@ -1,8 +1,10 @@
 """v4.0.0-alpha.4: müzik altlığı — hazır parçalar, editörün müziği, son videoda karışım (konuşurken kısılır)."""
 
+import json
 import re
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -42,10 +44,10 @@ def test_final_command_mixes_music_under_the_voice(tmp_path):
     plain = build_final_command(tmp_path / "kaba.mp4", layers, 30, 20.0, tmp_path / "son.mp4", ["-c:v", "libx264"])
     assert plain[plain.index("-c:a") + 1] == "copy" and "-stream_loop" not in plain
     mixed = build_final_command(tmp_path / "kaba.mp4", layers, 30, 20.0, tmp_path / "son.mp4", ["-c:v", "libx264"],
-                                music=(music.path("gerilim"), -3.5))
+                                music=(music.path("gerilim"), -3.5, [(1.0, 5.0)]))
     graph = mixed[mixed.index("-filter_complex") + 1]
     assert mixed[mixed.index("-stream_loop") + 3] == str(music.path("gerilim"))  # döngülü giriş
-    assert "[4:a]" in graph and "volume=-3.5dB" in graph and "sidechaincompress" in graph
+    assert "[4:a]" in graph and "volume='pow(10,(-3.5+-18.0*clip(min((t-0.500)/0.5,(5.500-t)/0.5),0,1))/20)'" in graph
     assert "afade=t=out:st=18.500:d=1.5" in graph and "atrim=duration=20.000" in graph
     assert mixed[mixed.index("-map", mixed.index("[out]")) + 1] == "[aout]" and mixed[mixed.index("-c:a") + 1] == "aac"
 
@@ -66,19 +68,62 @@ def _loudness(path, start, end):
     return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", out)[-1])
 
 
-@needs_ffmpeg
-def test_music_fills_silence_and_stays_under_the_voice(tmp_path):
+def test_duck_expression():
+    assert music.duck_expression([], 10.0) == "0"
+    assert music.duck_expression(None, 10.0) == "-18.0*clip(min((t--0.500)/0.5,(10.500-t)/0.5),0,1)"  # bilgi yok: hep
+    both = music.duck_expression([(0.0, 4.0), (8.0, 11.0)], 14.0)
+    assert both.startswith("-18.0*max(clip(") and both.count("clip(") == 2
+
+
+SPEECH = Path(__file__).parent / "ornekler" / "konusma.mp3"
+
+
+def _rough_with_soundbites(tmp_path):
+    """0–4 sn seslendirme (sentez konuşma), 4–8 sn konuşmasız kesit (uğultu), 8–11 sn konuşmalı kesit, 11–14 sn sessiz."""
     rough = tmp_path / "kaba_kurgu.mp4"
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=960x1226:r=30:d=8", "-f", "lavfi",
-                    "-i", "sine=f=300:duration=8,volume='if(lt(t,4),2,0)':eval=frame", "-c:v", "libx264", "-preset",
-                    "ultrafast", "-c:a", "aac", "-shortest", str(rough)], check=True)
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=gray:s=960x1226:r=30:d=14",
+                    "-i", str(SPEECH), "-f", "lavfi", "-i", "anoisesrc=color=brown:d=4:a=0.2", "-i", str(SPEECH),
+                    "-filter_complex", "[1:a]atrim=0:4,aresample=48000[a];[2:a]aresample=48000[b];"
+                    "[3:a]atrim=0:3,aresample=48000[c];anullsrc=r=48000:d=3[d];[a][b][c][d]concat=n=4:v=0:a=1[aud]",
+                    "-map", "0:v", "-map", "[aud]", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", str(rough)],
+                   check=True)
+    clip = lambda start, seconds, audio: {"start_f": round(start * 30), "duration_f": round(seconds * 30),  # noqa: E731
+                                          "use_source_audio": audio, "asset_id": "video_001"}
+    edit_project = {"audio": {"asset_id": "tts", "duration_seconds": 4.0}, "edit_plan": {"timeline": {"fps": 30, "tracks": [
+        {"kind": "video", "clips": [clip(0, 4, False), clip(4, 4, True), clip(8, 3, True), clip(11, 3, False)]},
+        {"kind": "audio", "clips": [{"start_f": 0, "duration_f": 120, "asset_id": "tts"}]}]}}}
+    (tmp_path / "edit_project.json").write_text(json.dumps(edit_project), encoding="utf-8")
+    return rough, edit_project
+
+
+@needs_ffmpeg
+def test_speech_spans_cover_voiceover_and_talking_soundbites_only(tmp_path):
+    rough, edit_project = _rough_with_soundbites(tmp_path)
+    assert music.speech_spans(edit_project, rough) == [(0.0, 4.0), (8.0, 11.0)]
+    assert music.speech_spans(None, rough) is None
+
+
+@needs_ffmpeg
+def test_music_is_barely_there_under_speech_and_audible_elsewhere(tmp_path):
+    """Editör: konuşmada (seslendirme, röportaj) varla yok arası; konuşmasız kesitte ve sessizlikte duyulur, yüksek değil."""
+    rough, edit_project = _rough_with_soundbites(tmp_path)
+    spans = music.speech_spans(edit_project, rough)
+    bed = tmp_path / "altlik.wav"
+    track = music.path("gundem")
+    graph = ";".join(["anullsrc=r=48000:cl=stereo:d=14[sus]"] + music.mix_filters("sus", "0:a", 14.0,
+                                                                                    music.gain_db(track), spans))
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-stream_loop", "-1", "-i", str(track), "-filter_complex", graph,
+                    "-map", "[aout]", "-t", "14", str(bed)], check=True)
+    under_voice, under_talk = _loudness(bed, 1, 3.4), _loudness(bed, 8.6, 10.4)
+    open_bite, open_tail = _loudness(bed, 4.6, 7.4), _loudness(bed, 11.6, 12.4)
+    assert -48 < under_voice < -42 and -48 < under_talk < -42  # varla yok arası (seslendirme -18'in ~27 dB altı)
+    assert -30 < open_bite < -24 and -30 < open_tail < -24  # duyulur, kesitin (-20) altında
+    # Son videoda da: müzik kapalıyken sessiz son, açıkken müzik; konuşma kısmı neredeyse aynı.
     results = {}
-    for track in ("gundem", music.OFF):
-        design = load_design({"version": 2, "music": track}, "A", "B", 8.0)
-        output = tmp_path / f"son_{track}.mp4"
-        render_final(rough, design, assets.backgrounds()[0], 30, 8.0, output)
-        results[track] = (_loudness(output, 0.5, 3.5), _loudness(output, 5, 7.5))
-    (voice_music, gap_music), (voice_plain, gap_plain) = results["gundem"], results[music.OFF]
-    assert gap_plain < -60 and -30 < gap_music < -20  # sessiz kısımda müzik duyulur
-    assert -20 < voice_plain < -15  # seslendirme düzeyi (TTS -18 LUFS)
-    assert abs(voice_music - voice_plain) < 1.0  # konuşurken müzik altta kalır (kısılır)
+    for choice in ("gundem", music.OFF):
+        output = tmp_path / f"son_{choice}.mp4"
+        render_final(rough, load_design({"version": 2, "music": choice}, "A", "B", 14.0), assets.backgrounds()[0], 30,
+                     14.0, output)
+        results[choice] = (_loudness(output, 1, 3.4), _loudness(output, 11.6, 12.4))
+    assert abs(results["gundem"][0] - results[music.OFF][0]) < 0.5 and results[music.OFF][1] < -60
+    assert -30 < results["gundem"][1] < -24

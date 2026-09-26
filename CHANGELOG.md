@@ -1,3 +1,23 @@
+# v4.0.0-alpha.4.1 — Müzik: konuşmada varla yok arası, konuşmasız kesitte duyulur; yumuşak piyano — 2026-09-26
+
+Editör (müzikleri dinledi: "güzel, kullanılabilir"): "konuşma olmayan kesitlerimde duyulabilir şekilde çalsın, yüksek
+olmadan; seslendirme, röportaj ya da konuşmalı video sesi varken varla yok arası çalsın; piyano notaları kulağa
+batmasın".
+
+## Changed
+- **Müzik seviyesi konuşmaya göre** (`design_studio/music.py`): sidechain yerine zaman çizelgesinden kazanç zarfı.
+  Seslendirmenin tamamı ve konuşmalı kaynak sesli kesitler boyunca müzik 18 dB kısık (~-45 LUFS; seslendirmenin ~27 dB
+  altı: varla yok arası); konuşmasız kesitlerde ve sessiz kısımda ~-27 LUFS (duyulur, kesitin -20'sinin altında).
+  Geçişler 0,5 sn'de yumuşak (konuşma başlamadan kısılmış olur). Ölçüldü (üç parça): seslendirme altında -44/-46,
+  konuşmalı kesitte -45/-46, konuşmasız kesitte -27/-28, sessiz sonda -26/-28 LUFS.
+- **Kesitte konuşma var mı** (yeni `video_studio/modules/speech.py`, API yok): kepstrumla perdeli (sesli harf) kareler
+  sayılır; sesli karelerin %25–85'i perdeliyse konuşma. Sentez Türkçe konuşma (espeak-ng; gürültü altında da) konuşma;
+  trafik, kalabalık uğultusu, çarpma, siren konuşma değil (testli; örnek `tests/ornekler/konusma.mp3`). Karar
+  verilemezse (1 sn'den kısa) konuşma sayılır: müzik kısık kalır. Kurgu bilgisi yoksa tüm video konuşma sayılır.
+- **Piyano notaları yumuşak** (`assets/muzik/uret.py`, Gündem ve Sakin yeniden üretildi; Gerilim'de piyano yok, aynı):
+  daha yumuşak vuruş, tiz harmonikler zayıf ve çabuk sönüyor, Gündem'in arpeji bir oktav aşağıda, ikisi de daha kısık
+  ve daha boğuk. Tiz bölgede ölçülen düşüş: Gündem 2–4 kHz -4 dB, 4–8 kHz -7 dB; Sakin 1–2 kHz -5 dB, 2–4 kHz -15 dB.
+
 # v4.0.0-alpha.4 — Müzik altlığı — 2026-09-26
 
 Editör: "haber videolarında kullanılan türden sözsüz arka plan müziği; seslendirmenin altında kısılsın; seçerim ya da

@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from apps.axion_local.store import EDIT_PROJECT_FILENAME
 from apps.video_studio.modules.ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
 from apps.video_studio.modules.render import AMF, X264, amd_encoder_available
 from shared.axion_template import VIDEO_SLOT
@@ -18,7 +19,7 @@ from shared.axion_template import VIDEO_SLOT
 from .blur import BlurPass, mosaic_block, sigma, write_mask_sequences
 from .design import Design
 from .music import gain_db as music_gain
-from .music import mix_filters
+from .music import mix_filters, speech_spans
 from .music import path as music_path
 from .template import Layers, frame_origin, write_layers
 
@@ -41,7 +42,7 @@ def build_final_command(
     output: Path,
     encoder: list[str],
     blurs: list[BlurPass] | None = None,
-    music: tuple[Path, float] | None = None,
+    music: tuple[Path, float, list[tuple[float, float]] | None] | None = None,
 ) -> list[str]:
     x, y, w, h = VIDEO_SLOT["x"], VIDEO_SLOT["y"], VIDEO_SLOT["width"], VIDEO_SLOT["height"]
     fx, fy = frame_origin()
@@ -86,7 +87,7 @@ def build_final_command(
     audio = ["-map", "1:a?", "-c:a", "copy"]
     if music:  # müzik altlığı (v4.0): döngüyle sona kadar, konuşurken kısılır; ses yeniden kodlanır
         command += ["-stream_loop", "-1", "-i", str(music[0])]
-        filters += mix_filters("1:a", f"{4 + len(blurs or [])}:a", seconds, music[1])
+        filters += mix_filters("1:a", f"{4 + len(blurs or [])}:a", seconds, music[1], music[2])
         audio = ["-map", "[aout]", "-c:a", "aac", "-b:a", "192k"]
     return command + [
         "-filter_complex", ";".join(filters),
@@ -97,6 +98,14 @@ def build_final_command(
         "-movflags", "+faststart",
         str(output),
     ]
+
+
+def _edit_project(rough_cut: Path) -> dict[str, Any] | None:
+    """Kurgunun planı (kaba kurguyla aynı klasörde): müziğin kısılacağı konuşma aralıkları için."""
+    try:
+        return json.loads((rough_cut.parent / EDIT_PROJECT_FILENAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
 
 
 class Cancelled(Exception):
@@ -192,7 +201,7 @@ def render_final(rough_cut: Path, design: Design, background: Path, fps: int, se
     attempts.append(("x264 (işlemci)", X264))
     error = ""
     track = music_path(design.music)
-    bed = (track, music_gain(track)) if track else None
+    bed = (track, music_gain(track), speech_spans(_edit_project(rough_cut), rough_cut)) if track else None
     with tempfile.TemporaryDirectory(prefix="axion_sablon_") as folder:
         check_cancel()
         layers = write_layers(Path(folder), design, background, fps, seconds)

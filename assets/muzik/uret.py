@@ -95,12 +95,13 @@ def pad(f: float, seconds: float, rng: np.random.Generator, voices: int = 3, bri
     return wave_ / voices * envelope(n, attack=seconds * 0.35, release=seconds * 0.35)
 
 
-def pluck(f: float, seconds: float, decay: float = 0.6, harmonics: int = 8) -> np.ndarray:
-    """Piyano benzeri tel: tiz harmonikler daha hızlı söner."""
+def pluck(f: float, seconds: float, decay: float = 0.6, harmonics: int = 6) -> np.ndarray:
+    """Yumuşak piyano/tel: tiz harmonikler zayıf ve hızlı söner, vuruş yumuşak (editör: "kulağa batmasın")."""
     n = int(seconds * RATE)
     t = np.arange(n) / RATE
-    wave_ = sum(np.sin(2 * np.pi * f * k * t) * np.exp(-t * k / decay) / k ** 1.2 for k in range(1, harmonics + 1))
-    return wave_ * envelope(n, attack=0.004, release=0.05)
+    wave_ = sum(np.sin(2 * np.pi * f * k * t) * np.exp(-t * k ** 1.5 / decay) / k ** 2.2
+                for k in range(1, harmonics + 1))
+    return wave_ * envelope(n, attack=0.018, release=0.08)
 
 
 def bass(f: float, seconds: float) -> np.ndarray:
@@ -169,14 +170,14 @@ def gundem() -> np.ndarray:
             pattern = [0, 2, 1, 3, 2, 1, 3, 2]
             for eighth, pick in enumerate(pattern):
                 note = tones[pick]
-                high = note[:-1] + str(int(note[-1]) + 2)
+                high = note[:-1] + str(int(note[-1]) + 1)  # bir oktav aşağıda: tiz değil
                 track.add("arp", beat0 + eighth / 2, pluck(freq(high), 1.2, decay=0.5), pan=0.35 if eighth % 2 else -0.35)
         for beat in (0, 2):
             track.add("kick", beat0 + beat, kick())
         for sixteenth in range(16):
             track.add("tick", beat0 + sixteenth / 4, tick(track.rng) * (1 if sixteenth % 4 == 0 else 0.45), pan=0.2)
-    audio = track.mix(levels={"pad": 0.5, "bass": 0.55, "arp": 0.22, "kick": 0.35, "tick": 0.05},
-                      reverb={"pad": 0.45, "arp": 0.5, "tick": 0.3}, lowpass={"pad": 1800, "bass": 400, "arp": 3500},
+    audio = track.mix(levels={"pad": 0.5, "bass": 0.55, "arp": 0.14, "kick": 0.35, "tick": 0.05},
+                      reverb={"pad": 0.45, "arp": 0.55, "tick": 0.3}, lowpass={"pad": 1800, "bass": 400, "arp": 1800},
                       highpass={"tick": 3000})
     return master(audio)
 
@@ -230,8 +231,8 @@ def sakin() -> np.ndarray:
             high = note[:-1] + str(int(note[-1]) + 1)
             track.add("piano", beat0 + eighth / 2, pluck(freq(high), 2.5, decay=1.1, harmonics=6),
                       pan=-0.3 + 0.6 * pick / 3)
-    audio = track.mix(levels={"pad": 0.45, "bass": 0.4, "piano": 0.35}, reverb={"pad": 0.5, "piano": 0.4},
-                      lowpass={"pad": 1500, "bass": 300, "piano": 4000})
+    audio = track.mix(levels={"pad": 0.5, "bass": 0.4, "piano": 0.24}, reverb={"pad": 0.5, "piano": 0.5},
+                      lowpass={"pad": 1500, "bass": 300, "piano": 2000})
     return master(audio)
 
 

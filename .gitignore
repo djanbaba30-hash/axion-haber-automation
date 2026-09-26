@@ -24,3 +24,4 @@ data/
 
 # Axion müzik altlıkları (assets/muzik/uret.py ile sentezlendi; telif yok)
 !assets/muzik/*.mp3
+!tests/ornekler/*.mp3

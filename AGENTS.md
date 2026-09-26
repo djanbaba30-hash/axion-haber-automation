@@ -101,6 +101,7 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
                                numpy/Pillow, API yok)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
+  modules/speech.py            Seste konuşma var mı (kepstrum, API yok): müzik altlığı konuşmalı kesitte kısılır (v4.0)
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); fotoğraf:
                                EXIF yönü + yavaş yakınlaşma (zoompan, v4.0); ilk kare kapak sahnesi (v4.0); ses: parça
@@ -127,7 +128,7 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
                                yeniden başlatılınca eski iş durdurulur)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
   music.py                     Müzik altlığı (v4.0): assets/muzik hazır parçalar + editörün müziği (yalnız yerel),
-                               son videoda döngü + sidechain kısma (`mix_filters`)
+                               son videoda döngü; konuşmada -45, arada -27 LUFS (`speech_spans`, `mix_filters`)
   editor.py, editor.js         Canva benzeri tarayıcı editörü (components v2): üst araç çubuğu (yazı stili, sansür),
                                sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
                                zaman çizelgesi; tasarımı kendisi tutar, her değişiklikte `edits` ile Python'a gönderir
@@ -208,7 +209,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.4 → sıradaki: alpha.5 (düzeltmelerden öğrenme)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.4.1 → sıradaki: alpha.5 (düzeltmelerden öğrenme)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -238,7 +239,9 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    siteleri bu ortamdan kapalı + repo herkese açık → lisanslı müzik konamaz); `design_studio/music.py` (liste, editörün
    müziği `data/varliklar/muzik` yalnız yerel, `mix_filters` sidechain), `Design.music` (varsayılan "gundem",
    "kapali"), `render.build_final_command(music=)`; Tasarım kenar çubuğu "🎵 Müzik". Testler `tests/test_music.py`.
-   **Editörden beklenen:** parçaları dinleyip beğenip beğenmediği (sandbox'ta dinlenemedi).
+   **Editör dinledi: "güzel, kullanılabilir"** → alpha.4.1: seviye zarfı (`music.speech_spans` + `duck_expression`:
+   seslendirme ve konuşmalı kesit -45 LUFS, arada -27; sidechain yok), kesitte konuşma tespiti
+   (`video_studio/modules/speech.py`, kepstrum, API yok; alpha.7'de yazıya dökmeyle değiştirilebilir), yumuşak piyano.
 5. `alpha.5` **Düzeltmelerden öğrenme (kayıt):** model çıktısı ↔ editörün son hâli farkı silinmeyen küçük kayda
    (başlık, seslendirme, paylaşım metni, sahne değişiklikleri, kesit aralığı; tasarım ve kesit ekleme hariç). Geliştirici
    belli aralıklarla okuyup istemi düzeltir (çalışma zamanında ek çağrı yok). Editör: başlık kalitesi "orta", küçük
