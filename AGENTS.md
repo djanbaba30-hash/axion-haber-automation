@@ -13,6 +13,8 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
 - Ürün hedefi, editörün kararları ve faz sırası: `ROADMAP.md`
 - Kullanıcı için kurulum ve kullanım: `KURULUM.md`
 - Sürüm geçmişi: `CHANGELOG.md`
+- Editörün denemesini bekleyenler: `DENENECEKLER.md` (yeni ön sürümde ekle; editör denediğinde sil, sonucu CHANGELOG'a)
+- Araştırma raporları (kod yok, editör karar verir): `arastirma/`
 
 ## Çalışma kuralları
 
@@ -235,7 +237,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.2.0-alpha.2 → sıradaki: v4.1 planı, 4. madde (Araştırma A; kod yok)
+## Nerede kaldık (2026-09-26) — Sürüm 4.2.0-alpha.2 → editörün kararı bekleniyor: Araştırma A (v4.1 4. madde)
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
@@ -253,8 +255,11 @@ fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir pa
 - **v4.1 3. madde yapıldı** (`v4.2.0-alpha.2`; sürüm numarası 4.2'den devam eder): görüntü analizinin alt adımları
   ölçülür (`data/olcumler.jsonl` → "goruntu_analizi" satırı `adimlar`, `kare`, `video_sn`; Video Stüdyosu →
   Geliştirici bilgileri'nde "Son analizin süresi"). Hızlandırma kararı için editörden birkaç haberin teşhis dosyası
-  (ölçüm dosyasının sonu içinde) ya da o satırın ekran görüntüsü istenir (ROADMAP 8. madde). Sıradaki: 4. madde,
-  Araştırma A (altyapı/ön yüz raporu, kod yok).
+  (ölçüm dosyasının sonu içinde) ya da o satırın ekran görüntüsü istenir (ROADMAP 8. madde).
+- **v4.1 4. madde: rapor hazır** (`arastirma/a-altyapi-on-yuz.md`). Öneri: toptan taşınma yok; Streamlit kabuk kalır,
+  `st.App`'e eklenen tam ekran sayfalarla (JSON uç noktaları + PWA, HTTPS Tailscale Serve ile) sayfa sayfa; pilot
+  Tarayıcı sayfası (5. maddeyle birlikte). Editörün cevabı (raporun 5. bölümündeki 3 soru) gelince plan ona göre;
+  cevap gelmeden 5–7. maddelere başlama. Denenecekler listesi: `DENENECEKLER.md`.
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =
