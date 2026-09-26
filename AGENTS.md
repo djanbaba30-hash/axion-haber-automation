@@ -193,7 +193,15 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.5.0
+## Nerede kaldık (2026-09-26) — Sürüm 3.5.1
+
+**3.5.1 (editörün tablet denemesi):** seçim kutuları yazmasız (`filter_mode=None`, klavye açılmaz; test kaynağı
+tarar), Tarayıcı'da kaymış kalan görüntü 0,8 sn'de yerine oturur (`viewer.js` `settle`), "yeniden üret" başlıkları
+önceki başlıkları görür (`clients.HEADLINE_RETRY`, gerçek modelle denenmedi). **Açık:** kurguda aynı görüntü tekrarı
+ve olay sırası ("EŞİMLE TELEFONDA GÖRÜŞTÜN DİYEREK YARALADI", Sultangazi, DHA 1524592_453578.mp4 86 MB + jpg):
+editörden projenin `media_library.json` + `edit_project.json`'u istendi. Kod okumasından adaylar (veriyle
+doğrulanmadı): `_score`'da tekrar cezası yalnız -2 (kelime +2, kavram +3 yanında zayıf); anlatım sırası (`story`)
+yalnız 1–2 çekimli videoda, çok çekimli DHA paketinde sıra yok.
 
 **3.5.0:** güncellemede geri dönüş (`self_check.py` + bekçi `Invoke-Rollback`; `update_check` önceki sürümü yazar,
 geri dönüş uyarısı, aynı bozuk sürümü yeniden önermez) ve kenar çubuğunda sürüm numarası. Bekçi sandbox'ta PowerShell 7

@@ -120,16 +120,25 @@ def test_headline_regeneration_cost_is_counted(local_env, monkeypatch):
     from types import SimpleNamespace
 
     usage = {"input_tokens": 50, "output_tokens": 10, "requests": 1, "provider": "OpenAI", "model": "gpt-5.6-luna"}
-    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines",
-                        lambda *args: (SimpleNamespace(baslik1="YENİ 1", baslik2="YENİ 2"), usage))
+    calls = []
+
+    def regenerate(*args, previous=()):
+        calls.append(list(previous))
+        return SimpleNamespace(baslik1=f"YENİ {len(calls)}", baslik2="İKİNCİ"), usage
+
+    monkeypatch.setattr("apps.news_studio.ai.clients.regenerate_headlines", regenerate)
     at = with_generated_news(start())
     at.session_state["last_usage"] = {"input_tokens": 1000, "output_tokens": 300, "requests": 1}
     at.run()
     button(at, "↻ Başlıkları yeniden üret").click().run()
     assert not at.exception
-    assert (at.session_state["baslik1"], at.session_state["baslik2"]) == ("YENİ 1", "YENİ 2")
+    assert (at.session_state["baslik1"], at.session_state["baslik2"]) == ("YENİ 1", "İKİNCİ")
     total = at.session_state["last_usage"]
     assert (total["input_tokens"], total["output_tokens"], total["requests"]) == (1050, 310, 2)
+    # Editör (v3.5): yeniden üretince başlık hep aynı geliyordu. Gösterilen başlıklar modele verilir (farklı açı).
+    first = ("SAVRULAN OTOMOBİL BERBER DÜKKÂNINA ÇARPTI", "5 KİŞİ YARALANDI")
+    button(at, "↻ Başlıkları yeniden üret").click().run()
+    assert calls == [[first], [first, ("YENİ 1", "İKİNCİ")]]
 
 
 def test_style_examples_are_remembered(local_env):
@@ -911,3 +920,21 @@ def test_self_check_passes_on_this_version_and_catches_broken_ones(tmp_path, mon
     monkeypatch.setattr(sys, "path", list(sys.path))
     assert [e for e in self_check.compile_all() if e.startswith("apps")]
     assert self_check.main() == 1
+
+
+def test_select_boxes_do_not_open_the_tablet_keyboard():
+    """Editör (v3.5, tablet): seçim kutusuna dokununca klavye açılıyordu (Streamlit'in arama kutusu).
+    Her seçim kutusu yazmasız (`filter_mode=None`); çoklu seçimde İngilizce "Select all" yok."""
+    import ast
+
+    found = []
+    for path in [ROOT / "axion_local.py", *sorted((ROOT / "apps").rglob("*.py"))]:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Call) and getattr(node.func, "attr", "") in {"selectbox", "multiselect"}:
+                keywords = {k.arg: k.value for k in node.keywords}
+                where = f"{path.relative_to(ROOT)}:{node.lineno}"
+                found.append(where)
+                assert isinstance(keywords.get("filter_mode"), ast.Constant) and keywords["filter_mode"].value is None, where
+                if node.func.attr == "multiselect":
+                    assert getattr(keywords.get("select_all"), "value", None) is False, where
+    assert len(found) >= 10

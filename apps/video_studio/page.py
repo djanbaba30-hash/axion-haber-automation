@@ -177,6 +177,7 @@ with st.expander(
             list(ANALYSIS_OPTIONS),
             help="Kare sayısı arttıkça analiz daha ayrıntılı ama daha pahalı olur. Ekonomik çoğu haber için yeterli. "
             "Uzun videolarda maliyet sınırı için kare sayısı otomatik azaltılır.",
+            filter_mode=None,
         )
     frame_count = ANALYSIS_OPTIONS[analysis_mode]
 
@@ -194,6 +195,8 @@ with st.expander(
             placeholder="İndirilenler'den video veya görsel seç" if local_files else "Klasörde video bulunamadı",
             format_func=lambda path: f"{path.name} · {path.stat().st_size / (1024 * 1024):.0f} MB",
             label_visibility="collapsed",
+            filter_mode=None,  # tablette dokununca klavye açılmasın
+            select_all=False,  # Streamlit'in İngilizce "Select all" satırı yok
         )
         media_files = [LocalMediaFile(path) for path in selected]
 
@@ -249,7 +252,8 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
     elif not kesit_sources:
         st.caption("Önce 2. adımda video seç.")
     else:
-        source_key = st.selectbox("Video", list(kesit_sources), format_func=lambda key: kesit_sources[key].name)
+        source_key = st.selectbox("Video", list(kesit_sources), format_func=lambda key: kesit_sources[key].name,
+                                  filter_mode=None)
         source = kesit_sources[source_key]
         preview = preview_path(source, project.folder)
         if not preview.exists():

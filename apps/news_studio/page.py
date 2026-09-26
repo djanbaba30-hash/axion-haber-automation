@@ -154,7 +154,7 @@ def source_note(container, items: list[str]) -> None:
 def start_from_text(text: str) -> None:
     """TXT'den yeni haber: ekrandaki haber temizlenir; önceki kayıtlı proje silinmez, üzerine de yazılmaz."""
     ss.update({"baslik1": "", "baslik2": "", "icerik": "", "tts_metni": "", "last_usage": None, "last_validation": [],
-               "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
+               "headline_history": [], "last_warnings": [], "last_correction_reason": "", "last_correction_diff": {}, **AUDIO_STATE,
                "raw_text": text})
     for key in ("active_news_project", "loaded_news_project", "active_news_source"):
         ss.pop(key, None)
@@ -179,20 +179,22 @@ if names and ss.voice_name not in names:
     ss.voice_name = next((n for n in names if "Cavit" in n and "Presenter" in n), next((n for n in names if "Cavit" in n), names[0]))
 
 with st.sidebar:
-    style = st.selectbox("Üslup", STYLES, key="news_style")
-    duration_label = st.selectbox("Seslendirme süresi", list(TTS_DURATION_PRESETS), key="duration_label")
+    style = st.selectbox("Üslup", STYLES, key="news_style", filter_mode=None)
+    duration_label = st.selectbox("Seslendirme süresi", list(TTS_DURATION_PRESETS), key="duration_label",
+                                  filter_mode=None)
     duration_range = TTS_DURATION_PRESETS[duration_label]
     provider = st.segmented_control("Yapay zekâ", PROVIDERS, key="ai_provider") or "OpenAI"
     if provider == "OpenAI":
-        openai_model = st.selectbox("Model", list(OPENAI_MODELS), key="openai_model")
+        openai_model = st.selectbox("Model", list(OPENAI_MODELS), key="openai_model", filter_mode=None)
     else:
         openai_model = ss.openai_model
         st.caption(f"Claude modeli: `{CLAUDE_MODEL}`")
     model_id = OPENAI_MODELS.get(openai_model, "") if provider == "OpenAI" else CLAUDE_MODEL
     cache_status(provider, model_id)
-    thinking = st.selectbox("Düşünme seviyesi", THINKING_LEVELS, key="thinking", help="Yüksek seviye daha pahalıdır.")
+    thinking = st.selectbox("Düşünme seviyesi", THINKING_LEVELS, key="thinking", help="Yüksek seviye daha pahalıdır.",
+                            filter_mode=None)
     if names:
-        voice_name = st.selectbox("Spiker", names, key="voice_name")
+        voice_name = st.selectbox("Spiker", names, key="voice_name", filter_mode=None)
         voice_id = dict(voices)[voice_name]
     else:
         st.warning("ElevenLabs sesleri alınamadı. API anahtarını kontrol et.")
@@ -225,6 +227,7 @@ if texts:  # DHA'nın "TXT indir"i İndirilenler'e iner; "metni kopyala" uzaktan
     picked = pick_col.selectbox(
         "📄 İndirilenler'deki haber metni (TXT)", texts, key="txt_secim",
         format_func=lambda path: f"{path.name} · {datetime.fromtimestamp(path.stat().st_mtime):%d.%m %H:%M}",
+        filter_mode=None,
     )
     if import_col.button("Aktar", width="stretch", help="Ekrandaki haberi temizler, TXT'yi ham habere yazar."):
         start_from_text(read_text_file(picked))
@@ -282,6 +285,7 @@ if st.button("Haberi işle", type="primary", width="stretch"):
                 ss.last_validation = check.errors
                 ss.last_warnings = check.warnings + find_censorship_warnings(result.tts + "\n" + result.icerik)
                 ss.last_correction_reason = correction_reason
+                ss.headline_history = []  # yeni haber: "yeniden üret" geçmişi baştan
                 ss.last_correction_diff = changed_fields(first, {name: getattr(result, name) for name in fields})
                 record("haber_yazimi", time.monotonic() - timer, model=total.get("model"), duzeltme=bool(correction_reason),
                        cagri=total.get("requests"))
@@ -317,9 +321,15 @@ if ss.icerik:
                       else f"⚠️ Videoda 2 satıra sığmıyor, ~{fit.over_chars} karakter kısalt: ")
             col.caption(prefix + " / ".join(fit.lines))
             source_note(col, missing_numbers(text, raw))
-    if st.button("↻ Başlıkları yeniden üret", help="Sadece başlıklar için küçük bir yapay zekâ çağrısı yapar."):
+    if st.button("↻ Başlıkları yeniden üret", help="Sadece başlıklar için küçük bir yapay zekâ çağrısı yapar. "
+                 "Önceki başlıklardan farklı bir açıdan yazar."):
         try:
-            headlines, headline_usage = regenerate_headlines(openai_client(), anthropic_client(), provider, openai_model, ss.icerik)
+            # Bu haberde gösterilen başlıklar (en çok son 4 çift): yeni başlık farklı bir açıdan yazılsın.
+            shown = [pair for pair in ss.get("headline_history", []) if pair != (ss.baslik1, ss.baslik2)]
+            shown = (shown + [(ss.baslik1, ss.baslik2)])[-4:]
+            headlines, headline_usage = regenerate_headlines(openai_client(), anthropic_client(), provider, openai_model,
+                                                             ss.icerik, previous=shown)
+            ss.headline_history = shown
             ss.baslik1, ss.baslik2 = headlines.baslik1, headlines.baslik2
             ss.last_usage = accumulate(ss.last_usage, headline_usage)
             st.rerun()

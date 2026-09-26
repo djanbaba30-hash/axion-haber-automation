@@ -53,6 +53,7 @@ def project_selector(key: str) -> None:
         format_func=lambda i: choices[i].label,
         placeholder="Haber seç",
         label_visibility="collapsed",
+        filter_mode=None,  # tablette dokununca klavye açılmasın (yazarak arama yok)
     )
     if open_elsewhere(st.session_state.get(key)):  # editör: bilgisayar + tablet
         st.warning("Bu haber başka bir cihazda da açık. İkisinden aynı anda değişiklik yapma: son kaydeden geçerli olur.",

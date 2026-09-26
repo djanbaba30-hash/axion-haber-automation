@@ -91,6 +91,15 @@ function setupScreen(root, S) {
   // Kaydırma: parmak hareketi birikir; akış kanalında ~30 kez/sn, Streamlit yolunda ~10 kez/sn gönderilir. Görüntü o sırada parmakla birlikte kayar
   // (yeni kare gelene kadar): uzaktaki tarayıcıyı beklemeden anında tepki hissi.
   const nudge = (px) => { S.shift = Math.max(-240, Math.min(240, (S.shift || 0) + px)); img.style.transform = `translateY(${S.shift}px)`; };
+  // Sayfanın başı/sonu gibi kaymayan yerde yeni kare gelmez: kaydırılan görüntü (üstte/altta boşluk) geri yerine oturur.
+  const settle = () => {
+    clearTimeout(S.settle);
+    S.settle = setTimeout(() => {
+      if (press || !S.shift) return;
+      S.shift = 0; img.style.transition = 'transform .15s ease-out'; img.style.transform = '';
+      setTimeout(() => { img.style.transition = ''; }, 200);
+    }, 800);
+  };
   const addWheel = (point, delta) => {
     if (!S.wheel) {
       S.wheel = { point, delta: 0 };
@@ -118,12 +127,14 @@ function setupScreen(root, S) {
   const release = (e) => {
     if (press && !press.moved && e.type === 'pointerup') { ripple(e); S.send({ t: 'click', v: press.point }); }
     press = null;
+    settle();
   };
   img.addEventListener('pointerup', release);
   img.addEventListener('pointercancel', release);
   img.addEventListener('wheel', (e) => {
     e.preventDefault(); addWheel(toView(e), e.deltaY);
     nudge(-e.deltaY * img.getBoundingClientRect().height / S.data.viewport[1]);
+    settle();
   }, { passive: false });
   img.addEventListener('contextmenu', (e) => e.preventDefault());
   // Fiziksel klavye: ekran seçiliyken yazılanlar doğrudan tarayıcıya gider.

@@ -1,3 +1,26 @@
+# v3.5.1 — Tablet denemesinden: klavye, Tarayıcı boşluğu, başlık yenileme — 2026-09-26
+
+Editörün dükkândaki tablet denemesi (ekran görüntüleriyle).
+
+## Fixed
+- **Seçim kutularına dokununca klavye açılıyordu** (spiker, üslup, dosya seçimi vb.): Streamlit'in seçim kutusu
+  yazarak aramaya izin veriyordu. Bütün seçim kutuları artık yalnız dokunarak seçilir (`filter_mode=None`; tarayıcıya
+  `inputmode="none"` gider, klavye açılmaz). Dosya seçimindeki İngilizce "Select all" satırı kalktı. Test: bütün seçim
+  kutularını kaynakta tarar; tarayıcıda dokunmatik taklidiyle doğrulandı.
+- **Tarayıcı'da altta/üstte beyaz boşluk kalıyordu** (tablet ve bilgisayar): kaydırırken ekran anında tepki versin diye
+  görüntü parmakla birlikte kaydırılıyor, yeni kare gelince yerine oturuyordu. Sayfanın başı/sonu gibi kaymayan yerde
+  yeni kare gelmediği için görüntü kaymış kalıyordu. Artık 0,8 sn içinde yeni kare gelmezse görüntü yerine oturur
+  (tarayıcıda denendi: kaymayan sayfada 240 px kayma → 1,5 sn sonra sıfır).
+- **"↻ Başlıkları yeniden üret" hep aynı başlığı veriyordu:** küçük başlık çağrısı önceki başlıkları görmüyordu, aynı
+  paylaşım metninden aynı başlığı yazıyordu. Artık bu haberde gösterilen başlıklar (son 4 çift) "editör bunları
+  beğenmedi; haberin başka bir çarpıcı yönünü öne çıkar, farklı fiil ve kelime kullan, küçük değişiklikle tekrar etme"
+  isteğiyle gider (sistem komutu değişmedi, önbellek korunur; ek maliyet birkaç düzine token). Gerçek modelle
+  denenmedi (bu ortamda API anahtarı yok): editörün denemesi bekleniyor.
+
+## Açık
+- Kurguda aynı görüntünün tekrar kullanılması ve olay sırasından çıkma ("eşimle telefonda görüştün" haberi): editörün
+  projesindeki `media_library.json` ve `edit_project.json` ile incelenecek.
+
 # v3.5.0 — Güncellemede geri dönüş, sürüm numarası — 2026-09-26
 
 ## Added

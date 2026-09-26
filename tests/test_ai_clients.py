@@ -71,6 +71,18 @@ def test_headlines_are_small_calls_and_turkish_uppercase():
     assert call["instructions"] == HEADLINE_SYSTEM_PROMPT and call["max_output_tokens"] == 450
     assert call["reasoning"] == {"effort": "none"} and call["prompt_cache_key"] == "axion-haber-headline-v7"
     assert "<HABER_ICERIGI>\niçerik\n</HABER_ICERIGI>" in call["input"] and usage["requests"] == 1
+    assert "onceki_basliklar" not in call["input"]
     claude = FakeClaude(HeadlineOutput(baslik1="a", baslik2="b"))
     clients.regenerate_headlines(None, claude, "Claude", "", "içerik")
     assert claude.calls[0]["max_tokens"] == 500 and claude.calls[0]["thinking"] == {"type": "disabled"}
+
+
+def test_regenerated_headlines_see_previous_ones():
+    """Editör (v3.5): "yeniden üret" hep aynı başlığı veriyordu; önceki başlıklar ve "farklı açı" isteği gider."""
+    fake = FakeOpenAI(HeadlineOutput(baslik1="a", baslik2="b"))
+    clients.regenerate_headlines(fake, None, "OpenAI", "GPT-5.6 Luna", "içerik",
+                                 previous=[("EŞİNİ VURDU", "HAYATİ TEHLİKESİ VAR"), ("", "")])
+    prompt = fake.calls[0]["input"]
+    assert "<onceki_basliklar>\n- EŞİNİ VURDU / HAYATİ TEHLİKESİ VAR\n</onceki_basliklar>" in prompt
+    assert "başka bir çarpıcı yönünü" in prompt and "tekrar etme" in prompt
+    assert fake.calls[0]["instructions"] == HEADLINE_SYSTEM_PROMPT  # sistem komutu (önbellek) değişmez

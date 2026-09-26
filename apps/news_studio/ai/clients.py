@@ -29,6 +29,12 @@ HEADLINE_REQUEST = (
     "<HABER_ICERIGI>\n{content}\n</HABER_ICERIGI>\nİki YENİ başlık üret. Yeni bilgi ekleme. baslik1 olayın nasıl "
     "yaşandığını; baslik2 sonucu veya en önemli gelişmeyi anlatsın. İkisi de tamamen büyük harf ve en fazla 9 kelime olsun."
 )
+# "↻ Başlıkları yeniden üret": önceki başlıklar görülmezse model aynı metinden hep aynı başlığı yazar (editör, v3.5).
+HEADLINE_RETRY = (
+    "\n<onceki_basliklar>\n{previous}\n</onceki_basliklar>\nEditör bu başlıkları beğenmedi. Haberin başka bir çarpıcı "
+    "yönünü öne çıkar (farklı özne, an, sonuç ya da ayrıntı); farklı fiil ve kelimeler kullan. Önceki başlıkları küçük "
+    "değişikliklerle tekrar etme. Yeni bilgi yine ekleme."
+)
 
 
 def _make(cls, api_key):
@@ -111,11 +117,15 @@ def generate(client_openai, client_claude, provider: str, model_name: str, promp
     return _parse_claude(client_claude, SYSTEM_PROMPT, prompt, NewsOutput, effort(thinking), max_tokens)
 
 
-def regenerate_headlines(client_openai, client_claude, provider: str, model_name: str,
-                         content: str, problems: str = "") -> tuple[HeadlineOutput, dict[str, Any]]:
+def regenerate_headlines(client_openai, client_claude, provider: str, model_name: str, content: str,
+                         problems: str = "", previous: list[tuple[str, str]] | tuple = ()) -> tuple[HeadlineOutput, dict[str, Any]]:
     """Yalnız iki başlık (küçük, düşünmesiz çağrı); büyük harfe Türkçe kurallarıyla çevrilir. `problems`: önceki
-    başlıkların hatası (haber işlenirken başlık sığmadıysa tam düzeltme yerine bu çağrı yapılır)."""
+    başlıkların hatası (haber işlenirken başlık sığmadıysa tam düzeltme yerine bu çağrı yapılır). `previous`: editörün
+    beğenmeyip yeniden ürettiği başlık çiftleri (farklı açıdan yazılsın diye)."""
     prompt = HEADLINE_REQUEST.format(content=content)
+    pairs = [pair for pair in previous if any(part.strip() for part in pair)]
+    if pairs:
+        prompt += HEADLINE_RETRY.format(previous="\n".join(f"- {a} / {b}" for a, b in pairs))
     if problems:
         prompt += f"\nÖnceki başlıkların sorunu: {problems}"
     if provider == "OpenAI":
