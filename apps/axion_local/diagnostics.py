@@ -35,6 +35,11 @@ def package(folder: Path, version: str | None = None) -> bytes:
                 files[name] = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as error:
                 files[name] = f"okunamadı: {error}"
+    for path in sorted((folder / "yazi").glob("*.json")):  # yazıya dökümler (v4.0): cümleler + Whisper'ın ham bölümleri
+        try:
+            files[f"yazi/{path.name}"] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            files[f"yazi/{path.name}"] = f"okunamadı: {error}"
     logs = {name: _tail(data_dir() / name) for name in LOG_FILES if (data_dir() / name).is_file()}
     return json.dumps({"surum": version, "tarih": datetime.now().isoformat(timespec="seconds"), "proje": folder.name,
                        "dosyalar": files, "gunluk": logs}, ensure_ascii=False, indent=1).encode("utf-8")

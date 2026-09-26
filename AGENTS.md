@@ -219,7 +219,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.2 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.3 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -283,6 +283,11 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    yazmak uyarı veriyordu). Kadraj: sabit kamerada hareket bölgesi (`framing.motion_region` →
    `AnalysisWindow.motion_region`, analizde proxy'den) alana sığıyorsa kadraj onun ortasına (`rough_cut._view_regions`;
    Artvin güvenlik kamerasında Luna'nın kutusu vitrindi, kişiler kenarda kalıyordu). Yalnız yeni analizlerde.
+   **Editör: kadraj artık doğru.** alpha.7.3: cümle = büyük harfle başlayan kelime (Whisper noktasız ama büyük harfli
+   yazıyor; `names` hariç), tek kelime/1 sn'den kısa öncekine katılır, 8 sn'den uzun fiil sonunda (`VERB_END`) bölünür;
+   parça sonu sesle uzar (`transcribe.levels` + `_voiced`: Whisper "doğru koştu"yu yazmamıştı), hotwords kalktı,
+   `VERSION=4`, döküm `bolumler` (Whisper'ın ham bölümleri) + teşhis dosyasında `yazi/*.json`. Regresyon testi
+   `test_artvin_interview_splits_where_the_editor_did` (editörün ekran görüntüsündeki döküm + seçtiği kesitler).
 Sonra: genel repo taraması → `v4.0.0`.
 
 **Açık notlar:** editör Axion'u güncelleyip masaüstü simgesiyle yeniden açtı (2026-09-26) → geri dönüş bekçisi

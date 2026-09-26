@@ -1,3 +1,26 @@
+# v4.0.0-alpha.7.3 — Yazıya dökümde cümleler büyük harften, kesit sesin bittiği yerde — 2026-09-26
+
+Editörün alpha.7.2 denemesi (Artvin; teşhis dosyası, düzeltme kaydı, son video): kadraj doğru ("bu sefer framing'i
+doğru yapmış"); dökümde "yanıma" parçası "doğru koştu" olmadan bitiyordu, bölme yerleri yanlıştı ("Ben de durumu
+hemen" | "fark ettim Beyefendiye").
+
+## Fixed
+- **Cümle bölme:** Whisper nokta koymasa da cümle başını büyük harfle yazıyor ("…fark ettim Beyefendiye daha…").
+  Büyük harfle başlayan kelime yeni cümle başlatır (haberdeki özel adlar hariç: "Heimlich" bölmez); tek kelimelik ya
+  da 1 sn'den kısa cümle ("Uğurladık") öncekine katılır; 8 sn'den uzun kalan parça önce çekimli fiilden sonra
+  ("koştu", "ettim", "uyguladım") bölünür. Artvin'de parçalar editörün elle seçtiği yerlere denk geliyor: "Ben de durumu
+  hemen fark ettim" · "Beyefendiye daha öncesinden eğitimini almış olduğum Heimlich manevrasını uyguladım" (regresyon
+  testi ekran görüntüsündeki dökümle).
+- **"yanıma doğru koştu" kesiliyordu:** Whisper son iki kelimeyi yazmadı, parça 53,7'de bitti; ses 54,1'e kadar
+  sürüyor (sandbox'ta videonun sesinden ölçüldü). Artık parçanın sonu sesle düzeltilir: son kelimeden sonra ses
+  sürüyorsa kesit sesin sustuğu yere kadar uzar (en fazla 1,5 sn, sonraki kelimeyi geçmez; hece arası 0,15 sn'lik
+  düşüşler susma sayılmaz). Artvin'in gerçek sesiyle: 53,91 yerine 54,37. Eksik kelimeler yazıda yine görünmez
+  (Whisper'ın hatası; bu ortamdan model indirilemediği için nedeni ölçülemedi).
+- Özel adlar artık modele ipucu (`hotwords`) olarak gitmiyor: alpha.7.1'de "Hemlik"i düzeltmemişti, yazımı alpha.7.2'den
+  beri dökümden sonra düzeltiliyor. İpucunun kelime atlamaya etkisi olup olmadığı ölçülemedi; model ipucusuz çalışır.
+- Teşhis dosyasına yazıya dökümler de girer (`yazi/*.json`; Whisper'ın ham bölümleri `bolumler` ile): bir dahaki
+  sorunda Whisper'ın neyi duyduğu görülür. Eski dökümler bir kez yeniden yapılır (döküm biçimi v4).
+
 # v4.0.0-alpha.7.2 — Kısa cümleler, özel adlar, cümleden kesit seçimi, güvenlik kamerasında kadraj — 2026-09-26
 
 Editörün alpha.7.1 denemesi (Artvin, teşhis dosyasıyla): ilk cümle doğru yerden başlıyor, kesitler kelime ortasında

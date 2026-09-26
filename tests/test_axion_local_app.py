@@ -666,7 +666,7 @@ def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
     monkeypatch.setattr(transcribe, "_load_model", lambda: FakeWhisper())
     video = local_env / "Downloads" / "roportaj.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25:duration=12",
-                    "-f", "lavfi", "-i", "sine=duration=12", "-shortest", str(video)], check=True)
+                    "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "12", str(video)], check=True)  # sessiz: sınırlar kelimeden
     project = saved_project({"assets": []})
     at = open_page(project)
     at.multiselect(key="selected_media").select(video).run()
@@ -1178,7 +1178,10 @@ def test_diagnostics_file_for_the_developer(local_env):
     project = saved_project(media_library())
     store.save_project_json(project, "kurgu_plani.json", {"sahneler": [{"parca": 1, "pencere": "P1", "kaynak_bas": 0.5}]})
     (store.data_dir() / "axion.log").write_text("x" * 70_000 + "SON SATIR\n", encoding="utf-8")
+    (project.folder / "yazi").mkdir()
+    (project.folder / "yazi" / "roportaj_1.json").write_text('{"cumleler": [], "bolumler": []}', encoding="utf-8")
     data = json.loads(diagnostics.package(project.folder, "3.6.1"))
+    assert data["dosyalar"]["yazi/roportaj_1.json"] == {"cumleler": [], "bolumler": []}  # yazıya döküm de (v4.0)
     assert data["surum"] == "3.6.1" and data["proje"] == project.folder.name
     assert {"news_package.json", "media_library.json", "kurgu_plani.json"} <= set(data["dosyalar"])
     assert data["dosyalar"]["kurgu_plani.json"]["sahneler"][0]["pencere"] == "P1"

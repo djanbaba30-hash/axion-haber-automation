@@ -3,6 +3,7 @@
 import time
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from apps.video_studio.modules import transcribe
@@ -52,14 +53,14 @@ def test_transcript_is_saved_turkish_with_vad_word_times_and_reused(tmp_path):
     result = transcribe.transcribe(source, tmp_path / "proje", shares.append, model, news)
     call = model.calls[0]
     assert call["language"] == "tr" and call["vad_filter"] is True and call["word_timestamps"] is True
-    assert call["hotwords"] == "Muzaffer Yazıcı Heimlich Hopa"  # özel adlar ipucu (cümle başı "Restoran", "Olay" değil)
+    assert "hotwords" not in call  # özel adlar modele gitmez (alpha.7.1'de işe yaramadı); yazımı fix_names düzeltir
     assert [s["metin"] for s in result["cumleler"]] == ["Geçtiğimiz günlerde müşterimiz yemek yerken boğazına yemek kaçtı.",
                                                          "Ben de durumu hemen fark ettim.",
                                                          "Daha önce eğitimini aldığım Heimlich manevrasını uyguladım."]
     first = result["cumleler"][0]
     assert first["bas"] == 42.0  # ilk kelimeden 0,1 sn önce
     assert first["son"] <= 47.0 - transcribe.NEXT_WORD_MARGIN  # sonraki cümlenin ilk kelimesine taşmaz
-    assert shares[-1] == pytest.approx(56.9 / 70.7) and result["video_sn"] == 70.7 and result["surum"] == 3
+    assert shares[-1] == pytest.approx(56.9 / 70.7) and result["video_sn"] == 70.7 and result["surum"] == 4
     assert transcribe.load(tmp_path / "proje", source) == result
     source.write_bytes(b"baska video")  # dosya değişti: eski döküm kullanılmaz
     assert transcribe.load(tmp_path / "proje", source) is None
@@ -75,22 +76,62 @@ def test_sentences_split_on_punctuation_and_silence_with_padding():
     assert transcribe.sentences([(7.9, 8.4, " son")], 8.0)[0]["son"] == 8.0  # videonun sonunu geçmez
 
 
-def test_unpunctuated_speech_is_split_at_breaths_into_short_parts():
-    """Editör (alpha.7.1): Artvin röportajı noktasız döküldü, iki upuzun cümle (14 sn) oldu. 7 sn'den uzun parça en uzun
-    nefes arasından (virgül öne alınır) bölünür; parçalar en az 1,5 sn."""
-    text = ("müşterimiz yemek yerken boğazına yemek kaçtı ben de hemen fark ettim yanına koştum, daha önce eğitimini "
+# Editörün Artvin dökümü (alpha.7.2, ekran görüntüsü): Whisper noktasız yazdı, cümle başlarını büyük harfle ("Ben",
+# "Beyefendiye", "Sonra", "Kendisine"); "yanıma [doğru koştu]" 53,7'de bitti ama ses 54,1'e kadar sürüyor.
+ARTVIN = [(43.0, 44.4, "Geçtiğimiz günlerde"), (44.6, 45.8, "bir vatandaşımız"), (46.1, 47.4, "müşterimiz burada kendisi"),
+          (47.7, 53.7, "yemek yerken bazına yemek kaçması sonucu nefes almakta güçlük çekerek yanıma"),
+          (54.6, 55.9, "Ben de durumu hemen"), (56.2, 57.4, "fark ettim"), (58.0, 58.5, "Beyefendiye"),
+          (58.7, 60.1, "daha öncesinden eğitimini almış"), (60.4, 61.7, "olduğum Hemlik manevrasını uyguladım"),
+          (62.0, 63.5, "Sonra kendisi"), (63.8, 66.0, "tekrardan nefes almaya başladı rahatladı"),
+          (66.3, 67.8, "Kendisine çayını içirdik"), (68.0, 68.7, "Uğurladık"), (68.9, 70.6, "Kendisi teşekkür etti bize")]
+ARTVIN_NEWS = ("Restoran sahibi Muzaffer Yazıcı, Heimlich manevrasıyla kurtardı. Olay Hopa'da oldu. Yazıcı, \"Ben de "
+               "durumu hemen fark ettim. Beyefendiye Heimlich manevrasını uyguladım\" dedi.")
+
+
+def artvin_words():
+    words = []
+    for start, end, text in ARTVIN:
+        tokens = text.split()
+        step = (end - start) / len(tokens)
+        words += [(round(start + i * step, 2), round(start + (i + 0.85) * step, 2), " " + token)
+                  for i, token in enumerate(tokens)]
+    return words
+
+
+def artvin_levels():
+    """Ses seviyesi (dB, 0,02 sn): konuşma -27, sessizlik -50; "yanıma doğru koştu" 54,1'de biter, "Ben de" 55,0'da."""
+    level = np.full(round(70.76 / transcribe.LEVEL_STEP), -50.0)
+    for start, end in [(43.0, 54.1), (55.0, 70.5)]:
+        level[round(start / transcribe.LEVEL_STEP):round(end / transcribe.LEVEL_STEP)] = -27.0
+    return level
+
+
+def test_artvin_interview_splits_where_the_editor_did():
+    """Editör kesitleri elle şöyle seçti (düzeltme kaydı): 44,7–54,5 "…yanıma doğru koştu", 55,0–57,6 "Ben de durumu
+    hemen fark ettim", 58,0–62,2 "Beyefendiye … uyguladım". Büyük harf yeni cümle, "Heimlich" (haberde özel ad) değil;
+    kısa "Uğurladık" öncekine katılır."""
+    names = transcribe.hints(ARTVIN_NEWS)
+    lines = transcribe.sentences(transcribe.fix_names(artvin_words(), names), 70.76, names, artvin_levels())
+    texts = [line["metin"] for line in lines]
+    assert texts[-5:] == ["Ben de durumu hemen fark ettim",
+                          "Beyefendiye daha öncesinden eğitimini almış olduğum Heimlich manevrasını uyguladım",
+                          "Sonra kendisi tekrardan nefes almaya başladı rahatladı",
+                          "Kendisine çayını içirdik Uğurladık", "Kendisi teşekkür etti bize"]
+    assert " ".join(texts[:-5]).endswith("güçlük çekerek yanıma") and len(texts[:-5]) == 2  # 10,7 sn: ikiye bölünür
+    assert all(line["son"] - line["bas"] <= transcribe.MAX_SENTENCE + 0.5 for line in lines)
+    run_up = lines[len(texts) - 6]
+    assert 54.1 <= run_up["son"] <= 54.6 - transcribe.NEXT_WORD_MARGIN  # ses 54,1'e kadar: "doğru koştu" kesilmez
+    assert lines[-5]["bas"] == 54.5 and lines[-4]["bas"] == 57.9
+
+
+def test_long_run_without_capitals_is_split_after_a_verb():
+    """Büyük harf ve noktası olmayan uzun konuşma: 8 sn'den uzunsa fiil sonunda ("koştu") bölünür."""
+    text = ("müşterimiz yemek yerken boğazına yemek kaçtı ben de hemen fark ettim yanına koştum daha önce eğitimini "
             "aldığım manevrayı uyguladım yemek çıktı müşterimiz rahatladı").split()
-    words, time = [], 42.9
-    for number, token in enumerate(text):
-        pause = {10: 0.5, 12: 0.1, 18: 0.4}.get(number, 0.05)  # "ettim", "koştum," ve "uyguladım" sonrası nefes
-        words.append((time, time + 0.55, " " + token))
-        time += 0.55 + pause
+    words = [(40 + i * 0.6, 40 + i * 0.6 + 0.55, " " + token) for i, token in enumerate(text)]
     lines = transcribe.sentences(words, 70.7)
-    assert [line["metin"] for line in lines] == [
-        "müşterimiz yemek yerken boğazına yemek kaçtı ben de hemen fark ettim",
-        "yanına koştum, daha önce eğitimini aldığım manevrayı uyguladım",  # "yanına koştum," tek başına çok kısa
-        "yemek çıktı müşterimiz rahatladı"]
-    assert all(line["son"] - line["bas"] <= transcribe.MAX_SENTENCE + 0.4 for line in lines)
+    assert all(line["metin"].split()[-1] in ("kaçtı", "ettim", "koştum", "uyguladım", "rahatladı") for line in lines)
+    assert all(line["son"] - line["bas"] <= transcribe.MAX_SENTENCE + 0.4 for line in lines) and len(lines) >= 2
 
 
 def test_names_from_the_news_fix_misheard_words_only():
