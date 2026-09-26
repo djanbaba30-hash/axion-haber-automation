@@ -34,6 +34,11 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
 11. **Kullanım limitini ve bağlamı idareli kullan; iş yarım kalmasın.** Büyük dosyaları bütün okuma, gereken kısmı oku;
     uzun çıktıları kısalt. Uzun işleri küçük, testleri geçen commit'lere böl. Limit ya da bağlam dolmak üzereyse yeni
     işe başlama: yapılanı commit'le, kalanı "Nerede kaldık"a yaz ve editöre "sonraki oturumda devam" de.
+12. **Editörün kalıcı ilkesi (2026-09-26; her işte geçerli, editör tekrarlamak zorunda kalmasın):** adım adım ve
+    planlı git; her adımda **bir şeyi** ve ondan etkilenebilecek her şeyi (çağıranlar, testler, belgeler) birlikte
+    düzenle. **Arkada çöp bırakma** (ölü kod, kullanılmayan dosya/sabit/oturum anahtarı, eski açıklama). Optimizasyon
+    ve verimlilik önceliklidir: API kullanılsa bile verimli (gereksiz çağrı/token yok) ama **kaliteden ödün vermeden**.
+    Büyük işte önce plan editöre onaylatılır ("tamam / devam / iptal").
 
 ## Kod haritası
 
@@ -219,11 +224,12 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0 → sıradaki: editörün kullanımı ve geri bildirimi
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0 → sıradaki: v4.1 planı (ROADMAP "v4.1 planı"; onay durumu orada)
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
-geri bildirim, teşhis dosyası, düzeltme kaydı. Açık fikirler ROADMAP "Sonra"da (editör karar verir).
+geri bildirim, teşhis dosyası, düzeltme kaydı. **Sıradaki iş: ROADMAP "v4.1 planı"** (editörle beyin fırtınası, GPT
+fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir parça.
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =

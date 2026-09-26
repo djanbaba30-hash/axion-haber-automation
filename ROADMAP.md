@@ -125,12 +125,39 @@ tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 7. **Yazıya dökme:** kesit cümleden seçilir (faster-whisper, bilgisayarda; editör Artvin haberiyle doğruladı).
    Ayrıca sabit kamerada kadraj hareketin olduğu yere (Artvin: Heimlich anı).
 
-## Sonra (açık; editör karar verir)
+## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — TASLAK, editör onayı bekliyor
 
-- Düzeltme kaydı birikince istem/kural iyileştirmesi (kayıt editörden gelir; istem büyümez).
-- Altyazı (yazıya dökme temeli hazır; ürün kararı gereği şimdilik yok).
-- Sistem komutunu kısaltmak (önbellek tuttuğu için kazanç küçük; gerçek haberle önce/sonra karşılaştırılarak).
-- Blur/mozaik ayrıntılı denenmedi (editör kullandıkça).
+Sıra, bağımlılığa göre: önce altyapı kararını etkilemeyen küçük işler, sonra büyük kararlar için araştırma (kod yok),
+sonra kararlara göre geliştirme. Her parça ayrı ön sürüm (`v4.1.0-alpha.N`); taşınma kararı çıkarsa o `v5.0`.
+Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli, kaliteden ödün yok).
+
+1. **Okunuş sözlüğü + ElevenLabs kullanım göstergesi** (editör: "bazen yanlış okuyor, sırf o yüzden sesi yeniden
+   üretiyorum"; "kullanılan kredi yazmıyordu"). Kalıcı, editörün doldurduğu küçük liste (`data/`; ör. Heimlich →
+   Haymlih); yalnız ElevenLabs'a giden metne uygulanır, ekrandaki/paylaşım metni değişmez; okuyarak dinleme ve
+   zamanlar bozulmaz. Göstergede önce neden bulunur (editörden Geliştirici bilgileri → 🩺 Durum ekran görüntüsü;
+   olası neden: anahtarda kullanıcı okuma izni yok) → açık mesaj; ayrıca haber başına ve günlük/aylık harcanan
+   karakter (defterde zaten var) görünür. API çağrısı eklenmez.
+2. **Haberdeki alıntıdan kesit önerisi** (veri: 7/7 kesitte önerilen başlangıç ~15 sn ileri alındı). DHA metnindeki
+   tırnaklı alıntı ↔ yazıya döküm eşleşmesi → "📍 Haberdeki alıntı: 00:54,5–01:01,9" önerisi; güven düşükse öneri yok,
+   kendiliğinden eklenmez. API yok. Olay anı önerisi (güvenlik kamerası) kalır.
+3. **Görüntü analizinin süre ölçümü** (medyan 14 sn, en uzun 45 sn): alt adımlar ayrı ölçülür (proxy, sahne tespiti,
+   kareler, Luna, hareket); hızlandırma birkaç haberin verisiyle ayrıca kararlaştırılır.
+4. **Araştırma A — altyapı/ön yüz (kod yok):** Streamlit'te kalmak (ve sürüm yükseltme planı, madde 6) mı, daha akıcı
+   bir ön yüze taşınmak mı (ör. iş mantığı `apps/`+`shared/` aynen kalır, arayüz ayrı web uygulaması/PWA)? Rapor:
+   seçenekler, tablette akıcılık/tasarım kazancı, taşıma işi ve riski, parça parça geçiş yolu, öneri. Editör karar
+   verir; karar sonraki arayüz işlerinin (5, 7, altyazı) nerede yapılacağını belirler.
+5. **Tarayıcı sayfası iyileştirmesi** (editör: tablette kaydırınca üst/altta beyazlık, çözünürlük). Editörden: tablet
+   modeli + tarayıcı, sorunun ekran kaydı/görüntüsü. Düzen (tam ekran yüksekliği, kaydırma taşması) ve çözünürlüğün
+   tabletin ekranına göre ayarlanması; akış hızı korunarak (yavaş internet).
+6. **Streamlit sürüm yükseltme planı:** Araştırma A "kal" derse: uyum kontrol listesi (iç API'ler, `st.App`, medya
+   sunucusu, components v2, tablet denemesi) ve denetimli yükseltme. "Taşın" derse gereksiz.
+7. **Araştırma B — sosyal medyaya yükleme (kod yok):** yeni son sekmeden Instagram (Reels), YouTube (Shorts),
+   Facebook, TikTok'a doğrudan yükleme mümkün mü: resmî API'ler, hesap türü şartları, onay/inceleme süreçleri, günlük
+   sınırlar, maliyet, güvenlik (anahtarlar bilgisayarda). Not: istenmeyen "Paylaş düğmesi" tabletten dosya paylaşımıydı;
+   bu, Axion'un bilgisayardan doğrudan yüklemesi (editörün yeni isteği). Rapor → editör karar verir.
+8. **Sonra, veriyle:** düzeltme kaydı birikince (~10 haber) istem/kural iyileştirmesi (istem büyümez); görüntü analizi
+   hızlandırması (3'ün verisiyle); **altyazı** yalnız editörün tarifinden sonra (nerede, nasıl; önce editöre sorulur).
+   Blur/mozaik editör kullandıkça.
 
 ## Ortam
 
