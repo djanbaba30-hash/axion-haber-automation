@@ -132,9 +132,10 @@ def test_every_clip_fills_the_video_area_without_blur_bars():
 def test_render_never_builds_a_blur_fill_even_for_old_fit_blur_clips():
     """Eski kayıtta mode=fit_blur kalmış olsa bile render bulanık dolgu üretmez (tek kadraj yolu)."""
     from apps.video_studio.modules.render import _clip_filter
-    from shared.edit_models import Framing
+    from shared.edit_models import Framing, FramingMode
 
     for framing in (Framing(mode="fit_blur"), Framing(mode="fit_blur", view_region={"x": 0.2, "y": 0, "width": 0.44, "height": 1})):
+        assert framing.mode == FramingMode.FILL_CROP  # sözleşmede bulanık dolgu yok (v4.0.0)
         graph = _clip_filter(0, framing, 960, 1226, 30, 90)
         assert "boxblur" not in graph and "overlay" not in graph
 

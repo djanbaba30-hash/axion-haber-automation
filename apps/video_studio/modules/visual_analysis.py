@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import io
-import math
 from pathlib import Path
 from typing import Any, Literal
 
@@ -158,13 +157,6 @@ def image_data_url(image_path: Path, max_side: int | None = None, crop: dict[str
                 image.save(buffer, "JPEG", quality=85)
                 data, mime = buffer.getvalue(), "image/jpeg"
     return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
-
-
-def image_tokens(width: int, height: int, max_side: int = LUNA_IMAGE_MAX_SIDE) -> int:
-    """GPT-5.6'nın görsel token hesabı (32 px parça × 1,2), Luna'ya giden boyutla."""
-    scale = min(1.0, max_side / max(width, height))
-    w, h = round(width * scale), round(height * scale)
-    return math.ceil(math.ceil(w / 32) * math.ceil(h / 32) * 1.2)
 
 
 def _thumb(path: Path) -> np.ndarray:

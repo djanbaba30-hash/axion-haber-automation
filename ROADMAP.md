@@ -66,15 +66,25 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
   - gerekmiyorsa → kullanılmaz.
   Video Stüdyosu'nda "Kaynak sesli kesitler" adımıyla yapılır (v2.0.0); birden fazla kesit seçilebilir.
 - Haberler en fazla 3 gün saklanır (bugün + önceki 2 gün); eskiler otomatik silinir. Liste her gün 02:00'de sıfırlanır.
-- Kaydırma: yanları dolgulu dikey çekimde yalnızca yukarı/aşağı; tam 16:9 görüntüde her yön.
+- Kaydırma: yanları dolgulu dikey çekimde hiç yok (tüm video boyunca sabit kadraj, v3.4); yalnız tam 16:9 görüntüde,
+  özne alandan genişse yavaşça. Sabit kamerada (güvenlik kamerası) kadraj hareketin olduğu yere (v4.0).
 - Video alanı hep tam dolu: hiçbir sahnede üst/alt/yan bulanık dolgu yok (editör, Kayseri testi).
 - Seslendirmede saat/tarih/ondalık sayı okunuşuyla: "18.00'de" değil "akşam 6'da" (ElevenLabs okuyamıyor).
 - Plaka ve reşit olmayanların yüzü bulanıklaştırılır. Blur tamamen elle: editör Tasarım Stüdyosu'nda blur kutusu ekler
   (şekil, boyut, güç, opaklık ayarlanır), videoda sürükleyerek takip ettirir. Otomatik tespit yok (editör kararı).
+- Fotoğraflar da kurguya girer (yavaş yakınlaşma, alan tam dolu); ilk kare kapaktır (başlık tam görünür) (v4.0).
+- Müzik altlığı varsayılan açık ("Gündem"): seslendirme ve konuşmalı kesitte varla yok arası, konuşmasız kesitte
+  duyulur ama yüksek değil; editör Tasarım Stüdyosu'nda değiştirir ya da kapatır (v4.0).
+
+**Kayıtlar ve maliyet (v4.0)**
+- Editörün düzeltmeleri silinmeyen bir kayda yazılır; **token harcamaz, modele hiç gönderilmez, istemi büyütmez**.
+  Geliştirici okuyup istemi/kuralları düzeltir (yeni kural eskisini sadeleştirerek; öncesi/sonrası token sayılır).
+- Teşhis dosyası ve kayıtlar internete gönderilmez (repo herkese açık); editör indirip sohbette yollar.
 
 ## Fazlar
 
-Sürüm 3.0.0 (2026-09-25): Faz 0–3 ve 5 tamam, Faz 6'nın temel akışı hazır; Faz 4 bilinçli olarak ertelendi.
+Sürüm 3.0.0 (2026-09-25): Faz 0–3 ve 5 tamam, Faz 6'nın temel akışı hazır. Sürüm 3.6.0: Faz 4. Sürüm 4.0.0
+(2026-09-26): tüm fazlar tamam; editör gerçek haberlerde (tablet + ev) kullanıyor.
 
 | Faz | İçerik | Sonuç |
 |---|---|---|
@@ -83,92 +93,44 @@ Sürüm 3.0.0 (2026-09-25): Faz 0–3 ve 5 tamam, Faz 6'nın temel akışı haz�
 | 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, enum'lu Luna şeması, uzun shot pencereleri (Windows'ta doğrulandı) | Planner'a güvenilir veri |
 | 3 ✅ | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
 | 4 ✅ (v3.6.0) | **Luna sahne seçimi (AI Edit Planner):** editör kararı (2026-09-26): "kurguyla sürekli uğraşmayalım, Luna yapsın, verimli olsun". Her videoda tek, görüntüsüz Luna metin çağrısı (`reasoning low`): seslendirme sahneleri (duraklamalarda kesilmiş, söylenen metinle) + analiz pencereleri (kaynak zamanı, çekim, tür, açıklama; aynı görünen ardışık pencereler tek satır) → her sahneye pencere + başlangıç anı. Kesme zamanları, kadraj, kesitler, aynı anın tekrar edilmemesi ve aynı çekimin kaynak sırası kurallarla kalır. Plan `kurgu_plani.json`'da; girdiler aynıysa yeniden çağrı yok; "🔀 Sahneleri yeniden seç" önceki kurguyu "beğenilmedi" notuyla gönderir. Luna'ya ulaşılamazsa kurallı kurgu (`rough_cut`, artık yalnız yedek ve kalan süreyi doldurma; kuralları ayrıca geliştirilmez). | Kurguyla uğraşmak biter |
-| 5 ✅ (v2.5–v2.9; Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
-| 6 (3.0'da temel akış hazır) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. Dükkân başka ilçede, interneti yavaş (45/13 Mbps): büyük dosya tabletten yüklenmez, tablete de indirilmez. DHA videoları Axion'un **🌐 Tarayıcı** sayfasından indirilir (v2.10.0): evdeki bilgisayarda görünmez bir Brave (Axion'un kendi profili; editör Edge kullanmaz), tablete yalnızca ekran görüntüsü gelir, video evin internetiyle İndirilenler'e iner. Giriş bilgileri bir kez kaydedilir (Windows'ta şifreli), sonra kutular kendiliğinden dolar; inen video "🎬 Video Stüdyosu'nda kullan" ile seçili gelir (v3.0.0). Video ve son video arka planda üretilir: tablet kapansa da bilgisayarda sürer (v3.0.0). Uzak masaüstü yalnızca yedek (editör: iki monitör + gizli görev çubuğuyla pratik değil). Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Açık işler: Tarayıcı sayfasının gerçek DHA paneliyle denenmesi, tablet dokunmatiğinde Tasarım Stüdyosu denemesi, aynı haberin iki cihazda açılması uyarısı. | Evde olmadan haber → video |
+| 5 ✅ (v2.5–v2.9; editör Windows'ta doğruladı) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
+| 6 ✅ (v2.10–v3.4) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. Dükkân başka ilçede, interneti yavaş (45/13 Mbps): büyük dosya tabletten yüklenmez, tablete de indirilmez. DHA videoları Axion'un **🌐 Tarayıcı** sayfasından indirilir (v2.10.0): evdeki bilgisayarda görünmez bir Brave (Axion'un kendi profili; editör Edge kullanmaz), tablete yalnızca ekran görüntüsü gelir, video evin internetiyle İndirilenler'e iner. Giriş bilgileri bir kez kaydedilir (Windows'ta şifreli), sonra kutular kendiliğinden dolar; inen video "🎬 Video Stüdyosu'nda kullan" ile seçili gelir (v3.0.0). Video ve son video arka planda üretilir: tablet kapansa da bilgisayarda sürer (v3.0.0). Uzak masaüstü yalnızca yedek (editör: iki monitör + gizli görev çubuğuyla pratik değil). Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Editör doğruladı: gerçek DHA paneli (giriş kaydı, "Tüm Materyali İndir"), Tailscale üzerinden tablet ve telefon. | Evde olmadan haber → video |
 
-## Sıradaki işler (editörle konuşuldu, 2026-09-25)
+## 3.x özeti (2026-09-25 – 2026-09-26; ayrıntı CHANGELOG)
 
-Hedef: DHA'da haberi gördükten sonra tabletten, en az dokunuşla paylaşıma hazır video. Asıl darboğaz otomasyon değil
-**kalite kontrolü**: editör başlıkları, paylaşım metnini ve seslendirmeyi her haberde kendisi kontrol eder; amaç bu
-kontrolü kaldırmak değil, hızlandırmak.
+Editörün ilk gerçek gün denemesinden (4 haber, v3.1) sonra: kendini yeniden başlatan bekçi ve güncellemede geri dönüş,
+uygulamadan (tabletten) güncelleme, API'siz kalite kontrol araçları (kaynakta yok, okuyarak dinleme, düzeltme farkı,
+"video hazır" bildirimi, paylaşım metnini kopyalama), TXT'den haber, adım süresi ölçümü, iki cihaz uyarısı, Tarayıcı
+için doğrudan akış kanalı ve Axion'un kendi indirmesi, kurgunun olay örgüsünü izlemesi ve kadraj kuralları, isim
+kuralı ("A.K."), teşhis dosyası, Faz 4 (Luna sahne seçimi, haberi bilerek).
 
-1. **Windows testi** (`reviews/claude-v3.md` listesi) ve çıkan düzeltmeler: ilk gerçek gün denemesi (4 haber) yapıldı,
-   geri bildirimi v3.1.0'da. ✅
-2. **Axion çökerse kendini yeniden başlatsın**: bekçi betiği `windows/axion_calistir.ps1` (v3.2.0). ✅
-3. **Kalite kontrolünü hızlandırmak** (API'siz, v3.2.0): 🟡 kaynakta yok işaretleri, başlıkların videodaki gibi
-   önizlemesi, seslendirmeyi okuyarak dinleme, düzeltme çağrısının farkı, son video dosya adı = başlık, her sayfada
-   "✅ … videosu hazır" bildirimi, paylaşım metnini tek dokunuşla kopyalama (v3.1.0). ✅
-4. **Ölçüm:** adım süreleri `data/olcumler.jsonl` (v3.2.0). ✅ Birkaç günlük kullanımdan sonra okunup en yavaş adım seçilecek.
-5. Tablette Tasarım Stüdyosu ve Tarayıcı denemesi (editör yapacak); aynı haberin iki cihazda açılması uyarısı (v3.2.0 ✅).
-   Tarayıcı akıcılığı: doğrudan akış kanalı (v3.2.0), editörün Tailscale üzerinden denemesi bekleniyor.
+**İstenmeyenler (editör kararı; yeniden önerme):** "bu haberle başla" düğmesi (haberin birden çok videosu olabilir),
+günün haberleri panosu, arka planda otomatik analiz/video zinciri, düşük çözünürlük uyarısı, büyük düğmeler, "video
+hazır" sesi, Tarayıcı'da DHA kısayolları, Axion'u Brave'de açmak, Windows açılışında otomatik başlatma, Windows'ta
+otomatik test (GitHub Actions), güncellemeden sonra "Yenilikler", yatay/kare çıktı (yalnız Reels/Shorts), Paylaş
+düğmesi ve APK, dosyaların repoya/internete otomatik yüklenmesi.
 
-6. **v3.3.0** (2026-09-25, yapıldı): GPT bulguları, kesitin olay anından başlaması (API'siz), başlık hatasında küçük
-   çağrı, önbellek sayacı + haber başına maliyet, Claude 1 saatlik önbellek, Luna'ya 512 px kare + aynı kare eleme.
-   Açık: sistem komutunu kısaltmak (editörün kararı; gerçek haberle önce/sonra). Ayrıntı: CHANGELOG, AGENTS.md.
-7. **v3.4.0** (2026-09-25, yapıldı, editör Windows'ta doğruladı): kurgu olay örgüsünü izler, kırpma tam bulanığın
-   bittiği yerden, dikeyde sabit kadraj, Luna'ya net şerit, indirmeler Brave'siz ("Tüm Materyali İndir" sorunsuz).
-   Tailscale: evdeki bilgisayar + telefon (mobil veri) ile Axion açıldı; tabletten haber üretimi denenecek.
-8. **v3.5 QoL adayları** (Claude önerdi, editör karar verdi, 2026-09-25):
-   - **İstenmedi:** a. "Bu haberle başla" (haberin birden çok videosu olabilir, editör kendisi seçer), b. günün haberleri
-     panosu, c. arka planda otomatik analiz/video zinciri, d. düşük çözünürlük uyarısı (DHA bazen kötü çözünürlük
-     veriyor, uyarı gereksiz), e. büyük düğmeler, f. "video hazır" sesi, h. Tarayıcı'da DHA kısayolları.
-   - Bilgisayarda Axion varsayılan tarayıcıda (Firefox) açılıyor; Brave'e çevirmek performans kazandırmaz (iş
-     sunucuda; editör çoğunlukla tabletten kullanıyor), değiştirilmedi.
-   - Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
-   - **Yapıldı (3.4.1–3.4.3):** 🟢/🔴 güncelleme göstergesi (2 dk'da bir) + uygulamadan (tabletten) "Güncelle ve
-     yeniden başlat". **Editör Windows'ta doğruladı (2026-09-26):** telefondan güncelledi, sekme kapanmadı, arayüz
-     kısa süre gidip geldi.
-9. **v3.5.0** (editör kararı, 2026-09-26; 4.0'dan önceki QoL; yapıldı):
-   - **Güncellemede geri dönüş:** uygulamadan güncellenen sürüm açılamazsa (bekçinin açılış kontrolü ya da ilk
-     dakikalarda çökme) bekçi önceki sürüme döner ve yeniden başlatır; kenar çubuğunda uyarı. Windows'ta otomatik
-     test (GitHub) istenmedi.
-   - **Sürüm numarası** kenar çubuğunda ("Yenilikler" istenmedi).
-   - Sonra editör dükkânda tabletten tam akışı dener; notları 4.0'dan önce yapılır.
-10. **v3.5.1** (editörün tablet denemesi, yapıldı): seçim kutularında klavye açılmaz, Tarayıcı'da kaymış görüntü yerine
-   oturur, "yeniden üret" başlıkları önceki başlıkları görür (gerçek modelle denenmesi bekleniyor).
-11. **v3.6.0 = Faz 4** (editör kararı, 2026-09-26: "4.0'dan önceki son büyük güncelleme"): sahneleri Luna seçer
-   (yukarıdaki Faz 4 satırı). Gerçek Luna ile ilk deneme editörde.
-14. **v3.7.1–3.7.2:** tablette oturum 3 saat korunur; kısa çekimde 1 sn'lik ara sahne yok. Editör iki
-   gerçek haberde Luna kurgusunu doğruladı (Sultangazi, Eymen).
-13. **v3.6.4–3.7.0:** isim kuralı ("A.K."; suç/reşit olmayan/masumiyet karinesi) ve Luna kurgusunun haberi bilmesi
-   (olay örgüsü, sahne aşamaları, görüntü analizine haber bağlamı).
-12. **v3.6.1:** teşhis dosyası tabletten indirilir, editör sohbette geliştiriciye yollar (editör seçti: repo herkese
-   açık, dosyalar repoya yüklenmez; uzaktan güncellemede otomatik yükleme fikri bırakıldı).
+## Sürüm 4.0 (yapıldı, 2026-09-26)
 
-Gerekmeyenler: Windows açılışında otomatik başlatma; Windows'ta otomatik test (GitHub Actions); güncellemeden sonra
-"Yenilikler"; yatay/kare çıktı (yalnız Reels/Shorts paylaşılıyor). (Haber metni: DHA'nın "metni kopyala"sı uzaktan
-tablete gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)
+Tema: Axion'u uzaktan güvenle kullanmak ve son kararı editöre hızlı verdirmek. Parça parça ön sürümler
+(`v4.0.0-alpha.1` … `alpha.7.4`), sonra GPT incelemesi (`reviews/gpt-v4.md`, yanıt `reviews/claude-v4.md`) ve genel
+tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 
-## Sürüm 4.0 planı (editörle beyin fırtınası, 2026-09-26; henüz yapılmadı)
+1. **Fotoğraf desteği:** kurgu ve sahne değiştirmede fotoğraflar (yavaş yakınlaşma, EXIF yönü).
+2. **Kurguda sahne değiştirme:** sahneye dokun → 4 alternatif → yalnız o parça değişir (Luna planının üstüne).
+3. **Kapak = ilk kare:** başlık tam görünür.
+4. **Müzik altlığı:** hazır sözsüz parçalar + editörün müziği; konuşmada kısılır.
+5. **Düzeltmelerden öğrenme (kayıt):** token harcamaz; geliştirici okuyup istemi düzeltir.
+6. **Durum paneli + günlük/aylık maliyet** (Geliştirici bilgileri).
+7. **Yazıya dökme:** kesit cümleden seçilir (faster-whisper, bilgisayarda; editör Artvin haberiyle doğruladı).
+   Ayrıca sabit kamerada kadraj hareketin olduğu yere (Artvin: Heimlich anı).
 
-Yayın biçimi (editör kararı): parça parça ön sürümler `v4.0.0-alpha.1` … `alpha.7` (sıra AGENTS "Nerede kaldık":
-fotoğraf → sahne değiştirme → kapak → müzik → düzeltmelerden öğrenme → durum paneli + maliyet → yazıya dökme); sonra
-genel repo taraması → `v4.0.0`.
+## Sonra (açık; editör karar verir)
 
-Tema: Axion'u uzaktan güvenle kullanmak ve son kararı editöre hızlı verdirmek. Sıra, editörün tablet notlarından sonra
-yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalışır).
-
-1. **Kurguda sahne değiştirme — yapıldı (v4.0.0-alpha.2):** Video Stüdyosu'nda seslendirme parçası başına küçük kare şeridi; sahneye dokun →
-   aynı görüntülerden 3–4 alternatif (fotoğraflar dahil) → seç → yalnız o parça yeniden kurulur (API yok; Luna'nın
-   planı v3.6.0'dan beri `kurgu_plani.json`'da, elle değişiklik onun üstüne yazılır).
-2. **Fotoğraf desteği — yapıldı (v4.0.0-alpha.1)** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/
-   kaydırma; alan tam dolu, bulanık dolgu yok) ve sahne değiştirmede seçilebilir.
-3. **Yazıya dökme — yapıldı (v4.0.0-alpha.7; doğruluk editörün bilgisayarında ölçülecek) (bilgisayarda, Whisper benzeri yerel model; boyut sorun değil, bilgisayarda 32 GB RAM):** kaynak
-   videonun sesi metne çevrilir → kesit seçimi metinden (cümleye dokun); röportaj alıntısı ham haberle/sesle
-   karşılaştırılabilir. İleride altyazı için de temel (altyazı şu an ürün kararı gereği yok; editör isterse açılır).
-   Önce gerçek DHA videosuyla Türkçe doğruluk ve hız denenir. Boyut gerekirse sonra küçültülür.
-4. **Editörün düzeltmelerinden öğrenme — kayıt yapıldı (v4.0.0-alpha.5):** sistemin verdiği ile editörün son hâli arasındaki fark silinmeyen küçük bir
-   kayda yazılır (3 gün saklamadan bağımsız). Kapsam: başlıklar, seslendirme metni, paylaşım metni, kurgudaki sahne
-   değişiklikleri (1. madde), kesit aralığı düzenlemeleri. Kapsam dışı: kesit ekleme (editörün kendi işlemi), tasarım
-   (zevk meselesi). Geliştirici (Claude/GPT) belli aralıklarla okuyup istemi/kuralları düzeltir, regresyon testiyle.
-   Çalışma zamanında ek model çağrısı yok.
-5. **Müzik altlığı — yapıldı (v4.0.0-alpha.4):** haber videolarında kullanılan türden sözsüz arka plan müzikleri (telifsiz, data/varliklar'a
-   eklenir); seslendirme ve kesit sesinin altında kısılır; editör seçer ya da kapatır.
-6. **Kapak = videonun ilk karesi — yapıldı (v4.0.0-alpha.3):** ayrı kapak yüklemek yok. İlk karede başlık tam görünür (giriş animasyonunun son
-   hâli) ve kapak sahnesi (v3.1 "ilk sahne = kapak"); Reels/Shorts kapak seçiminde ilk kare hazır olur.
-7. **Durum paneli — yapıldı (v4.0.0-alpha.6)** (Geliştirici bilgileri): disk alanı, ElevenLabs'ta kalan karakter (ücretsiz sorgu), FFmpeg ve
-   donanım kodlayıcı; **günlük/aylık toplam maliyet** (haber + görüntü analizi; aylık için silinmeyen özet).
-8. 4.0 yayını: CHANGELOG'da 3.x özeti, KURULUM gözden geçirme, AGENTS "Nerede kaldık"ın kısaltılması.
+- Düzeltme kaydı birikince istem/kural iyileştirmesi (kayıt editörden gelir; istem büyümez).
+- Altyazı (yazıya dökme temeli hazır; ürün kararı gereği şimdilik yok).
+- Sistem komutunu kısaltmak (önbellek tuttuğu için kazanç küçük; gerçek haberle önce/sonra karşılaştırılarak).
+- Blur/mozaik ayrıntılı denenmedi (editör kullandıkça).
 
 ## Ortam
 
@@ -176,15 +138,6 @@ yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalış
 - DHA videoları editör tarafından panelden normal yolla indirilir (evde doğrudan, dışarıda Axion'un Tarayıcı sayfasıyla);
   Video Studio indirilenler klasöründen okur. Otomatik DHA erişimi (kazıma, toplu indirme) hedef değil: editör kendisi
   gezer ve seçer.
-
-## Faz 2 uygulama notları
-
-- media_library.json artık 2.1 ortak sözleşmesiyle yazılıyor.
-- edit_project.json artık 2.1 ortak sözleşmesiyle yazılıyor; eski 1.1 dosyalar yeniden kullanılamıyor.
-- Browser upload medya kaynakları proje altında saklanıyor; local inbox dosyaları yerinde okunuyor.
-- TTS alignment varsa karakter aralıkları doğrulanıyor; yoksa segmentler deterministik noktalama sınırlarından üretiliyor.
-- Windows gerçek E2E testinde analiz + EditProject üretimi doğrulandı; 157.28 sn videoda 15 shot, 21.27 sn TTS timeline üretildi.
-- v1.7.1: `unknown`/boş sınıflandırma (eşleme hatası) düzeltildi; uzun shot'lar 10 sn'lik pencerelere bölünüyor.
 
 ## Axion şablonu (Faz 5; editörün Canva şablonu ve örnek videosundan)
 

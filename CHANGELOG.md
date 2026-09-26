@@ -1,3 +1,37 @@
+# v4.0.0 — Uzaktan güvenle ve hızlı karar: fotoğraf, sahne değiştirme, kapak, müzik, yazıya dökme — 2026-09-26
+
+4.0 parça parça ön sürümlerle yayımlandı (`v4.0.0-alpha.1` … `alpha.7.4`, ayrıntılar aşağıda) ve editör gerçek
+haberlerle denedi; ardından GPT incelemesi (`reviews/gpt-v4.md`, yanıt `reviews/claude-v4.md`) ve genel tarama.
+Yeni özelliklerin hiçbiri model çağrısı eklemez; istemler büyümedi.
+
+## 4.0'da neler var
+- **Fotoğraflar kurguda** (yavaş yakınlaşma, EXIF yönü; telefon fotoğrafı yan çıkmaz).
+- **Kurguda sahne değiştirme:** sahneye dokun → 4 seçenek → yalnız o sahne değişir (ücretsiz).
+- **Kapak = ilk kare:** 1. başlık ilk karede tam görünür.
+- **Müzik altlığı:** sözsüz hazır parçalar ya da editörün müziği; seslendirme ve konuşmada varla yok arası.
+- **Düzeltme kaydı:** editörün başlık/seslendirme/sahne/kesit düzeltmeleri; token harcamaz, geliştirici istemi
+  iyileştirmek için okur.
+- **Durum ve maliyet:** disk, ElevenLabs'ta kalan karakter, FFmpeg, günlük/aylık tahmini maliyet.
+- **Yazıya dökme:** kaynak videonun konuşması bilgisayarda yazıya dökülür (faster-whisper, internet ve ücret yok);
+  kesit cümleye dokunarak seçilir, yalnız seçili aralığı oynatan oynatıcı.
+- **Güvenlik kamerasında kadraj** olayın geçtiği yere (hareket bölgesi).
+
+## Genel tarama (bu sürüm)
+- Kullanılmayan kod kaldırıldı: bulanık dolgu kadraj türü (`FIT_BLUR`; eski kayıtta kalmışsa "kırp ve doldur"
+  okunur, editör kararı sözleşmede), kullanılmayan şablon sabiti ve görsel token hesabı.
+- Belgeler: KURULUM'a 4.0 özellikleri (fotoğraf, sahne değiştirme, kapak, hareket kadrajı, durum paneli, düzeltme
+  kaydı), ROADMAP'te 4.0 ve 3.x özeti (istenmeyenler listesiyle), AGENTS "Nerede kaldık" kısaltıldı (551 → ~340 satır;
+  sürüm sürüm geçmiş CHANGELOG'da).
+
+## 3.x özeti (2026-09-25 – 2026-09-26)
+Editörün ilk gerçek gün denemesiyle (v3.1, 4 haber) başlayan seri: kendini yeniden başlatan bekçi ve güncellemede
+geri dönüş (v3.2, v3.5), tabletten "Güncelle ve yeniden başlat" (v3.4.1–3.4.3), API'siz kalite kontrol araçları
+(kaynakta yok, okuyarak dinleme, düzeltme farkı, "video hazır" bildirimi, paylaşım metnini kopyalama), TXT'den haber,
+Tarayıcı için doğrudan akış kanalı ve Axion'un kendi indirmesi (v3.2–3.3.2), olay anından kesit ve maliyet/önbellek
+göstergesi (v3.3), kurgunun olay örgüsünü izlemesi ve kadraj kuralları (v3.4), isim kuralı "A.K." ve sivil isim
+kontrolü (v3.6.3–3.6.4), teşhis dosyası (v3.6.1), **Faz 4: Luna sahne seçimi** haberi bilerek (v3.6.0, v3.7), tablette
+3 saatlik oturum (v3.7.1).
+
 # v4.0.0-alpha.7.4 — GPT incelemesinin düzeltmeleri — 2026-09-26
 
 GPT'nin v4.0.0 öncesi incelemesi (`reviews/gpt-v4.md`) ve Claude'un yanıtı (`reviews/claude-v4.md`: her bulgu

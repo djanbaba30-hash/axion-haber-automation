@@ -30,8 +30,7 @@ def video_seconds(tts_seconds: float, soundbite_seconds: float = 0.0) -> float:
 
 
 # Başlıklar: büyük harf, beyaz, hafif parıltı (glow); yazı tipi Google Sans Flex ExtraBold (OFL lisanslı, assets/sablon/fontlar).
-# İkisi de aynı kutuda: 960x155, x=60, y=260. En fazla 2 satır (sığmazsa yazı küçülür).
-HEADLINE_BOX = {"x": 60, "y": 260, "width": 960, "height": 155}
+# İkisi de aynı yerde (Canva örneğinde 960x155 kutu, x=60, y=260). En fazla 2 satır (sığmazsa yazı küçülür).
 HEADLINE_FONT_SIZE = 58
 HEADLINE_MIN_FONT_SIZE = 42
 HEADLINE_LINE_PITCH = 83   # satır başlangıçları arası (örnekte ölçülen)

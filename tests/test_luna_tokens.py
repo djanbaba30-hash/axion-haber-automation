@@ -21,12 +21,6 @@ def frame(path, box=None, shift=0):
     return {"path": str(path)}
 
 
-def test_vertical_frame_goes_to_luna_at_512_px():
-    assert va.image_tokens(640, 1138, max_side=10_000) == 864  # eskisi: 20x36 parça x 1,2
-    assert va.image_tokens(640, 1138) == 173  # 288x512
-    assert va.image_tokens(640, 360) == 173  # yatay: 512x288
-
-
 def test_image_is_downscaled_before_sending(tmp_path):
     item = frame(tmp_path / "a.jpg")
     url = va.image_data_url(tmp_path / "a.jpg", va.LUNA_IMAGE_MAX_SIDE)

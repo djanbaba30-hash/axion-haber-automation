@@ -20,12 +20,10 @@ class FramingMode(str, Enum):
 
     FILL_CROP: Kaynak kadrajı tamamen dolduracak kadar ölçeklenir; taşan kısım
         focus_x/focus_y merkez alınarak kırpılır. Yatay videodan dikey kesit de budur.
-    FIT_BLUR: Kaynağın tamamı kadraja sığdırılır; boş kalan alan aynı kaynağın
-        büyütülmüş ve bulanıklaştırılmış kopyasıyla doldurulur.
+    Bulanık dolgu (eski "fit_blur") editör kararıyla yok: eski kayıttaki değer FILL_CROP okunur.
     """
 
     FILL_CROP = "fill_crop"
-    FIT_BLUR = "fit_blur"
 
 
 class ClipOrigin(str, Enum):
@@ -63,12 +61,17 @@ class Framing(BaseModel):
     focus_y: float = 0.5
     zoom: float = 1.0
     content_region: Region | None = None
-    # Kaynakta gösterilecek dikdörtgen (0–1, tüm kareye göre). Oranı video alanından genişse üst/alt boşluk
-    # aynı görüntünün bulanık kopyasıyla dolar. Doluysa render content_region/focus yerine bunu kullanır.
+    # Kaynakta gösterilecek dikdörtgen (0–1, tüm kareye göre); oranı video alanınınki, kadraj hep tam dolu (bulanık
+    # dolgu yok). Doluysa render content_region/focus yerine bunu kullanır.
     view_region: Region | None = None
     # Doluysa kadraj klip boyunca view_region'dan buna yavaşça kayar (aynı boyut): geniş özne bulanık dolgu
     # olmadan gösterilir. Fotoğrafta (v4.0) boyutu farklı olabilir: yavaş yakınlaşma/uzaklaşma (biri ötekinin içinde).
     view_region_end: Region | None = None
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def no_blur_fill(cls, value):
+        return FramingMode.FILL_CROP if value == "fit_blur" else value  # eski kayıt: bulanık dolgu yok, kırpılır
 
     @field_validator("focus_x", "focus_y")
     @classmethod

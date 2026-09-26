@@ -78,8 +78,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
    sıfırlanır; önceki 2 günün haberleri için **Önceki günler**'i işaretle. Haberler **3 gün** saklanır, daha eskileri
    otomatik silinir (İndirilenler'deki DHA videolarına dokunulmaz). Video Stüdyosu adım adım ilerler; biten adım tek satıra daralır (tıklayınca yeniden açılır):
    - **1. Haber:** kaydettiğin haber ve sesi. Başka bir haberi buradan seçebilirsin.
-   - **2. Görüntüler:** İndirilenler'deki videolar en yeniden eskiye listelenir. Videoyu seç → **Görüntüleri analiz et**.
-     Video kopyalanmaz, yerinden okunur. Analiz projeye kaydedilir; tekrar açınca yeniden ücret ödemezsin.
+   - **2. Görüntüler:** İndirilenler'deki videolar ve fotoğraflar (JPG, PNG, WEBP) en yeniden eskiye listelenir. Seç →
+     **Görüntüleri analiz et**. Fotoğraflar da kurguya girer (yavaş yakınlaşmayla; telefonda yan çekilmişse dik
+     çevrilir). Video kopyalanmaz, yerinden okunur. Analiz projeye kaydedilir; tekrar açınca yeniden ücret ödemezsin.
      Klasör, tarayıcıdan yükleme ve analiz yoğunluğu **⚙️ Ayarlar**'da.
    - **3. Kaynak sesli kesitler (isteğe bağlı):** Videodan bir bölümü **kendi sesiyle** seslendirmenin önüne
      (dikkat çekici an) veya arkasına (röportaj) ekler. Analizden önce de yapılabilir.
@@ -98,13 +99,21 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      kapak; haber başına tek küçük çağrı, ~$0,001). Beğenmezsen **🔀 Sahneleri yeniden seç**: Luna farklı bir
      kurgu yapar. **Videoyu yeniden oluştur** aynı sahnelerle yeniden üretir (yeni çağrı yok).
      Kurguda bir sorun görürsen: sayfanın altındaki **Geliştirici bilgileri** → **📦 Teşhis dosyasını indir**; inen
-     dosyayı Claude'a/GPT'ye sohbette gönder (internete kendiliğinden hiçbir şey gitmez).
+     dosyayı Claude'a/GPT'ye sohbette gönder (internete kendiliğinden hiçbir şey gitmez). Aynı bölümde:
+     **🩺 Durum ve maliyet** (disk, ElevenLabs'ta kalan karakter, FFmpeg, bugünkü ve bu ayki tahmini maliyet) ve
+     **📝 Düzeltme kaydını indir** (başlık, seslendirme, sahne ve kesit düzeltmelerin; ara sıra geliştiriciye yolla,
+     istemi senin düzeltmelerine göre iyileştirsin. Kayıt ücretsizdir, yapay zekâya gönderilmez).
      Canva şablonundaki video alanının ölçüsünde (960×1226) MP4 hazırlanır.
      - Video alanı her sahnede tam dolu kalır; hiçbir yanda bulanık dolgu olmaz. Kadraj haberin ana öznesine
-       (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar.
+       (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar. Sabit
+       kamerada (güvenlik kamerası) kadraj hareketin olduğu yere, yani olayın geçtiği yere gelir.
      - DHA'nın kenarları bulanık dikey çekimlerinde Axion asıl görüntüyü kendisi bulur; bulanık kenar videoya girmez.
      - Sahneler seslendirmedeki duraklamalarda değişir, her sahne 2–5 sn. Video en az 20 sn olur.
-     - İlk sahne sosyal medyada videonun kapağı olur: Axion ilk sahneye başlıktaki olayı net gösteren görüntüyü koyar.
+     - İlk sahne sosyal medyada videonun kapağı olur: Axion ilk sahneye başlıktaki olayı net gösteren görüntüyü koyar;
+       videonun ilk karesinde 1. başlık tam görünür (Reels/Shorts kapağı olarak ilk kare hazırdır).
+     - **🎞️ Sahneleri göster ve değiştir:** video hazır olunca her sahnenin küçük karesi görünür. Beğenmediğin sahneye
+       dokun → yerine konabilecek görüntüler (fotoğraflar dahil) → **✅ Bunu koy**: yalnız o sahne değişir, video
+       yeniden oluşur (ücret yok). ✋ = elle değiştirdiğin sahne; **🔀 Sahneleri yeniden seç** bunları sıfırlar.
      - Ses: seslendirme ve kaynak sesli kesitler aynı dengeye getirilir (kesit spikerin biraz altında), hiçbir yerde ses
        patlamaz (tepe -2 dB); kesitlerin başı/sonu yumuşak.
      - Kurgu bitince Axion şablonu (arka plan, başlıklar, sloganlar, logo) hemen uygulanır: **Son videoyu indir**.
