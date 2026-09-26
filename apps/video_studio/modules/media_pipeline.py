@@ -94,6 +94,7 @@ def prepare_media_library(
     api_key: str,
     progress: Progress = lambda message: None,
     storage_dir: Path | None = None,
+    context: str = "",
 ):
     videos = []
     all_shots = []
@@ -119,7 +120,7 @@ def prepare_media_library(
                     temp_images.append(image_path)
 
         progress("Luna görüntüleri analiz ediyor")
-        window_visuals, image_visuals, usage = analyze_media_with_luna(all_shots, images, api_key)
+        window_visuals, image_visuals, usage = analyze_media_with_luna(all_shots, images, api_key, context)
 
         assets: list[dict[str, Any]] = [
             build_video_asset(

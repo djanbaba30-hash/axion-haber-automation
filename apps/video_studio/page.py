@@ -89,6 +89,17 @@ def render_status(project: NewsProject) -> None:
     status()
 
 
+def news_context(project: NewsProject | None) -> str:
+    """Görüntü analizine haberin özü (başlıklar + seslendirme): açıklamalar haberle ilgili ayrıntıyı anlatsın."""
+    if project is None:
+        return ""
+    try:
+        package = load_news_project(project)[0]
+    except Exception:  # noqa: BLE001 — bağlam yoksa analiz yine yapılır
+        return ""
+    return f"{package.headline_1} / {package.headline_2}. {package.tts_text}"
+
+
 def mmss(seconds: float) -> str:
     return f"{int(seconds // 60):02d}:{seconds % 60:04.1f}"
 
@@ -215,6 +226,7 @@ with st.expander(
                         secret("OPENAI_API_KEY"),
                         progress=status.write,
                         storage_dir=(project.folder / "media") if project else None,
+                        context=news_context(project),
                     )
                     status.update(label="Analiz tamamlandı.", state="complete", expanded=False)
             except Exception as error:
@@ -456,5 +468,7 @@ if media_library:
                 st.caption(f"Sahne seçimi (Luna, {plan.get('tarih', '')}): girdi {used.get('input_tokens', 0):,} · "
                            f"çıktı {used.get('output_tokens', 0):,} · düşünme {used.get('reasoning_tokens', 0):,} · "
                            f"${float(used.get('estimated_cost_usd', 0) or 0):.4f}")
+                for line in luna_edit.plan_summary(plan):
+                    st.caption(line)
             st.dataframe(clip_rows(edit_project), width="stretch", hide_index=True)
             st.json(edit_project, expanded=False)

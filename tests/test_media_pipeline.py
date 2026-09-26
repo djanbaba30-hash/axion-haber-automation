@@ -27,7 +27,7 @@ def make_video(path):
 VISUAL = {"description": "Hasarlı araç", "visual_type": "vehicle", "editorial_role": "detail", "confidence": 0.9}
 
 
-def fake_luna(shots, images, api_key):
+def fake_luna(shots, images, api_key, context=""):
     windows = [w for shot in shots for w in shot["analysis_windows"]]
     for window in windows:
         for frame in window["frames"]:

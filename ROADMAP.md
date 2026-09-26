@@ -128,6 +128,8 @@ kontrolü kaldırmak değil, hızlandırmak.
    oturur, "yeniden üret" başlıkları önceki başlıkları görür (gerçek modelle denenmesi bekleniyor).
 11. **v3.6.0 = Faz 4** (editör kararı, 2026-09-26: "4.0'dan önceki son büyük güncelleme"): sahneleri Luna seçer
    (yukarıdaki Faz 4 satırı). Gerçek Luna ile ilk deneme editörde.
+13. **v3.6.4–3.7.0:** isim kuralı ("A.K."; suç/reşit olmayan/masumiyet karinesi) ve Luna kurgusunun haberi bilmesi
+   (olay örgüsü, sahne aşamaları, görüntü analizine haber bağlamı).
 12. **v3.6.1:** teşhis dosyası tabletten indirilir, editör sohbette geliştiriciye yollar (editör seçti: repo herkese
    açık, dosyalar repoya yüklenmez; uzaktan güncellemede otomatik yükleme fikri bırakıldı).
 

@@ -1,3 +1,26 @@
+# v3.7.0 — Luna kurguyu haberi bilerek yapar — 2026-09-26
+
+Editör: "Faz 4'ü verimli geliştirmek için elimizden geleni yapalım; yapay zekâ olay örgüsünü, haberin konusunu bilerek
+kurgu yapsın."
+
+## Changed
+- **Sahne seçimi haberin kendisini görür:** Luna'ya başlıklar ve seslendirme sahnelerinin yanında haberin anlatımı
+  (paylaşım metninin ilk ~900 karakteri) gider. Pencerelerde kısa açıklamaya ek ipuçları: mekân, karede okunan yazı
+  (ör. "OLAY YERİ İNCELEME", "AMBULANS"; DHA damgası hariç), insan var mı.
+- **Luna önce olay örgüsünü kurar:** yanıt şeması düşünme sırasıyla: önce `olay_orgusu` (en fazla 2 cümle: ne oldu →
+  kim müdahale etti → sonuç), sonra her sahneye `asama` (olay öncesi, olay anı, olay yeri, müdahale, sonuç, açıklama,
+  genel), sonra o aşamayı en iyi gösteren pencere. Düşünme seviyesi yine "low" (verimli); örnek haberde istek ~1.600
+  token, sahne seçimi başına ~$0,001.
+- **Görüntü analizi haberi bilir:** analiz çağrısına haberin başlıkları ve seslendirmesi gider; açıklama ve rol
+  (olay anı, kanıt, müdahale…) haberle ilgili görünen ayrıntıya göre seçilir. "Karede görmediğin hiçbir şeyi yazma,
+  kişileri tanımlama" denir; sistem komutu aynı (önbellek). Yalnız yeni analizlerde (eski analizler yeniden yapılmaz).
+- Geliştirici bilgileri'nde Luna'nın olay örgüsü ve sahne başına aşama → pencere.
+- Sistem komutu değiştiği için eski projelerde "Videoyu yeniden oluştur" bir kez yeni sahne seçimi yapar.
+
+## Denenmedi
+- Gerçek Luna ile denenmedi (bu ortamda anahtar yok). İstem editörün Sultangazi haberinin gerçek verisiyle üretilip
+  gözden geçirildi; testler sahte Luna yanıtıyla.
+
 # v3.6.4 — İsim sansürü kuralı (suç, reşit olmayan, masumiyet karinesi) — 2026-09-26
 
 ## Changed

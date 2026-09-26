@@ -214,12 +214,18 @@ def calculate_cost(input_tokens: int, output_tokens: int) -> float:
     )
 
 
+NEWS_CONTEXT = ("HABER (yalnız hangi görünen ayrıntının haber için önemli olduğunu seçmen ve editorial_role'ü doğru "
+                "vermen için; karede görmediğin hiçbir şeyi yazma, kişileri tanımlama): {context}")
+
+
 def analyze_media_with_luna(
     shots: list[dict[str, Any]],
     images: list[dict[str, Any]],
     api_key: str,
+    context: str = "",
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
-    """Tüm shot pencerelerini ve görselleri tek Luna çağrısında analiz eder.
+    """Tüm shot pencerelerini ve görselleri tek Luna çağrısında analiz eder. `context` (v3.7): haberin başlıkları ve
+    seslendirmesi; açıklama ve rol haberle ilgili görünen ayrıntıya göre seçilsin (kurguda Luna olay örgüsünü kurar).
 
     Döndürür: (window_id → VisualMetadata, image asset_id → VisualMetadata, kullanım).
     """
@@ -240,6 +246,8 @@ def analyze_media_with_luna(
         raise ValueError("OPENAI_API_KEY bulunamadı.")
 
     content: list[dict[str, Any]] = []
+    if context.strip():
+        content.append({"type": "input_text", "text": NEWS_CONTEXT.format(context=" ".join(context.split())[:900])})
     frame_total = 0
     crops = {window["window_id"]: crop for window, _, crop in windows}
     for window, frames, crop in windows:

@@ -83,6 +83,10 @@ class Candidate:
     anchor_y: float | None = None
     seen: float | None = None  # Luna'nın bu pencerede gördüğü karelerin ortalama zamanı (açıklama o an için doğru)
     shot_count: int = 1  # aynı videodaki çekim sayısı (tek uzun çekimde anlatım sırası)
+    # Luna'nın sahne seçimine ipucu (v3.7): görünen mekân, karede okunan yazı (ör. "OLAY YERİ İNCELEME"), insan var mı.
+    location: str = ""
+    visible_text: str = ""
+    people: bool | None = None
 
 
 @dataclass
@@ -130,6 +134,9 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
                         frame_aspect=asset.geometry.display.width / asset.geometry.display.height,
                         shot_count=len(asset.shots),
                         seen=sum(seen) / len(seen) if seen else None,
+                        location=visual.location if visual else "",
+                        visible_text=visual.visible_text if visual else "",
+                        people=visual.visible_people if visual else None,
                     )
                 )
     for asset_id in {c.asset_id for c in items}:

@@ -261,7 +261,9 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
 
     def fake_request(prompt, ids, api_key, client=None):
         prompts.append(prompt)
-        return [{"parca": 1, "pencere": ids[0], "kaynak_bas": 1.0 + len(prompts)}], {"input_tokens": 900, "output_tokens": 80}
+        return ({"olay_orgusu": "Kaza oldu.", "sahneler": [{"parca": 1, "asama": "olay_ani", "pencere": ids[0],
+                                                             "kaynak_bas": 1.0 + len(prompts)}]},
+                {"input_tokens": 900, "output_tokens": 80})
 
     monkeypatch.setattr(luna_edit, "request", fake_request)
     button(at, "Videoyu yeniden oluştur").click().run()

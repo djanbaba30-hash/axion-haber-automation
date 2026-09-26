@@ -103,3 +103,33 @@ def test_luna_sees_only_the_sharp_strip_and_boxes_come_back_in_frame_coordinates
     box = windows["w1"]["subject_region"]
     assert abs(box["x"] - 0.2954) < 1e-6 and abs(box["width"] - 0.2046) < 1e-6 and box["y"] == 0.2
     assert windows["w1"]["side_bars"] is True
+
+
+def test_image_analysis_knows_the_news_but_is_told_not_to_invent(tmp_path, monkeypatch):
+    """v3.7 (editör: "haberin konusunu bilerek kurgu"): analiz haberin başlık ve seslendirmesini görür; açıklama ve rol
+    haberle ilgili görünen ayrıntıya göre seçilir. Karede görünmeyeni yazmaması istenir. Bağlam yoksa hiçbir şey eklenmez."""
+    Image.new("RGB", (640, 360), (40, 40, 40)).save(tmp_path / "k.jpg")
+    shot = {"analysis_windows": [{"window_id": "w1", "start_seconds": 0, "end_seconds": 9,
+                                  "frames": [{"path": str(tmp_path / "k.jpg")}]}]}
+    item = va.WindowVisualAnalysis(
+        window_id="w1", description="Olay yeri inceleme aracı", visual_type="vehicle", editorial_role="evidence",
+        visible_people=False, location="cadde", text_visible=True, visible_text="OLAY YERİ İNCELEME", subject_left=0.2,
+        subject_right=0.8, subject_top=0.2, subject_bottom=0.9, side_bars=False, confidence=0.9)
+    calls = []
+
+    class Fake:
+        def __init__(self, **kwargs):
+            self.responses = self
+
+        def parse(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(output_parsed=va.VisualAnalysisResponse(windows=[item], images=[]), usage=None)
+
+    monkeypatch.setattr(va, "OpenAI", Fake)
+    va.analyze_media_with_luna([shot], [], "anahtar", "EŞİNİ ARADI DİYE VURDU / HAYATİ TEHLİKESİ SÜRÜYOR. Sultangazi'de bir kişi vuruldu.")
+    first = calls[0]["input"][1]["content"][0]
+    assert first["type"] == "input_text" and first["text"].startswith("HABER (") and "EŞİNİ ARADI" in first["text"]
+    assert "karede görmediğin hiçbir şeyi yazma" in first["text"]
+    assert calls[0]["input"][0]["content"] == va.SYSTEM_PROMPT  # sistem komutu aynı (önbellek)
+    va.analyze_media_with_luna([shot], [], "anahtar")
+    assert not calls[1]["input"][1]["content"][0]["text"].startswith("HABER")

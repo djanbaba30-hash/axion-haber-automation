@@ -1,8 +1,9 @@
 """Faz 4 (v3.6, editör kararı): sahneleri Luna seçer; kurallar yalnız yedek.
 
-Haber başına tek, görüntüsüz Luna çağrısı: seslendirme sahneleri (duraklamalarda kesilmiş, söylenen metinle) ve
-analizdeki pencereler (kaynak zamanı, çekim, tür, açıklama) gider; Luna her sahneye bir pencere ve o penceredeki
-başlangıç anını seçer. Kesme zamanları, kadraj (bulanık dolgu yok, dikeyde sabit), kaynak sesli kesitler ve aynı
+Haber başına tek, görüntüsüz Luna çağrısı: haberin anlatımı (paylaşım metninin başı), seslendirme sahneleri
+(duraklamalarda kesilmiş, söylenen metinle) ve analizdeki pencereler (kaynak zamanı, çekim, tür, açıklama, mekân,
+karedeki yazı) gider. Luna önce olay örgüsünü yazar, her sahneye aşama verir (olay anı, müdahale, sonuç…), sonra
+sahneye bir pencere ve o penceredeki başlangıç anını seçer (v3.7: "haberin konusunu bilerek kurgu"). Kesme zamanları, kadraj (bulanık dolgu yok, dikeyde sabit), kaynak sesli kesitler ve aynı
 anın iki kez kullanılmaması kurallarla kalır (`rough_cut.plan_rough_cut(picks=...)`). Luna'ya ulaşılamazsa ya da
 anahtar yoksa kurallı kurgu kullanılır.
 
@@ -32,15 +33,22 @@ REASONING_EFFORT = "low"  # editör: "elden geldiğince verimli"; kurgu kararı 
 MAX_OUTPUT_TOKENS = 6000  # düşünme dahil
 TIMEOUT_SECONDS = 120
 
-SYSTEM_PROMPT = """Haber videosu kurgucususun. Seslendirmenin her sahnesine bir görüntü penceresi seç.
+STAGES = ("olay_oncesi", "olay_ani", "olay_yeri", "mudahale", "sonuc", "aciklama", "genel")
+SYSTEM_PROMPT = """Haber videosu kurgucususun. Haberi anlayarak seslendirmenin her sahnesine bir görüntü penceresi seç.
 
-Girdi: başlıklar; seslendirme sahneleri (sıra no, süre, o sırada söylenen); görüntü pencereleri (id, video/çekim,
-kaynak zamanı, tür/rol, kısa açıklama, özne). Pencereler kaynaktaki sırasıyladır; aynı çekimin pencereleri tek
-kesintisiz çekimin ardışık parçalarıdır.
+Girdi: başlıklar; haberin kendisi (olayın tam anlatımı); seslendirme sahneleri (sıra no, süre, o sırada söylenen);
+görüntü pencereleri (id, video/çekim, kaynak zamanı, tür/rol, kısa açıklama, özne, mekân, karede okunan yazı).
+Pencereler kaynaktaki sırasıyladır; aynı çekimin pencereleri tek kesintisiz çekimin ardışık parçalarıdır.
+Görüntü açıklamaları kısadır: haberle bağını tür, mekân ve karedeki yazıdan kur (ör. "OLAY YERİ İNCELEME" yazılı
+araç = soruşturma/olay yeri; ambulans = müdahale; hasarlı araç = olayın sonucu).
+
+Önce olay_orgusu: haberin akışını en fazla 2 cümleyle yaz (ne oldu → kim müdahale etti → sonuç). Sonra her sahne
+için asama: seslendirmenin o an anlattığı aşama (olay_oncesi, olay_ani, olay_yeri, mudahale, sonuc, aciklama,
+genel). Pencereyi bu aşamayı en iyi gösterenlerden seç.
 
 Kurallar (önem sırasıyla):
-1. Olay örgüsü: görüntüler olayın akışını izlesin. Seslendirme olayı anlatırken olayın kendisi (an, yer, ilgili
-   kişiler), sonucu anlatırken sonucu (ambulans, hastane, gözaltı, hasar) gösteren pencere gelsin.
+1. Olay örgüsü: görüntüler olayın akışını izlesin; sahnenin aşamasına uyan pencere gelsin. Olay anının görüntüsü
+   varsa olay anlatılırken o kullanılsın.
 2. Tekrar yok: bir pencereyi yalnız bir kez seç. Malzeme gerçekten yetmiyorsa aynı pencerenin kullanılmamış bir anını
    seç (farklı kaynak_bas). Aynı çekimden alınan parçalar videoda kaynaktaki sırasıyla gelsin.
 3. İlk sahne videonun kapağıdır: başlıktaki olayı en net gösteren, öznesi belli pencere; manzara, grafik, genel
@@ -51,7 +59,10 @@ Kurallar (önem sırasıyla):
 6. kaynak_bas: sahnenin kaynaktaki başlangıç anı (saniye, pencerenin içinde). Sahne süresi kadar görüntü kalacak
    şekilde seç; "görülen an" açıklamanın kesin doğru olduğu andır.
 
-Her sahne için tam bir satır döndür: parca (sahne no), pencere (id), kaynak_bas."""
+Her sahne için tam bir satır döndür: parca (sahne no), asama, pencere (id), kaynak_bas."""
+STAGE_LABELS = {"olay_oncesi": "olay öncesi", "olay_ani": "olay anı", "olay_yeri": "olay yeri", "mudahale": "müdahale",
+                "sonuc": "sonuç", "aciklama": "açıklama", "genel": "genel"}
+STORY_CHARS = 900  # haberin anlatımı (paylaşım metninin başı): olay örgüsü için yeterli, token az
 
 RETRY_NOTE = ("Editör aşağıdaki önceki kurguyu beğenmedi. Kurallara uyarak farklı bir seçim yap; aynı sahnelere aynı "
               "pencereleri koyma (malzeme yetmiyorsa sırayı ve anları değiştir).")
@@ -75,6 +86,13 @@ def build_prompt(prep: Prepared) -> str:
         if c.role is not EditorialRole.UNKNOWN:
             notes.append(f"{c.visual_type.value}/{c.role.value}")
         notes.append("genel görüntü" if _generic(c) else "özne var")
+        if c.people:
+            notes.append("insan var")
+        if c.location and c.location != "unknown":
+            notes.append(f"mekân: {c.location}")
+        text = "; ".join(part.strip() for part in c.visible_text.split(";") if part.strip() and part.strip().upper() != "DHA")
+        if text:
+            notes.append(f"yazı: {text[:60]}")
         if any(a == c.asset_id and s < c.end and c.start < e for a, s, e in prep.blocked):
             notes.append("KESİT")
         last = rows[-1] if rows else None
@@ -92,7 +110,10 @@ def build_prompt(prep: Prepared) -> str:
     for number, (start, end, text) in enumerate(prep.slots(), 1):
         mark = " (kapak)" if number == 1 else ""
         slots.append(f"{number}{mark} | {end - start:.1f} sn | {text or '(sessiz, görüntü devam)'}")
+    story = " ".join(news.caption.replace("Kaynak: DHA", "").split())
+    story = story if len(story) <= STORY_CHARS else story[:STORY_CHARS].rsplit(" ", 1)[0] + " …"
     return (f"<basliklar>{news.headline_1} / {news.headline_2}</basliklar>\n"
+            f"<haber>{story}</haber>\n"
             f"<sahneler>\n" + "\n".join(slots) + "\n</sahneler>\n"
             "<pencereler>\n" + "\n".join(lines) + "\n</pencereler>")
 
@@ -102,12 +123,14 @@ def signature(prompt: str) -> str:
 
 
 def _response_model(ids: list[str]) -> type[BaseModel]:
-    scene = create_model("LunaSahne", parca=(int, ...), pencere=(Literal[tuple(ids)], ...), kaynak_bas=(float, ...))
-    return create_model("LunaKurgu", sahneler=(list[scene], ...))
+    # Alan sırası düşünme sırasıdır: önce olay örgüsü, sonra sahne başına aşama, sonra pencere.
+    scene = create_model("LunaSahne", parca=(int, ...), asama=(Literal[STAGES], ...),
+                         pencere=(Literal[tuple(ids)], ...), kaynak_bas=(float, ...))
+    return create_model("LunaKurgu", olay_orgusu=(str, ...), sahneler=(list[scene], ...))
 
 
-def request(prompt: str, ids: list[str], api_key: str, client: Any = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Tek Luna çağrısı → [{"parca", "pencere", "kaynak_bas"}], kullanım."""
+def request(prompt: str, ids: list[str], api_key: str, client: Any = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Tek Luna çağrısı → {"olay_orgusu", "sahneler": [{"parca", "asama", "pencere", "kaynak_bas"}]}, kullanım."""
     client = client or OpenAI(api_key=api_key, timeout=TIMEOUT_SECONDS)
     response = client.responses.parse(
         model=LUNA_MODEL,
@@ -121,7 +144,7 @@ def request(prompt: str, ids: list[str], api_key: str, client: Any = None) -> tu
         raise RuntimeError("Luna kurgu planı döndürmedi.")
     usage = getattr(response, "usage", None)
     input_tokens, output_tokens = get_usage_value(usage, "input_tokens"), get_usage_value(usage, "output_tokens")
-    return [scene.model_dump() for scene in parsed.sahneler], {
+    return parsed.model_dump(), {
         "model": LUNA_MODEL, "input_tokens": input_tokens, "output_tokens": output_tokens,
         "reasoning_tokens": get_reasoning_tokens(usage) if usage is not None else 0,
         "estimated_cost_usd": calculate_cost(input_tokens, output_tokens), "api_calls": 1,
@@ -171,16 +194,30 @@ def plan(edit_project: dict[str, Any], media_library: dict[str, Any], soundbites
         previous = "\n".join(f"{s['parca']}: {s['pencere']} @ {s['kaynak_bas']:.1f}" for s in stored["sahneler"])
         full += f"\n<onceki_kurgu>\n{RETRY_NOTE}\n{previous}\n</onceki_kurgu>"
     try:
-        scenes, usage = request(full, window_ids(prep), api_key, client)
+        answer, usage = request(full, window_ids(prep), api_key, client)
     except Exception as error:  # noqa: BLE001 — ağ, kota, şema: video yine çıksın
         return plan_rough_cut(edit_project, media_library, soundbites), {
             "kaynak": "kural", "not": f"Luna'ya ulaşılamadı, sahneler kurallarla seçildi: {str(error)[:200]}", "kullanim": {}}
+    scenes = answer.get("sahneler", [])
     picks = to_picks(scenes, prep)
     if folder is not None:
         (folder / PLAN_FILENAME).write_text(json.dumps({
             "imza": sig, "tarih": datetime.now(timezone.utc).isoformat(timespec="seconds"), "yeniden": replan,
-            "sahneler": scenes, "kullanim": usage}, ensure_ascii=False, indent=1), encoding="utf-8")
+            "olay_orgusu": answer.get("olay_orgusu", ""), "sahneler": scenes, "kullanim": usage},
+            ensure_ascii=False, indent=1), encoding="utf-8")
     missing = len(prep.slots()) - len(picks)
     note = f"Luna {missing} sahneyi boş bıraktı; onlar kurallarla seçildi." if missing else ""
     return plan_rough_cut(edit_project, media_library, soundbites, picks=picks), {
         "kaynak": "luna", "not": note, "kullanim": usage, "secilen": len(picks)}
+
+
+def plan_summary(plan: dict[str, Any] | None) -> list[str]:
+    """Geliştirici bilgileri için: Luna'nın olay örgüsü ve sahne başına aşama/pencere."""
+    if not plan:
+        return []
+    lines = [f"Olay örgüsü (Luna): {plan['olay_orgusu']}"] if plan.get("olay_orgusu") else []
+    scenes = [f"{s.get('parca')}. {STAGE_LABELS.get(s.get('asama'), s.get('asama') or '?')} → {s.get('pencere')}"
+              for s in plan.get("sahneler", [])]
+    if scenes:
+        lines.append("Sahneler: " + " · ".join(scenes))
+    return lines

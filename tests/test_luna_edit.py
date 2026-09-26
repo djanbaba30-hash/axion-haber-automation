@@ -22,7 +22,8 @@ class FakeLuna:
 
     def parse(self, **kwargs):
         self.calls.append(kwargs)
-        parsed = kwargs["text_format"](sahneler=self.scenes)
+        scenes = [{"asama": "olay_yeri", **scene} for scene in self.scenes]
+        parsed = kwargs["text_format"](olay_orgusu="Tartışma silahlı saldırıya döndü; şüpheli yakalandı.", sahneler=scenes)
         usage = SimpleNamespace(input_tokens=1200, output_tokens=300, output_tokens_details=SimpleNamespace(reasoning_tokens=200))
         return SimpleNamespace(output_parsed=parsed, usage=usage)
 
@@ -48,6 +49,12 @@ def test_prompt_lists_voiceover_scenes_and_windows_compactly():
     assert "P15–P21 (7 ardışık pencere" in prompt and "\nP16 |" not in prompt
     assert len(luna_edit.window_ids(prep)) == 21
     assert luna_edit.SYSTEM_PROMPT.count("Olay örgüsü") == 1 and "Tekrar yok" in luna_edit.SYSTEM_PROMPT
+    # v3.7: Luna haberin kendisini de görür (olay örgüsü) ve önce örgüyü, sahne başına aşamayı yazar.
+    assert "<haber>" in prompt and "plaka" not in luna_edit.SYSTEM_PROMPT.lower()
+    schema = luna_edit._response_model(luna_edit.window_ids(prep)).model_json_schema()
+    assert list(schema["properties"]) == ["olay_orgusu", "sahneler"]
+    scene = next(iter(schema["$defs"].values()))
+    assert list(scene["properties"]) == ["parca", "asama", "pencere", "kaynak_bas"]
 
 
 def test_luna_picks_scenes_and_the_plan_is_reused(tmp_path, luna):
@@ -62,7 +69,10 @@ def test_luna_picks_scenes_and_the_plan_is_reused(tmp_path, luna):
     assert [round(c["source_in_s"], 1) for c in clips[:3]] == [23.0, 72.0, 15.5]  # Luna'nın seçtiği anlar
     assert all(c["origin"] == ClipOrigin.LLM.value for c in clips if c["source_in_s"] in {23.0, 72.0, 15.5})
     saved = json.loads((tmp_path / luna_edit.PLAN_FILENAME).read_text(encoding="utf-8"))
-    assert saved["sahneler"] == scenes and saved["kullanim"]["input_tokens"] == 1200
+    assert [{k: v for k, v in row.items() if k != "asama"} for row in saved["sahneler"]] == scenes
+    assert saved["kullanim"]["input_tokens"] == 1200 and saved["olay_orgusu"].startswith("Tartışma")
+    summary = luna_edit.plan_summary(saved)
+    assert summary[0].startswith("Olay örgüsü (Luna): Tartışma") and "1. olay yeri → P4" in summary[1]
 
     # Girdiler aynı: "Videoyu yeniden oluştur" yeni çağrı yapmaz, aynı kurgu çıkar.
     again, info, fake = run(tmp_path, scenes)
@@ -118,3 +128,15 @@ def test_moment_near_the_end_of_a_shot_starts_earlier_instead_of_a_blink_scene(t
     assert all(c["duration_f"] / fps >= 1.0 for c in clips)
     tail = clips[-1]
     assert tail["origin"] == "llm" and 147.1 <= tail["source_in_s"] < 156.5 and tail["source_out_s"] <= 157.3
+
+
+
+def test_windows_carry_place_text_and_people_hints(tmp_path):
+    """Kısa açıklamanın haberle bağı: mekân, karede okunan yazı (DHA damgası hariç), insan var mı."""
+    media = library()
+    for window in media["assets"][0]["shots"][3]["analysis_windows"]:
+        window["visual"].update(location="cadde", visible_people=True)
+    prompt = luna_edit.build_prompt(luna_edit.prepare(edit_project(), media))
+    rows = {row.split(" |")[0]: row for row in prompt.splitlines() if row.startswith("P")}
+    assert "insan var" in rows["P4"] and "mekân: cadde" in rows["P4"] and "yazı:" not in rows["P4"]  # yalnız "DHA"
+    assert "yazı: AMBULANS" in rows["P3"] and "insan var" not in rows["P3"]

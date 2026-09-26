@@ -84,9 +84,11 @@ apps/video_studio/             VIDEO STÜDYOSU
   page.py                      Sayfa: 1. Haber → 2. Görüntüler (analiz) → 3. Kaynak sesli kesitler → 4. Video (kurgu + render)
   modules/media_pipeline.py    ingestion → proxy → shot tespiti → temsilci kare → Luna → Media Library
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
-  modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı; kareler 512 px, aynı görünen kareler elenir
+  modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı; kareler 512 px, aynı görünen kareler elenir;
+                               haberin başlık + seslendirmesi bağlam olarak gider (v3.7; "görmediğini yazma")
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
-  modules/luna_edit.py         Faz 4 (v3.6): sahneleri Luna seçer — tek görüntüsüz çağrı (sahneler + pencereler → pencere +
+  modules/luna_edit.py         Faz 4 (v3.6–3.7): sahneleri Luna seçer — tek görüntüsüz çağrı (haberin anlatımı + sahneler +
+                               pencereler [mekân, karedeki yazı, insan] → olay_orgusu, sahne başına asama + pencere +
                                başlangıç anı, enum'lu şema); plan kurgu_plani.json (imza aynıysa yeniden çağrı yok;
                                "yeniden seç" önceki kurguyu "beğenilmedi" diye gönderir); olmazsa kurallar
   modules/rough_cut.py         Faz 3 kural tabanlı kurgu (v3.6'dan beri yedek + Luna'nın bıraktığını doldurma; `prepare` ortak
@@ -199,7 +201,13 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.6.4
+## Nerede kaldık (2026-09-26) — Sürüm 3.7.0
+
+**3.7.0 (editör: "Luna olay örgüsünü, haberin konusunu bilerek kurgu yapsın"):** sahne seçimine haberin anlatımı
+(paylaşım metninin başı) ve pencere ipuçları (mekân, karedeki yazı, insan) gider; Luna önce `olay_orgusu`, sahne başına
+`asama`, sonra pencere seçer (şema sırası = düşünme sırası; reasoning yine low). Görüntü analizi haberin başlık ve
+seslendirmesini bağlam olarak görür (yalnız yeni analizler). Gerçek Luna ile denenmedi; editörün ilk haberinde
+Geliştirici bilgileri'ndeki "Olay örgüsü (Luna)" ve sahne aşamaları + teşhis dosyasıyla bakılır.
 
 **3.6.3 (editörün notları):** seslendirmede sivil isim kontrolü (`validation/news.civil_names_in_tts` → düzeltme
 çağrısı), ekranda haber varken "Haberi işle" onay ister, "↻ Yeniden üret" = yalnız seslendirme (`clients.regenerate_tts`,
