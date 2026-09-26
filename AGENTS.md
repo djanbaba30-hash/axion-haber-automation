@@ -224,7 +224,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0 → sıradaki: v4.1 planı (ROADMAP "v4.1 planı"; onay durumu orada)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0 → sıradaki: v4.1 planı, 1. madde (ROADMAP "v4.1 planı", onaylandı)
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:

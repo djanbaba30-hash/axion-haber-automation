@@ -125,7 +125,10 @@ tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 7. **Yazıya dökme:** kesit cümleden seçilir (faster-whisper, bilgisayarda; editör Artvin haberiyle doğruladı).
    Ayrıca sabit kamerada kadraj hareketin olduğu yere (Artvin: Heimlich anı).
 
-## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — TASLAK, editör onayı bekliyor
+## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — ONAYLANDI (editör, 2026-09-26)
+
+Durum: hiçbiri başlamadı; sıradaki **1. madde** (editörden 🩺 Durum ekran görüntüsü istenir; gelmeden de sözlükle
+başlanabilir). Biten maddeyi burada "— YAPILDI (sürüm)" diye işaretle.
 
 Sıra, bağımlılığa göre: önce altyapı kararını etkilemeyen küçük işler, sonra büyük kararlar için araştırma (kod yok),
 sonra kararlara göre geliştirme. Her parça ayrı ön sürüm (`v4.1.0-alpha.N`); taşınma kararı çıkarsa o `v5.0`.
