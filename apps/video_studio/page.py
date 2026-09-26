@@ -421,10 +421,21 @@ if media_library:
                 file_name=diagnostics.filename(project.folder), mime="application/json", on_click="ignore",
                 help="Kurgu dosyaları ve günlüğün sonu (video ve ses yok). İnternete gönderilmez; Claude'a/GPT'ye sen yollarsın.",
             )
+        plan = load_project_json(project, luna_edit.PLAN_FILENAME) if project else None
+        if project:  # editör: "yukarıdaki token tüm işlemlerin mi?" — hayır; üç adım ayrı, toplam burada
+            news_usage = load_news_project(project)[0].metadata.get("usage") or {}
+            parts = [("haber metni", news_usage.get("estimated_cost_usd"), news_usage.get("requests")),
+                     ("görüntü analizi", usage.get("estimated_cost_usd"), usage.get("api_calls")),
+                     ("sahne seçimi", (plan or {}).get("kullanim", {}).get("estimated_cost_usd"), 1 if plan else 0)]
+            known = [c for _, c, _ in parts if c is not None]
+            st.markdown(f"**Bu haberin yapay zekâ maliyeti: ${sum(known):.4f}**" + ("" if len(known) == 3 else " (eksik)"))
+            st.caption(" · ".join(f"{name} {f'${c:.4f}' if c is not None else '—'} ({n or 0} çağrı)" for name, c, n in parts)
+                       + ". Seslendirme (ElevenLabs karakteri) dahil değil.")
+        st.markdown("**Görüntü analizi (Luna)** — aşağıdaki sayılar yalnız bu adımın:")
         cols = st.columns(4)
         cols[0].metric("Girdi token", f"{usage.get('input_tokens', 0):,}")
         cols[1].metric("Çıktı token", f"{usage.get('output_tokens', 0):,}")
-        cols[2].metric("Düşünme token", f"{usage.get('reasoning_tokens', 0):,}")
+        cols[2].metric("Düşünme (çıktıya dahil)", f"{usage.get('reasoning_tokens', 0):,}")
         cols[3].metric("Maliyet", f"${float(usage.get('estimated_cost_usd', 0) or 0):.4f}")
         st.caption(
             f"Model: {usage.get('model', '—')} · API çağrısı: {usage.get('api_calls', 0)} · "
@@ -440,7 +451,6 @@ if media_library:
             job = video_jobs.get(project) if project else None
             if job and job.encoder:
                 st.caption(f"Kurgu kodlayıcısı: {job.encoder} · {job.elapsed:.0f} sn")
-            plan = load_project_json(project, luna_edit.PLAN_FILENAME) if project else None
             if plan:
                 used = plan.get("kullanim", {})
                 st.caption(f"Sahne seçimi (Luna, {plan.get('tarih', '')}): girdi {used.get('input_tokens', 0):,} · "

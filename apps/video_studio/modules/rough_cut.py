@@ -183,6 +183,9 @@ def _source_range(candidate: Candidate, usage: _Usage, need: float,
     if candidate.seen is not None:
         starts.insert(0, min(max(begin, candidate.seen - min(need, MAX_CLIP_SECONDS) / 2), window_end - 0.5))
     if prefer is not None:
+        # Çekimin sonuna yakın istenen an sahneye yetmiyorsa biraz önceden başlanır; yoksa kalan yarım saniye başka bir
+        # sahneyle dolup göz kırpması gibi görünüyordu (editörün Sultangazi videosu, v3.6.2).
+        prefer = min(prefer, shot_limit - min(need, MAX_CLIP_SECONDS))
         starts.insert(0, min(max(begin, prefer), window_end - 0.5))
     for start in starts:
         fresh = first_free(start, taken)

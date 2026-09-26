@@ -1,3 +1,20 @@
+# v3.6.2 — Haberin toplam maliyeti, son sahnede "göz kırpması" yok — 2026-09-26
+
+Editörün ilk Luna kurgusu (Sultangazi, "eşimle telefonda görüştün"): "sorunsuz çalıştı, ürünü beğendim, paylaştım".
+Teşhis dosyasından: Luna 7 sahnenin 7'sini seçti, hiçbir an tekrar etmedi, aynı çekimin parçaları kaynak sırasıyla;
+sahne seçimi 1.449 girdi / 518 çıktı (359'u düşünme) ≈ $0,0009.
+
+## Fixed
+- **Son sahnede yarım saniyelik ara sahne:** Luna son sahne için çekimin sonuna 2,4 sn kala bir an seçti, sahne 2,9 sn
+  sürüyordu; kalan 0,4 sn kurallarla başka bir çekimden geldi (göz kırpması gibi). Artık Luna'nın istediği an sahneye
+  yetmiyorsa aynı pencerede biraz önceden başlanır. Regresyon testi.
+
+## Added
+- **Geliştirici bilgileri'nde haberin toplam yapay zekâ maliyeti** (editör: "yukarıdaki token tüm işlemlerin mi?" —
+  değildi): en üstte "Bu haberin yapay zekâ maliyeti" = haber metni + görüntü analizi + sahne seçimi (çağrı sayılarıyla;
+  seslendirme dahil değil). Dört kutu artık "Görüntü analizi (Luna) — yalnız bu adımın" başlığıyla; "Düşünme"
+  çıktı tokenına dahildir. Haber Stüdyosu kaydederken metnin maliyetini pakete yazar (öncekilerde "—").
+
 # v3.6.1 — Teşhis dosyası — 2026-09-26
 
 ## Added

@@ -98,9 +98,13 @@ def test_save_and_continue_opens_project_in_video_studio(local_env):
 
 def test_saving_same_news_again_updates_project(local_env):
     at = with_generated_news(start())
+    at.session_state["last_usage"] = {"input_tokens": 2000, "output_tokens": 500, "requests": 2, "model": "gpt-5.6-luna"}
     button(at, "Sadece kaydet").click().run()
     button(at, "Sadece kaydet").click().run()
     assert len(store.list_news_projects()) == 1
+    # v3.6.2: haber metninin maliyeti pakete yazılır (Video Stüdyosu haberin toplamını gösterir).
+    usage = store.load_news_project(store.list_news_projects()[0])[0].metadata["usage"]
+    assert usage["estimated_cost_usd"] == pytest.approx(2000 * 0.20e-6 + 500 * 1.20e-6)
 
 
 def test_audio_alignment_is_kept_as_plain_data_and_saved(local_env):
@@ -986,3 +990,8 @@ def test_diagnostics_file_for_the_developer(local_env):
     at = open_page(project)
     assert not at.exception
     assert any(b.label == "📦 Teşhis dosyasını indir" for b in at.get("download_button"))
+    # Editör: "yukarıdaki token tüm işlemlerin mi?" — üç adım ayrı gösterilir, toplam en üstte.
+    total = next(m.value for m in at.markdown if "Bu haberin yapay zekâ maliyeti" in m.value)
+    assert "(eksik)" in total  # bu testin haberinde metin maliyeti kayıtlı değil (eski proje gibi)
+    assert any("sahne seçimi" in c.value and "haber metni —" in c.value for c in at.caption)
+    assert any("yalnız bu adımın" in m.value for m in at.markdown)

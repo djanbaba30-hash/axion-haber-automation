@@ -199,7 +199,13 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.6.1
+## Nerede kaldık (2026-09-26) — Sürüm 3.6.2
+
+**3.6.2:** **editör ilk Luna kurgusunu doğruladı** (Sultangazi, teşhis dosyasıyla): "sorunsuz, beğendim, paylaştım";
+7/7 sahne Luna'dan, tekrar yok, kaynak sırası korundu. Gerçek maliyet: haber metni 3 çağrı ≈ $0,0036, görüntü analizi
+11 kare ≈ $0,0021, sahne seçimi ≈ $0,0009 → haber başına ~$0,007 (seslendirme hariç). Düzeltme: Luna'nın çekim sonuna
+yakın anı sahneye yetmezse aynı pencerede önceden başlanır (0,4 sn'lik ara sahne vardı). Geliştirici bilgileri'nde
+haberin toplam maliyeti (haber paketi `metadata.usage.estimated_cost_usd` + `media_library.analysis` + `kurgu_plani`).
 
 **3.6.1:** teşhis dosyası (editörün seçimi; repo herkese açık olduğu için hiçbir şey internete gönderilmez): Video
 Stüdyosu → Geliştirici bilgileri → "📦 Teşhis dosyasını indir" = tek JSON (`diagnostics.package`: projenin

@@ -105,3 +105,16 @@ def test_without_key_or_when_luna_fails_rules_choose(tmp_path, monkeypatch):
     result, info = luna_edit.plan(edit_project(), library(), None, "sk-test", tmp_path)  # conftest: Luna yok
     assert info["kaynak"] == "kural" and "ulaşılamadı" in info["not"] and video_clips(result)
     assert not (tmp_path / luna_edit.PLAN_FILENAME).exists()
+
+
+def test_moment_near_the_end_of_a_shot_starts_earlier_instead_of_a_blink_scene(tmp_path, luna):
+    """Editörün Sultangazi videosu (v3.6.1): Luna son sahneye çekim sonuna 2,4 sn kala bir an seçti, sahne 2,9 sn'ydi;
+    kalan 0,4 sn başka bir çekimden geldi (göz kırpması gibi). Artık aynı pencerede biraz önceden başlanır."""
+    prep = luna_edit.prepare(edit_project(), library())
+    last = len(prep.slots())
+    result, _, _ = run(tmp_path, [{"parca": last, "pencere": "P21", "kaynak_bas": 156.5}])
+    clips = video_clips(result)
+    fps = 25
+    assert all(c["duration_f"] / fps >= 1.0 for c in clips)
+    tail = clips[-1]
+    assert tail["origin"] == "llm" and 147.1 <= tail["source_in_s"] < 156.5 and tail["source_out_s"] <= 157.3

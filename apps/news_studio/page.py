@@ -401,7 +401,7 @@ if ss.icerik:
             headline_1=ss.baslik1, headline_2=ss.baslik2, caption=ss.icerik, tts_text=ss.tts_metni, source_text=raw,
             provider=usage.get("provider", ""), model=usage.get("model", ""), tts_duration_target=duration_label,
             tts_actual_duration_seconds=ss.last_audio_duration, tts_voice_id=voice_id or "", tts_speed=speed,
-            tts_alignment=ss.last_audio_alignment if ss.last_audio_bytes else None, metadata={"style": style, "usage": usage},
+            tts_alignment=ss.last_audio_alignment if ss.last_audio_bytes else None, metadata={"style": style, "usage": {**usage, "estimated_cost_usd": cost.cost_usd(usage)} if usage else usage},
         )
         go_col, save_col = st.columns([3, 1])
         go = go_col.button("Kaydet ve Video Stüdyosu'na geç", type="primary", width="stretch")
