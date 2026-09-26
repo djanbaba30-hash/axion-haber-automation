@@ -2,13 +2,13 @@
 
 ROADMAP "v4.1 planı" 4. madde. Kod değiştirilmedi. Yazan: Claude, 2026-09-26. **Karar editörün.**
 
-## Kısa cevap
+## Kısa cevap (editörün sorusundan sonra güncellendi, 6. bölüm)
 
-**Toptan taşınmayı önermiyorum. Streamlit kabuk olarak kalsın; tablette en çok dokunulan ekranlar tek tek
-"anında tepki veren" sayfalara dönüşsün. İlk deneme Tarayıcı sayfası olsun (5. maddeyle birlikte).** Beğenirsen aynı
-yol sayfa sayfa sürer; beğenmezsen hiçbir şey kaybolmaz. Bu yol mümkün, çünkü Axion zaten Streamlit'in resmî
-`st.App` kapısıyla açılıyor ve bu kapı Streamlit'in yanına istediğimiz sayfayı/kanalı eklemeye izin veriyor (Tarayıcı
-akış kanalı bugün tam olarak böyle çalışıyor).
+İlk sürümde soruyu "tablette yavaşlık" diye okudum ve "kal, ekranları tek tek düzelt" dedim. Editörün asıl hedefi
+**daha işlevsel, daha güzel, daha çok seçenekli bir arayüz**. Bu hedefte **darboğaz gerçekten Streamlit**. Değecek
+seçenek var: **iş mantığı aynen kalır, arayüz modern bir web uygulaması olarak yeniden yapılır** (Python arka taraf +
+tablette çalışan ön yüz). Bu `v5.0` olur; sayfa sayfa geçilir, Streamlit bitene kadar yedekte kalır. İlk adım kod
+değil, **tıklanabilir tasarım prototipi**: editör görünüşü onaylamadan taşınmaya başlanmaz. Ayrıntı: 6. bölüm.
 
 ## 1. Bugünkü durum (ölçüldü)
 
@@ -68,7 +68,7 @@ Elenenler: yerel Android uygulaması (APK; ROADMAP'te istenmeyenler), Reflex/Fle
 - Ön yüz derleme gerektirmeyen hafif bir kütüphaneyle yazılır (dosyalar repoda hazır durur; Windows'a Node kurulmaz,
   "Güncelle" bugünkü gibi çalışır).
 
-## 4. Önerilen yol (adım adım, her adımda editör "devam / dur" der)
+## 4. İlk öneri (hedef "hız" sanılarak yazıldı; yerine 6. bölüm geçer)
 
 1. **Pilot: Tarayıcı sayfası tam ekran ayrı sayfa olur** (5. maddeyle birlikte; 2–3 oturum). Neden bu sayfa: görüntüsü
    ve dokunuşları zaten Streamlit'ten bağımsız akıyor (`viewer.js` + `stream.py`); en çok şikâyet (kaydırınca beyazlık,
@@ -83,13 +83,62 @@ Elenenler: yerel Android uygulaması (APK; ROADMAP'te istenmeyenler), Reflex/Fle
 4. 7. madde (sosyal medyaya yükleme) bu karardan bağımsız: yükleme işi arka tarafta (bilgisayarda) yapılır, düğmesi
    hangi arayüzdeyse oraya konur.
 
-## 5. Editöre sorular (karar için)
+## 5. İlk sorular (1. ve 3. cevaplandı: hedef zengin arayüz, HTTPS açılabilir → 6. bölüm)
 
 1. **Yol:** (a) önerilen: pilot Tarayıcı sayfasıyla başla, beğenirsen sayfa sayfa sür; (b) Streamlit'te kal, yalnız
    cilala (1–2); (c) başka bir şey.
 2. Tablette en çok hangi ekranda "yavaş/takılıyor" diyorsun? (Sıralamayı bu belirler.)
 3. Tailscale'de HTTPS sertifikalarını açmak sorun olur mu? (Yönetim panelinde tek ayar; adres
    `https://…ts.net` olur. Açılmazsa "ana ekrana uygulama gibi ekle" olmaz, sayfa yine tam ekran çalışır.)
+
+## 6. Editörün sorusu (2026-09-26): "Sıkıntı yavaşlık değil; daha işlevsel, güzel, çok seçenekli arayüz istiyorum"
+
+**Bu hedefte sorun Streamlit mi? Evet.** Streamlit veri panoları için yapılmış bir çatı:
+- Sayfa yukarıdan aşağı dizilen hazır parçalardan oluşur (kutu, düğme, kaydırıcı, açılır bölüm). Yan yana paneller,
+  sürükle-bırak, zaman çizelgesi, sağ tık/uzun basma menüsü, çekmeceler, açılır pencereler, dalga formu üzerinde seçim,
+  küçük resim ızgarasından seçme gibi şeyler Streamlit'in parçalarında yok.
+- Görünüm sınırlı: renk/yazı tipi dışında değişiklik Streamlit'in iç yapısını CSS ile ezmek demek (Tarayıcı'daki beyaz
+  boşluk gibi) ve her sürümde bozulabilir.
+- Kanıt bizde: arayüzde "hayal edilen"e en yakın iki yer (Tasarım editörü, Tarayıcı ekranı) **Streamlit'ten çıkıp
+  tarayıcıda çalışan kodla** yazılabildi. Yani zengin arayüz istediğimiz her yerde zaten Streamlit'in dışına çıkıyoruz;
+  kalırsak bunu her ekranda, Streamlit'in düzeniyle boğuşarak yapacağız.
+
+**Seçenekler (bu hedefe göre):**
+
+| | Streamlit + ada bileşenler | NiceGUI (yalnız Python) | **Modern web arayüzü (önerim)** |
+|---|---|---|---|
+| Ne | Bugünkü yol | Python'la yazılan, hazır zengin bileşenli çatı (Quasar) | Python arka taraf (FastAPI, bugünkü `apps/` + `shared/` aynen) + tablette çalışan ön yüz (React + Tailwind) |
+| Arayüz tavanı | Düşük; her zengin parça ayrı JS bileşeni | Orta-iyi: çekmece, sekme, açılır pencere, tablo, sürükle-bırak hazır; özel parça yine JS | **En yüksek**: Canva/CapCut benzeri her şey mümkün; hazır kütüphaneler (zaman çizelgesi, dalga formu, sürükle-bırak) |
+| Görünüm | Streamlit görünümü | Material (Google) görünümü, özelleştirilebilir | Tamamen Axion'a özel tasarım |
+| İş | Ekran başına 1–2 oturum, tavan değişmez | ≈ 8–12 oturum (hepsi yeniden, tek seferde) | ≈ 15–20 oturum, sayfa sayfa (her sayfa ayrı ön sürüm) |
+| Risk | Düşük | Orta-yüksek (toptan geçiş) | Orta: sayfa sayfa, eski sayfa yedekte; iki dil (Python + JS) |
+| Yapay zekâyla geliştirme | Bugünkü gibi | Daha az örnek, daha az bilinen çatı | Claude ve GPT'nin en güçlü olduğu alan |
+
+**Modern web arayüzüyle neler olur (örnekler):**
+- **Haber Stüdyosu:** ham haber | çıktı yan yana; başlıklar videodaki hâliyle (şablon üzerinde) canlı önizleme;
+  seslendirme dalga formu üzerinde kelime kelime; talimat için sık kullanılan kısa seçenekler; TXT'yi sürükleyip bırakma.
+- **Video Stüdyosu:** gerçek zaman çizelgesi: sahneleri sürükleyerek sıralama, kırpma, küçük resim ızgarasından sahne
+  değiştirme; kesiti dalga formu ve yazıya döküm üzerinde seçme; analiz ve video üretimi canlı ilerleme çubuğuyla
+  (bugünkü saniyelik yenileme yerine anında).
+- **Tasarım Stüdyosu:** bugünkü editör (`editor.js`) tam ekran ve pencere düzeniyle, sınırsız.
+- **Genel:** tek uygulama hissi (sayfa geçişi anında), bildirimler, koyu/açık tema, tablet için ayrı yerleşim, ana ekrana
+  eklenen uygulama (PWA; HTTPS'i editör açabilir), klavye kısayolları (bilgisayarda).
+
+**Nasıl kurulur (Windows'a yük getirmeden):** ön yüz geliştirme ortamında derlenir, hazır dosyaları repoya konur; editörün
+bilgisayarına Node vb. kurulmaz, "Güncelle" bugünkü gibi çalışır. Arka plan işleri (video, yazıya dökme, tasarım) aynı
+süreçte kalır. Testler: arka taraf pytest, ekranlar Playwright/Chromium (sandbox'ta var).
+
+**Önerilen yol (v5.0, her adımda editör "devam / dur"):**
+1. **Tasarım prototipi** (1–2 oturum, ürün kodu yok): Haber Stüdyosu ve Video Stüdyosu'nun yeni hâli, tablette açılıp
+   dokunulabilen örnek sayfa (gerçek veri yok). Editör görünüşü ve akışı onaylar ya da değiştirir.
+2. **Altyapı** (2 oturum): arka taraf uç noktaları, giriş/şifre, HTTPS, ana ekrana ekleme, tasarım dili (renk, yazı,
+   bileşenler). Streamlit aynı adreste yedek.
+3. **Sayfa sayfa** (her biri ayrı ön sürüm): Haber Stüdyosu → Video Stüdyosu → Tarayıcı (5. madde burada) → Tasarım
+   Stüdyosu. Her sayfa editör onaylayınca Streamlit'teki karşılığı silinir (çöp kalmaz).
+4. Son: Streamlit ve ona bağlı yamalar (iç API'ler, AppTest'ler) kaldırılır; 6. madde (Streamlit yükseltmesi) düşer.
+
+**Editöre sorular:** (1) Prototiple başlayalım mı? (2) Öncelik tablet mi bilgisayar mı (yerleşim ona göre)?
+(3) Beğendiğin, "böyle olsun" dediğin uygulamalar var mı (Canva, CapCut, başka)?
 
 ## Kaynaklar
 

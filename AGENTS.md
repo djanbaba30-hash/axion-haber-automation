@@ -256,10 +256,12 @@ fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir pa
   ölçülür (`data/olcumler.jsonl` → "goruntu_analizi" satırı `adimlar`, `kare`, `video_sn`; Video Stüdyosu →
   Geliştirici bilgileri'nde "Son analizin süresi"). Hızlandırma kararı için editörden birkaç haberin teşhis dosyası
   (ölçüm dosyasının sonu içinde) ya da o satırın ekran görüntüsü istenir (ROADMAP 8. madde).
-- **v4.1 4. madde: rapor hazır** (`arastirma/a-altyapi-on-yuz.md`). Öneri: toptan taşınma yok; Streamlit kabuk kalır,
-  `st.App`'e eklenen tam ekran sayfalarla (JSON uç noktaları + PWA, HTTPS Tailscale Serve ile) sayfa sayfa; pilot
-  Tarayıcı sayfası (5. maddeyle birlikte). Editörün cevabı (raporun 5. bölümündeki 3 soru) gelince plan ona göre;
-  cevap gelmeden 5–7. maddelere başlama. Denenecekler listesi: `DENENECEKLER.md`.
+- **v4.1 4. madde: rapor hazır** (`arastirma/a-altyapi-on-yuz.md`). Editör netleştirdi: sorun hız değil, daha
+  işlevsel/güzel/çok seçenekli arayüz istiyor; HTTPS açılabilir. Bu hedefte darboğaz Streamlit → öneri (6. bölüm):
+  v5.0 modern web arayüzü (FastAPI + React/Tailwind, derlenmiş dosyalar repoda; `apps/` + `shared/` aynen), sayfa
+  sayfa, Streamlit yedekte; ilk adım tıklanabilir tasarım prototipi (ürün kodu yok). Editörün cevabı (prototip?
+  tablet/bilgisayar önceliği? örnek aldığı uygulamalar?) gelmeden 5–7. maddelere ve taşınmaya başlama.
+  Denenecekler listesi: `DENENECEKLER.md`.
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =

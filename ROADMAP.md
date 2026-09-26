@@ -149,8 +149,9 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
    kendiliğinden eklenmez. API yok. Olay anı önerisi (güvenlik kamerası) kalır.
 3. — YAPILDI (`v4.2.0-alpha.2`; veri editörün haberlerinden birikecek) **Görüntü analizinin süre ölçümü** (medyan 14 sn, en uzun 45 sn): alt adımlar ayrı ölçülür (proxy, sahne tespiti,
    kareler, Luna, hareket); hızlandırma birkaç haberin verisiyle ayrıca kararlaştırılır.
-4. — RAPOR HAZIR, editörün kararı bekleniyor (`arastirma/a-altyapi-on-yuz.md`; öneri: toptan taşınma yok, Streamlit
-   kabuk kalır, Tarayıcı sayfası 5. maddeyle birlikte tam ekran ayrı sayfaya pilot olur) **Araştırma A — altyapı/ön yüz (kod yok):** Streamlit'te kalmak (ve sürüm yükseltme planı, madde 6) mı, daha akıcı
+4. — RAPOR HAZIR, editörün kararı bekleniyor (`arastirma/a-altyapi-on-yuz.md`, 6. bölüm: editörün hedefi zengin
+   arayüz → öneri v5.0 modern web arayüzü [FastAPI + React, iş mantığı aynen], önce tıklanabilir tasarım prototipi;
+   HTTPS'i editör açabilir) **Araştırma A — altyapı/ön yüz (kod yok):** Streamlit'te kalmak (ve sürüm yükseltme planı, madde 6) mı, daha akıcı
    bir ön yüze taşınmak mı (ör. iş mantığı `apps/`+`shared/` aynen kalır, arayüz ayrı web uygulaması/PWA)? Rapor:
    seçenekler, tablette akıcılık/tasarım kazancı, taşıma işi ve riski, parça parça geçiş yolu, öneri. Editör karar
    verir; karar sonraki arayüz işlerinin (5, 7, altyazı) nerede yapılacağını belirler.
