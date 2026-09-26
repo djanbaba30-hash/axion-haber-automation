@@ -57,7 +57,7 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 
 **Video**
 - Kurgu çıktısı şablondaki video alanının ölçüsünde: 960×1225 (H.264 için 960×1226). Axion şablonu ile son çıktı 1080×1920.
-- Altyazı yok.
+- Altyazı yok (şimdilik; 4.0'daki yazıya dökme ileride altyazıyı mümkün kılar, editör isterse).
 - Tanık sesi editör kararıdır:
   - dikkat çekici söz → videonun başına, TTS'ten önce;
   - tamamlayıcı röportaj → TTS'ten sonra;
@@ -107,23 +107,52 @@ kontrolü kaldırmak değil, hızlandırmak.
    bittiği yerden, dikeyde sabit kadraj, Luna'ya net şerit, indirmeler Brave'siz ("Tüm Materyali İndir" sorunsuz).
    Tailscale: evdeki bilgisayar + telefon (mobil veri) ile Axion açıldı; tabletten haber üretimi denenecek.
 8. **v3.5 QoL adayları** (Claude önerdi, editör karar verdi, 2026-09-25):
-   - **Yapılacak:** g. Günlük/aylık toplam maliyet (Geliştirici bilgileri; history.sqlite3 + analiz kayıtlarından $).
-   - **Sonra, gerekirse:** i. "Sahneleri Luna ile düzenle" düğmesi (Faz 4).
    - **İstenmedi:** a. "Bu haberle başla" (haberin birden çok videosu olabilir, editör kendisi seçer), b. günün haberleri
      panosu, c. arka planda otomatik analiz/video zinciri, d. düşük çözünürlük uyarısı (DHA bazen kötü çözünürlük
      veriyor, uyarı gereksiz), e. büyük düğmeler, f. "video hazır" sesi, h. Tarayıcı'da DHA kısayolları.
    - Bilgisayarda Axion varsayılan tarayıcıda (Firefox) açılıyor; Brave'e çevirmek performans kazandırmaz (iş
      sunucuda; editör çoğunlukla tabletten kullanıyor), değiştirilmedi.
    - Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
-   - **Yapıldı (editör isteği, 3.4.1–3.4.2):** 🟢/🔴 güncelleme göstergesi + uygulamadan (tabletten) "Güncelle ve yeniden
-     başlat"; 3.4.3: kontrol 2 dk'da bir, satır kendiliğinden yenilenir. Editör 3.4.2 ve 3.4.3'ü `guncelle.bat` ile
-     aldı; uygulamadan güncellemenin Windows'taki ilk denemesi sıradaki commit'le (AGENTS "Nerede kaldık").
-   - **4.0'dan önce yapılacaklar (editörün onayladığı liste):** (0) uygulamadan güncellemenin gerçek denemesi,
-     (1) günlük/aylık maliyet (g), (2) editörün dükkândaki
-     tablet denemesinin notları. Bunlar bitince sürüm 4.0. İsteğe bağlı sonra: Luna ile sahne düzenleme (i).
+   - **Yapıldı (3.4.1–3.4.3):** 🟢/🔴 güncelleme göstergesi (2 dk'da bir) + uygulamadan (tabletten) "Güncelle ve
+     yeniden başlat". **Editör Windows'ta doğruladı (2026-09-26):** telefondan güncelledi, sekme kapanmadı, arayüz
+     kısa süre gidip geldi.
+9. **v3.5.0** (editör kararı, 2026-09-26; 4.0'dan önceki QoL):
+   - **Güncellemede geri dönüş:** uygulamadan güncellenen sürüm açılamazsa (bekçinin açılış kontrolü ya da ilk
+     dakikalarda çökme) bekçi önceki sürüme döner ve yeniden başlatır; kenar çubuğunda uyarı. Windows'ta otomatik
+     test (GitHub) istenmedi.
+   - **Sürüm numarası** kenar çubuğunda ("Yenilikler" istenmedi).
+   - Sonra editör dükkânda tabletten tam akışı dener; notları 4.0'dan önce yapılır.
 
-Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
-gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)
+Gerekmeyenler: Windows açılışında otomatik başlatma; Windows'ta otomatik test (GitHub Actions); güncellemeden sonra
+"Yenilikler"; yatay/kare çıktı (yalnız Reels/Shorts paylaşılıyor). (Haber metni: DHA'nın "metni kopyala"sı uzaktan
+tablete gelmediği için v3.1.0'da "TXT indir" → Haber Stüdyosu'na aktarma eklendi.)
+
+## Sürüm 4.0 planı (editörle beyin fırtınası, 2026-09-26; henüz yapılmadı)
+
+Tema: Axion'u uzaktan güvenle kullanmak ve son kararı editöre hızlı verdirmek. Sıra, editörün tablet notlarından sonra
+yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalışır).
+
+1. **Kurguda sahne değiştirme:** Video Stüdyosu'nda seslendirme parçası başına küçük kare şeridi; sahneye dokun →
+   aynı görüntülerden 3–4 alternatif (fotoğraflar dahil) → seç → yalnız o parça yeniden kurulur. Faz 4'teki "Sahneleri
+   Luna ile düzenle" düğmesinin token'sız karşılığı; Faz 4 yine gerekirse.
+2. **Fotoğraf desteği** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/
+   kaydırma; alan tam dolu, bulanık dolgu yok) ve sahne değiştirmede seçilebilir.
+3. **Yazıya dökme (bilgisayarda, Whisper benzeri yerel model; boyut sorun değil, bilgisayarda 32 GB RAM):** kaynak
+   videonun sesi metne çevrilir → kesit seçimi metinden (cümleye dokun); röportaj alıntısı ham haberle/sesle
+   karşılaştırılabilir. İleride altyazı için de temel (altyazı şu an ürün kararı gereği yok; editör isterse açılır).
+   Önce gerçek DHA videosuyla Türkçe doğruluk ve hız denenir. Boyut gerekirse sonra küçültülür.
+4. **Editörün düzeltmelerinden öğrenme:** sistemin verdiği ile editörün son hâli arasındaki fark silinmeyen küçük bir
+   kayda yazılır (3 gün saklamadan bağımsız). Kapsam: başlıklar, seslendirme metni, paylaşım metni, kurgudaki sahne
+   değişiklikleri (1. madde), kesit aralığı düzenlemeleri. Kapsam dışı: kesit ekleme (editörün kendi işlemi), tasarım
+   (zevk meselesi). Geliştirici (Claude/GPT) belli aralıklarla okuyup istemi/kuralları düzeltir, regresyon testiyle.
+   Çalışma zamanında ek model çağrısı yok.
+5. **Müzik altlığı:** haber videolarında kullanılan türden sözsüz arka plan müzikleri (telifsiz, data/varliklar'a
+   eklenir); seslendirme ve kesit sesinin altında kısılır; editör seçer ya da kapatır.
+6. **Kapak = videonun ilk karesi:** ayrı kapak yüklemek yok. İlk karede başlık tam görünür (giriş animasyonunun son
+   hâli) ve kapak sahnesi (v3.1 "ilk sahne = kapak"); Reels/Shorts kapak seçiminde ilk kare hazır olur.
+7. **Durum paneli** (Geliştirici bilgileri): disk alanı, ElevenLabs'ta kalan karakter (ücretsiz sorgu), FFmpeg ve
+   donanım kodlayıcı; **günlük/aylık toplam maliyet** (haber + görüntü analizi; aylık için silinmeyen özet).
+8. 4.0 yayını: CHANGELOG'da 3.x özeti, KURULUM gözden geçirme, AGENTS "Nerede kaldık"ın kısaltılması.
 
 ## Ortam
 
