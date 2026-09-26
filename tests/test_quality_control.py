@@ -247,3 +247,29 @@ def test_reprocessing_asks_first_and_voiceover_can_be_regenerated_alone(local_en
     button(at, "Haberi işle").click().run()
     button(at, "Evet, baştan üret").click().run()
     assert len(calls) > first_calls and at.session_state["baslik1"] == "EŞİNİ ARADI DİYE VURDU"
+
+
+def test_protected_names_become_initials_in_caption_and_headlines():
+    """Editör kuralı (v3.6.4): suç, reşit olmayan, masumiyet karinesi → yalnız baş harfler ("A.K."); tanınmış kişi ve
+    röportaj veren açık. DHA korunan kişiyi "Ad S." diye yazar; paylaşım metni ve başlıkta API'siz çevrilir."""
+    from apps.news_studio.models.news import NewsOutput
+    from apps.news_studio.prompts.news import SYSTEM_PROMPT
+    from apps.news_studio.validation.news import protect_names, validate_news_output
+
+    raw = SULTANGAZI + " Esnaf Mehmet Yılmaz, “Çok korktuk” dedi."
+    caption = ("İstanbul Sultangazi’de Abdullah K. (44), eşiyle telefonda görüştüğünü öne sürdüğü Ömer Ş.’yi (44) silahla "
+               "vurdu. Abdullah K'nin yakalandığı öğrenildi. Ömer hastaneye kaldırıldı; Ömer’in durumu ağır. Esnaf Mehmet "
+               "Yılmaz, “Çok korktuk” dedi.")
+    text, changed, manual = protect_names(caption, raw)
+    assert "A.K. (44)" in text and "Ö.Ş.’yi (44)" in text and "A.K.'nin" in text and "Ö.Ş. hastaneye" in text
+    assert "Mehmet Yılmaz" in text and "Abdullah" not in text  # röportaj veren açık
+    assert manual == ["Ömer’in"] and "Ömer’in" in text  # ekli tek ad: ek baş harfe göre değişir, editör düzeltir
+    assert protect_names("ABDULLAH K. YAKALANDI", raw)[0] == "A.K. YAKALANDI"
+    assert protect_names("ÖMERLİ'DE KAZA · VALİ DAVUT GÜL", raw)[0] == "ÖMERLİ'DE KAZA · VALİ DAVUT GÜL"
+
+    result = NewsOutput(baslik1="ABDULLAH K. YAKALANDI", baslik2="HAYATİ TEHLİKESİ SÜRÜYOR", icerik=caption * 3,
+                        tts_plani=["olay"], tts="Sultangazi’de bir kişi tartıştığı adamı vurdu. Yaralının hayati tehlikesi sürüyor.")
+    check = validate_news_output(result, raw, 50, 400)
+    assert result.baslik1 == "A.K. YAKALANDI" and "Abdullah K" not in result.icerik
+    assert any("baş harfe çevrildi" in w for w in check.warnings) and any("elle düzelt" in w for w in check.warnings)
+    assert '"A.K."' in SYSTEM_PROMPT and "masumiyet karinesi" in SYSTEM_PROMPT

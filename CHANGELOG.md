@@ -1,3 +1,15 @@
+# v3.6.4 — İsim sansürü kuralı (suç, reşit olmayan, masumiyet karinesi) — 2026-09-26
+
+## Changed
+- **İsim kuralı netleşti (editör):** suç unsuru olan, reşit olmayan ve masumiyet karinesi/özel hayat gereği korunan
+  kişilerin adı paylaşım metninde ve başlıkta yalnız baş harfleriyle: "A.K." (önce DHA'daki gibi "Abdullah K."
+  çıkıyordu). Tanınmış kişiler ve röportaj veren/konuşan kişiler açık. Haber istemindeki kural bu tarifle yazıldı.
+- **API'siz güvence** (`validation/news.protect_names`): DHA korunan kişiyi "Ad S." diye yazar (röportaj vereni tam
+  adla); model bu yazımı bırakırsa paylaşım metninde ve başlıkta "A.K."ye çevrilir, bu kişilerin tek başına geçen adı
+  da ("Ömer" → "Ö.Ş."). Ek almış tek ad ("Ömer'in") çevrilmez (ek baş harfe göre değişir: "Ö.Ş.'nin"); "elle düzelt"
+  uyarısıyla gösterilir. Aynı adda tam adıyla geçen biri varsa (röportaj veren) tek ad çevrilmez. Regresyon testi
+  editörün Sultangazi haberiyle. Gerçek modelle denenmedi (istemin etkisi); API'siz çevirme model ne yazarsa yazsın çalışır.
+
 # v3.6.3 — Seslendirmede isim kontrolü, "baştan üret" onayı, yalnız seslendirmeyi yeniden üret — 2026-09-26
 
 Editörün Sultangazi haberi ve tablet notları.

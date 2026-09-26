@@ -199,15 +199,16 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.6.3
+## Nerede kaldık (2026-09-26) — Sürüm 3.6.4
 
 **3.6.3 (editörün notları):** seslendirmede sivil isim kontrolü (`validation/news.civil_names_in_tts` → düzeltme
 çağrısı), ekranda haber varken "Haberi işle" onay ister, "↻ Yeniden üret" = yalnız seslendirme (`clients.regenerate_tts`,
 haber istemi + TTS_RETRY), Luna'ya plaka kuralı yok (editör: blur'u kendisi ekler). Editör doğruladı: başlık yenileme
 çalışıyor (kalite orta, küçük düzeltme yapıyor), Tasarım'da elle düzenleme, kesit seçimi, Tarayıcı'da DHA giriş kaydı.
-**Açık karar (editöre soruldu):** paylaşım metninde suç haberlerinde şüpheli/mağdur adı DHA gibi "Abdullah K." mı
-(şu an böyle; istem "baş harfleriyle" diyor, model DHA biçimini koruyor) yoksa "A.K." mı. Blur ayrıntılı denenmedi.
-4.0'dan önce başka zorunlu iş yok; editör bir kez Axion'u simgeyle yeniden açmalı (geri dönüş bekçisi).
+**3.6.4:** isim kuralı (editör kararı): suç/reşit olmayan/masumiyet karinesi → "A.K." (paylaşım metni + başlık;
+`protect_names` API'siz çevirir, ekli tek ad "elle düzelt" uyarısı); tanınmış kişi ve röportaj veren açık. Blur
+ayrıntılı denenmedi. Editör Axion'u birkaç saat simgeyle yeniden açamayacak: geri dönüş bekçisi o zamana kadar etkin
+değil (bozuk güncellemede evde `guncelle.bat`); editör "4.0'a böyle geçelim" dedi.
 
 **3.6.2:** **editör ilk Luna kurgusunu doğruladı** (Sultangazi, teşhis dosyasıyla): "sorunsuz, beğendim, paylaştım";
 7/7 sahne Luna'dan, tekrar yok, kaynak sırası korundu. Gerçek maliyet: haber metni 3 çağrı ≈ $0,0036, görüntü analizi

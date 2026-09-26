@@ -38,7 +38,9 @@ Sistem tamamen **evdeki Windows bilgisayarında** çalışır; bulut/hosting kul
 
 **Haber metni ve TTS**
 - Plaka, kimlik no ve benzeri teknik ayrıntılar hiçbir çıktıda yer almaz.
-- Röportaj veren kişinin adı açık yazılır. Diğer sivil isimler baş harfle yazılır; TTS'te sivil isim kullanılmaz.
+- İsim sansürü (editör, 2026-09-26): suç unsuru olan, reşit olmayan ve masumiyet karinesi/özel hayat gereği korunan
+  kişilerin adı yalnız baş harfleriyle ("A.K."; DHA'nın "Abdullah K."sı da). Tanınmış kişiler ve röportaj veren
+  kişilerin adı açık. TTS'te sivil isim ve baş harf kullanılmaz. (Kontrol: `validation/news.py`, API'siz.)
 - TTS doğal ve konuşma dilindedir. Her cümle yeni bilgi verir; süreyi doldurmak için metin uzatılmaz.
 - Viral potansiyeli olan yön öne çıkarılır, ama kaynakta olmayan fiil veya abartı kullanılmaz.
 - **Başlıklar videoda 2 satıra sığmalı** (editörün temel kuralı): videodaki yazıyla (Google Sans Bold 58 px, 920 px

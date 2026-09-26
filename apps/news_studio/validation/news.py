@@ -116,6 +116,41 @@ def civil_names_in_tts(tts: str, raw_text: str) -> list[str]:
     return list(dict.fromkeys(found))
 
 
+_PROTECTED = re.compile(rf"\b([{_UPPER}])[{_LOWER}]{{2,}}\s+([{_UPPER}])(?:\.|(?=['’]))")
+_PROTECTED_CAPS = re.compile(rf"\b([{_UPPER}])[{_UPPER}]{{2,}}\s+([{_UPPER}])(?:\.|(?=['’]))")  # başlıklar büyük harf
+
+
+def protect_names(text: str, raw_text: str) -> tuple[str, list[str], list[str]]:
+    """Editör kuralı (v3.6.4): suç, reşit olmayan ve masumiyet karinesi/özel hayat durumlarında isim yalnız baş
+    harflerle ("A.K."). DHA bu kişileri "Ad S." diye yazar (röportaj verenleri ve tanınmış kişileri tam adla): o yazım
+    baş harflere çevrilir; bu kişilerin tek başına geçen adı da. Ek almış tek ad ("Ömer'in") çevrilmez (ek baş harfe
+    göre değişir: "Ö.Ş.'nin"), editöre gösterilir. API yok. Döndürür: (metin, çevrilenler, elle bakılacaklar)."""
+    changed: list[str] = []
+    manual: list[str] = []
+
+    def initials(match: re.Match) -> str:
+        changed.append(match.group(0).rstrip("."))
+        return f"{match.group(1)}.{match.group(2)}."
+
+    caps = bool(text) and text == turkish_upper(text)
+    text = (_PROTECTED_CAPS if caps else _PROTECTED).sub(initials, text)
+    full_names = set(re.findall(rf"\b([{_UPPER}][{_LOWER}]{{2,}})\s+[{_UPPER}][{_LOWER}]{{2,}}", raw_text))
+    for match in dict.fromkeys(_INITIAL_NAME.finditer(raw_text), None):
+        first = match.group(1)
+        short = f"{first[0]}.{match.group(0).split()[-1][0]}."
+        if first in full_names:  # aynı adda tam adıyla geçen biri de var (ör. röportaj veren): karıştırma
+            continue
+        name = turkish_upper(first) if caps else first
+        pattern = re.compile(rf"(?<![{_UPPER}{_LOWER}.]){re.escape(name)}(?![{_LOWER}{_UPPER if caps else ''}])")
+        suffixed = re.compile(pattern.pattern + "['’]")
+        manual += [m.group(0) + text[m.end():].split(" ", 1)[0][:6] for m in suffixed.finditer(text)]
+        plain = re.compile(pattern.pattern + "(?!['’])")
+        if plain.search(text):
+            changed.append(first)
+            text = plain.sub(short, text)
+    return text, list(dict.fromkeys(changed)), list(dict.fromkeys(manual))
+
+
 def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> ValidationResult:
     """Çıktıyı temizler (büyük harf, plaka, okunuş) ve kontrol eder. Hatalar tek düzeltme çağrısına gider, uyarılar
     editöre gösterilir."""
@@ -137,6 +172,18 @@ def validate_news_output(result, raw_text, tts_min_chars, tts_max_chars) -> Vali
         plate_removed = plate_removed or removed
     if plate_removed:
         warnings.append("Plaka bilgisi çıktıdan otomatik çıkarıldı.")
+    protected: list[str] = []
+    manual: list[str] = []
+    for field_name in ("baslik1", "baslik2", "icerik"):
+        cleaned, names, check = protect_names(getattr(result, field_name), raw_text)
+        setattr(result, field_name, cleaned)
+        protected += names
+        manual += check
+    if protected:
+        warnings.append("İsimler baş harfe çevrildi (suç/masumiyet karinesi): " + ", ".join(dict.fromkeys(protected)) + ".")
+    if manual:
+        warnings.append("Baş harfe çevrilmesi gereken ekli isim var, elle düzelt (ör. \"Ö.Ş.'nin\"): "
+                        + ", ".join(dict.fromkeys(manual)) + ".")
     if any(_PLATE.search(getattr(result, f)) for f in ("icerik", "tts")):
         warnings.append("Çıktıda plaka olabilecek bir ifade var; kontrol et.")
 

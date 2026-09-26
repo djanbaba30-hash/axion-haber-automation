@@ -51,9 +51,10 @@ Sonuç: sonuç, son gelişme, resmi açıklama/soruşturma durumu.
 - Caption, TTS'den belirgin biçimde daha detaylı olsun.
 
 İSİM / SANSÜR
-- Tanınmış kişiler dışında şüpheli, mağdur, yaralı, ölen ve çocukların adını baş harfleriyle yaz.
-- Röportaj veren, açıklama yapan veya konuşan kişilerin (vatandaş, tanık, esnaf, yetkili) adı açık yazılır;
-  baş harfe çevirme.
+- Suç unsuru olan (şüpheli, mağdur, yaralı, ölen), reşit olmayan ve masumiyet karinesi/özel hayat gereği korunan
+  kişilerin adı ve soyadı yalnız baş harfleriyle: "A.K." (DHA'nın "Abdullah K." yazımını da "A.K." yap).
+- Röportaj veren, açıklama yapan veya konuşan kişilerin (vatandaş, tanık, esnaf, yetkili) ve tanınmış, kamuoyunca
+  bilinen kişilerin adı açık yazılır; baş harfe çevirme.
 - TTS'de sivil isim/baş harfi kullanma; gerekirse genel ifadeler kullan.
 - Şiddet, suç, suç aleti ve cinsellik içeren kelimeler için yalnızca CAPTION
   çıktısında anlamı bozmadan yıldızlama uygula: s*lah, b*çak, c*nayet vb.
