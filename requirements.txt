@@ -6,3 +6,4 @@ elevenlabs==2.68.0
 pydantic==2.13.5
 mutagen==1.48.1
 playwright==1.63.0
+faster-whisper==1.2.1

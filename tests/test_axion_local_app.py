@@ -648,6 +648,47 @@ def test_pick_soundbite_from_selected_video_before_analysis(local_env, monkeypat
     assert entry["degisti"] is True
 
 
+def test_soundbite_is_picked_from_the_transcript(local_env, monkeypatch):
+    """v4.0.0-alpha.7: konuşmalar bu bilgisayarda yazıya dökülür; cümleye dokun → kesit aralığı o cümle, ikinci
+    dokunuş iki cümlenin arası (testte sahte model)."""
+    import subprocess
+    from types import SimpleNamespace
+
+    from apps.video_studio.modules import transcribe
+
+    class FakeWhisper:
+        def transcribe(self, audio, **kwargs):
+            parts = [(1.0, 3.2, "Müşterimizin boğazına yemek kaçtı."), (3.6, 5.1, "Hemen fark ettim."),
+                     (6.0, 9.4, "Heimlich manevrası uyguladım.")]
+            return (SimpleNamespace(start=a, end=b, text=t) for a, b, t in parts), SimpleNamespace(duration=12.0)
+
+    monkeypatch.setattr(transcribe, "_load_model", lambda: FakeWhisper())
+    video = local_env / "Downloads" / "roportaj.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25:duration=12",
+                    "-f", "lavfi", "-i", "sine=duration=12", "-shortest", str(video)], check=True)
+    project = saved_project({"assets": []})
+    at = open_page(project)
+    at.multiselect(key="selected_media").select(video).run()
+    button(at, "▶️ Videoyu izle ve kesit seç").click().run()
+    button(at, "📝 Konuşmaları yazıya dök").click().run()
+    transcribe.job(video, project.folder).thread.join(10)
+    at.run()
+    assert not at.exception
+    lines = [b for b in at.button if b.key and b.key.startswith("yazi_")]
+    assert [b.label for b in lines] == ["00:01.0–00:03.2 · Müşterimizin boğazına yemek kaçtı.",
+                                        "00:03.6–00:05.1 · Hemen fark ettim.", "00:06.0–00:09.4 · Heimlich manevrası uyguladım."]
+    assert any("yazıya döküldü" in c.value for c in at.caption)
+    lines[1].click().run()
+    assert at.select_slider(key="kesit_range").value == ("00:03.6", "00:05.1")
+    next(b for b in at.button if b.key == "yazi_2").click().run()  # ikinci dokunuş: 2. ve 3. cümlenin arası
+    assert at.select_slider(key="kesit_range").value == ("00:03.6", "00:09.4")
+    assert not at.exception and not at.warning
+    button(at, "➕ Kesiti ekle").click().run()
+    from apps.video_studio.modules.soundbites import SOUNDBITES_FILENAME
+
+    assert [(b["start_s"], b["end_s"]) for b in store.load_project_json(project, SOUNDBITES_FILENAME)] == [(3.6, 9.4)]
+
+
 def test_fresh_start_selects_nothing_and_hides_previous_days(local_env):
     from datetime import timedelta
 

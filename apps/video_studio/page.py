@@ -29,7 +29,7 @@ from apps.axion_local.store import (
     save_project_json,
 )
 from apps.video_studio import jobs as video_jobs
-from apps.video_studio.modules import luna_edit, scene_swap
+from apps.video_studio.modules import luna_edit, scene_swap, transcribe
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
@@ -139,6 +139,58 @@ def invalidate_cut(project: NewsProject) -> None:
     (project.folder / EDIT_PROJECT_FILENAME).unlink(missing_ok=True)
     (project.folder / ROUGH_CUT_FILENAME).unlink(missing_ok=True)
     (project.folder / FINAL_VIDEO_FILENAME).unlink(missing_ok=True)
+
+
+def transcript_picker(project: NewsProject, source: Path) -> None:
+    """Yerel yazıya dökme (v4.0, API yok): konuşmalar zamanlı cümleler; cümleye dokun → kesit aralığı o cümle, ikinci
+    dokunuş iki cümlenin arasını seçer."""
+    result = transcribe.load(project.folder, source)
+    job = transcribe.job(source, project.folder)
+    if result is None and not (job and job.running):
+        if job and job.error:
+            st.error(f"Yazıya dökülemedi: {job.error}")
+        if not transcribe.available():
+            st.caption("Yazıya dökme bu bilgisayarda kurulu değil (Axion'u güncelleyince kurulur).")
+        elif st.button("📝 Konuşmaları yazıya dök", width="stretch",
+                       help="Videodaki konuşmayı bu bilgisayarda yazıya döker (internet ve ücret yok); cümleye dokunarak "
+                            "kesit seçersin. İlk seferde dil modeli bir kez iner (~1,6 GB, birkaç dakika)."):
+            transcribe.start(source, project.folder)
+            st.rerun()
+        return
+
+    @st.fragment(run_every=1.0 if job and job.running else None)
+    def sentences() -> None:
+        current = transcribe.job(source, project.folder)
+        if current and current.running:
+            first = "" if transcribe.model_ready() else " İlk sefer: dil modeli iniyor (~1,6 GB)."
+            st.info(f"📝 Yazıya dökülüyor… %{current.progress * 100:.0f} · {time.monotonic() - current.started:.0f} sn."
+                    f"{first} Bu sırada kesit seçmeye devam edebilirsin.")
+            return
+        if current and current.done and not ss.get("yazi_shown"):  # bittiği an sayfa bir kez yenilenir
+            ss.yazi_shown = True
+            st.rerun(scope="app")
+        done = transcribe.load(project.folder, source)
+        if done is None:
+            return
+        lines = done["cumleler"]
+        with st.expander(f"📝 Konuşmalar — {len(lines)} cümle (cümleye dokun: kesit o cümle; ikinciye dokun: arası)",
+                         expanded=True):
+            if not lines:
+                st.caption("Bu videoda konuşma bulunamadı.")
+            anchor = ss.get("yazi_anchor")
+            for number, line in enumerate(lines):
+                label = f"{mmss(line['bas'])}–{mmss(line['son'])} · {line['metin']}"
+                if st.button(label, key=f"yazi_{number}", width="stretch",
+                             type="primary" if anchor == number else "secondary"):
+                    pair = (anchor, number) if anchor is not None and anchor != number else (number, number)
+                    ss.kesit_from_text = transcribe.span(lines, *pair)
+                    ss.yazi_anchor = None if pair[0] != pair[1] else number
+                    st.rerun(scope="app")
+            st.caption(f"{done['video_sn']:.0f} sn'lik ses {done['sure_sn']:.0f} sn'de yazıya döküldü (bu bilgisayarda, "
+                       "ücretsiz). Yanlış duyulan kelimeler olabilir; kesiti seçerken videodan dinle.")
+
+    ss.yazi_shown = not (job and job.running)
+    sentences()
 
 
 def shorten(text: str, limit: int) -> str:
@@ -357,6 +409,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
             if ss.get("kesit_source") != source_key or any(label not in seconds_of for label in ss.get("kesit_range", ())):
                 ss.kesit_source = source_key
                 ss.pop("kesit_range", None)  # yeni video: varsayılan aralık (olay anı)
+                ss.pop("yazi_anchor", None)
             # Varsayılan aralık olay anı (ani hareket/ses, Luna'nın "olay" sahneleri; API yok). Yoksa ilk 5 sn.
             suggested = suggested_range(preview, duration, action_windows(media_library, source.name))
 
@@ -364,6 +417,9 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                 return min(seconds_of, key=lambda label: abs(seconds_of[label] - seconds))
 
             default = (nearest(suggested[0]), nearest(suggested[1])) if suggested else (mmss(0), nearest(min(5.0, duration)))
+            chosen = ss.pop("kesit_from_text", None)  # yazıya dökümde cümleye dokunuldu (v4.0)
+            if chosen:
+                ss.kesit_range = (nearest(chosen[0]), nearest(chosen[1]))
             start_label, end_label = st.select_slider("Kesit aralığı (dakika:saniye)", list(seconds_of), key="kesit_range",
                                                       value=default)
             if suggested:
@@ -372,6 +428,7 @@ with st.expander(f"3. Kaynak sesli kesitler (isteğe bağlı){summary}", expande
                 st.caption("Videoda belirgin bir olay anı bulunamadı; aralığı videoyu izleyerek seç.")
             start_s, end_s = seconds_of[start_label], seconds_of[end_label]
             st.video(str(preview), start_time=int(start_s), end_time=max(int(start_s) + 1, int(end_s + 0.999)))
+            transcript_picker(project, source)
             placement_col, add_col = st.columns([2, 1], vertical_alignment="bottom")
             placement = placement_col.segmented_control(
                 "Nereye", list(PLACEMENT_LABELS), key="kesit_placement", default="before",

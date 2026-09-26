@@ -105,6 +105,7 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
                                numpy/Pillow, API yok)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
+  modules/transcribe.py        Yerel yazıya dökme (v4.0; faster-whisper, API yok): kesit cümleden seçilir; model data/modeller
   modules/speech.py            Seste konuşma var mı (kepstrum, API yok): müzik altlığı konuşmalı kesitte kısılır (v4.0)
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); fotoğraf:
@@ -181,6 +182,7 @@ Video Stüdyosu ──analiz────►   media_library.json (shared MediaLi
                                browser upload ise proje içindeki media/ kaynakları kullanır
                ──hazırla───►   edit_project.json (shared EditProject 2.1; video izi rough_cut ile dolu)
                ──kesit─────►   kesitler.json (kaynak sesli kesitler) + onizleme/*.mp4 (360p, kesit seçmek için)
+                               + yazi/*.json (yerel yazıya döküm, v4.0; cümleye dokunarak kesit)
                ──oluştur───►   kaba_kurgu.mp4 (960x1226 = Canva şablonunun video alanı, TTS + kesit sesleriyle)
                ──oluştur───►   son_video.mp4 da hemen (standart şablon; design_studio/pipeline.py)
 Tasarım Stüdyosu ──düzenle──►   tasarim.json v2 (başlıklar, stil, yazılar, efektler, çerçeve, arka plan, blur/mozaik)
@@ -207,6 +209,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | `news_package.json`, `tts.mp3`, `media_library.json`, `kesitler.json`, `edit_project.json`, `kaba_kurgu.mp4`, `onizleme/`, `tasarim.json`, `son_video.mp4` | `data/projects/<zaman>_<başlık>/` | 3 iş günü sonra (`store.delete_old_projects`); `edit_project`/MP4 ayrıca haber veya görüntü değişince |
 | Üretim geçmişi | `data/history.sqlite3` | 3 iş günü sonra satır satır |
 | Ayarlar, seslendirme hız kalibrasyonu, günlük | `data/ayarlar.json`, `data/*.json`, `data/axion.log` | Silinmez |
+| Yazıya dökme modeli (v4.0, ~1,6 GB) | `data/modeller/` | Silinmez (ilk kullanımda bir kez iner) |
 | Düzeltme kaydı (v4.0) | `data/duzeltmeler.jsonl` | Silinmez (internete gitmez; editör indirip yollar) |
 | Maliyet defteri (v4.0) | `data/maliyet.jsonl` | Silinmez (çağrı başına ~100 bayt) |
 | Uygulamadan eklenen yazı tipi ve arka planlar | `data/varliklar/` (+ `GITHUB_TOKEN` varsa repoda `assets/sablon/`) | Silinmez |
@@ -215,7 +218,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.6 → sıradaki: alpha.7 (yerel yazıya dökme)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -261,8 +264,12 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    ve `apps/axion_local/ledger.py` (`add` çağrı noktaları: news page haber/başlık/seslendirme metni/ses,
    video page görüntü analizi, jobs.py sahne [yalnız kaynak "luna"]). Yeni ücretli çağrı eklerken `ledger.add` de
    çağır. Testler `tests/test_status.py`.
-7. `alpha.7` **Yerel yazıya dökme (Whisper benzeri):** önce gerçek DHA videosuyla Türkçe doğruluk/hız denemesi; kesit
-   seçimi metinden; ileride altyazı temeli (altyazı şu an ürün kararı gereği yok). Boyut sorun değil (32 GB RAM).
+7. `alpha.7` **Yerel yazıya dökme — YAPILDI:** `video_studio/modules/transcribe.py` (faster-whisper large-v3-turbo,
+   CPU int8, tr, VAD; tembel içe aktarma; model `data/modeller`; sonuç `<proje>/yazi/*.json`; `start` arka plan işi),
+   sayfa `transcript_picker` (3. adım; cümleye dokun → `kesit_from_text` → kaydırıcı; ikinci dokunuş arası). Testler
+   `tests/test_transcribe.py` + AppTest `test_soundbite_is_picked_from_the_transcript`. **Türkçe doğruluk/hız sandbox'ta
+   ölçülemedi (HuggingFace kapalı): editörün bilgisayarında Artvin videosuyla** (DHA 1524777.mp4 + TXT; röportaj
+   42–70 sn). Yavaşsa MODEL="small". İleride: müzik altlığının konuşma tespiti (`speech.py`) dökümden alınabilir.
 Sonra: genel repo taraması → `v4.0.0`.
 
 **Açık notlar:** editör Axion'u henüz masaüstü simgesiyle yeniden açmadı → geri dönüş bekçisi (v3.5.0) etkin değil

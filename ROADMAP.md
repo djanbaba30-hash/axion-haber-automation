@@ -153,7 +153,7 @@ yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalış
    planı v3.6.0'dan beri `kurgu_plani.json`'da, elle değişiklik onun üstüne yazılır).
 2. **Fotoğraf desteği — yapıldı (v4.0.0-alpha.1)** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/
    kaydırma; alan tam dolu, bulanık dolgu yok) ve sahne değiştirmede seçilebilir.
-3. **Yazıya dökme (bilgisayarda, Whisper benzeri yerel model; boyut sorun değil, bilgisayarda 32 GB RAM):** kaynak
+3. **Yazıya dökme — yapıldı (v4.0.0-alpha.7; doğruluk editörün bilgisayarında ölçülecek) (bilgisayarda, Whisper benzeri yerel model; boyut sorun değil, bilgisayarda 32 GB RAM):** kaynak
    videonun sesi metne çevrilir → kesit seçimi metinden (cümleye dokun); röportaj alıntısı ham haberle/sesle
    karşılaştırılabilir. İleride altyazı için de temel (altyazı şu an ürün kararı gereği yok; editör isterse açılır).
    Önce gerçek DHA videosuyla Türkçe doğruluk ve hız denenir. Boyut gerekirse sonra küçültülür.

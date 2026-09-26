@@ -1,3 +1,29 @@
+# v4.0.0-alpha.7 — Yerel yazıya dökme: kesit cümleden seçilir — 2026-09-26
+
+4.0'ın son parçası. Editörün Artvin haberi (DHA 1524777.mp4, 70 sn: güvenlik kamerası + restoran sesi + röportaj) ve
+DHA metniyle hazırlandı.
+
+## Added
+- **📝 Konuşmaları yazıya dök** (Video Stüdyosu → 3. Kaynak sesli kesitler; `video_studio/modules/transcribe.py`):
+  videodaki konuşma bu bilgisayarda yazıya dökülür — API yok, token yok. Motor faster-whisper (Whisper large-v3-turbo,
+  işlemcide int8, Türkçe sabit, sessiz yerler atlanır). Arka planda sürer (yüzde ve süre görünür, tablet kapansa da
+  biter); sonuç projede saklanır, aynı video yeniden dökülmez. Cümleler zamanlarıyla listelenir: **cümleye dokun →
+  kesit aralığı o cümle; ikinci cümleye dokun → iki cümlenin arası** (sonra her zamanki gibi önce/sonra → Kesiti ekle).
+  İleride altyazının temeli (altyazı şu an ürün kararı gereği yok).
+- Model ilk kullanımda bir kez iner (~1,6 GB, `data/modeller`, silinmez); sonra internetsiz çalışır. `faster-whisper`
+  requirements'a eklendi (güncellemede bekçi kurar). Paket yalnız kullanılırken yüklenir: kurulamazsa Axion yine açılır,
+  bu düğme yerine "kurulu değil" yazar.
+
+## Notes
+- **Türkçe doğruluk ve hız bu ortamda ölçülemedi:** modeller HuggingFace'ten iner, bu çalışma ortamında erişim kapalı.
+  Editörün bilgisayarında ilk denemede ölçülür (Artvin videosu: röportajdaki "…eğitimini almış olduğum Heimlich
+  manevrasını uyguladım…" cümleleri DHA metniyle karşılaştırılır; süre ekranda yazar). Yavaş kalırsa `transcribe.MODEL`
+  daha küçük modele ("small") çekilir.
+- Denenenler: sahte modelle tüm akış (testli); faster-whisper'ın DHA videosundan sesi okuması (70,6 sn, 0,2 sn) ve kendi
+  konuşma bulucusu (konuşma 27,5–70,6 sn: restoran içi konuşma + röportaj; yalnız bu kısım modele gider).
+- alpha.4.1'in konuşma tespiti bu gerçek DHA videosunda doğru: 0–18 sn sessiz, 18–36 sn restoran uğultusu "konuşma
+  değil", 36–70 sn röportaj "konuşma".
+
 # v4.0.0-alpha.6 — Durum paneli ve günlük/aylık maliyet — 2026-09-26
 
 ## Added
