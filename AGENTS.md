@@ -92,13 +92,15 @@ apps/video_studio/             VIDEO STÜDYOSU
                                başlangıç anı, enum'lu şema); plan kurgu_plani.json (imza aynıysa yeniden çağrı yok;
                                "yeniden seç" önceki kurguyu "beğenilmedi" diye gönderir); olmazsa kurallar
   modules/rough_cut.py         Faz 3 kural tabanlı kurgu (v3.6'dan beri yedek + Luna'nın bıraktığını doldurma; `prepare` ortak
-                               hazırlık, `plan_rough_cut(picks=)`): TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi;
+                               hazırlık, `plan_rough_cut(picks=)`): TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi
+                               (v4.0: fotoğraflar da aday, yakınlaşmalı kadraj);
                                aynı çekim kaynak sırasıyla, tek uzun çekimde anlatım sırası, dikeyde sabit kadraj
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
                                numpy/Pillow, API yok)
   modules/soundbites.py        Kaynak sesli kesitler (önce/sonra, kesitler.json) ve 360p önizleme (onizleme/)
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
-  modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); ses: parça
+  modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); fotoğraf:
+                               EXIF yönü + yavaş yakınlaşma (zoompan, v4.0); ses: parça
                                başına ölçülmüş sabit kazanç (TTS -18, kesit -20 LUFS), kenar yumuşatma, -2 dBFS sınırlayıcı
   jobs.py                      Videoyu arka planda üretme: sahne seçimi (Luna, PlanRequest) → kaba kurgu → son video (aynı haberin tasarım üretimi önce
                                durdurulur); sayfa saniyede bir durumu yeniler, tablet kapansa da sürer
@@ -201,7 +203,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.7.2 → sıradaki: 4.0 parça parça
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.1 → sıradaki: alpha.2 (sahne değiştirme)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -212,9 +214,11 @@ AGENTS "Nerede kaldık"ın 3.x geçmişini kısaltma, CHANGELOG'da 3.x özeti) �
 Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede kaldık"a yaz.
 
 **4.0 parçaları (sıra; ayrıntı ROADMAP "Sürüm 4.0 planı"):**
-1. `alpha.1` **Fotoğraf desteği:** kurgu fotoğrafları da kullanır (yavaş yakınlaşma/kaydırma, alan tam dolu, bulanık
-   dolgu yok); Luna'nın sahne seçimine fotoğraflar da gider (`_candidates` şu an `VideoAsset` dışını atlıyor;
-   görüntü analizi fotoğrafları zaten analiz ediyor: `media_library` `images`).
+1. `alpha.1` **Fotoğraf desteği — YAPILDI:** fotoğraf = `Candidate(photo=True)`, sanal kaynak aralığı
+   `PHOTO_SECONDS` (bir kullanımda tamamı "kullanıldı"); kadraj `_photo_zoom` (view_region ↔ view_region_end farklı
+   boyut = yakınlaşma, özne içeride); render `_photo_input` (yakınlaşma: tek kare + `zoompan` 4x büyütülmüş karede;
+   sabit/kayan: `-loop 1` + video yolu; `-noautorotate` + `EXIF_TURN`); `ImageAsset.geometry` artık dolu
+   (`video_asset.image_geometry`); Luna istemi "fotoğraf N | hareketsiz". Testler `tests/test_photos.py`.
 2. `alpha.2` **Kurguda sahne değiştirme:** Video Stüdyosu'nda sahne başına küçük kare; dokun → aynı görüntülerden
    3–4 alternatif (fotoğraflar dahil) → seç → yalnız o sahne değişir (API yok; `kurgu_plani.json` üstüne editör seçimi,
    `origin: "user"`).
@@ -452,7 +456,6 @@ Windows açılışında otomatik başlatma istenmiyor. Uyku/ekran ayarını çal
 uyku kapalı olmalı, ekranın kapanması uygulamanın çalışmasını engellememeli.
 
 ### Bilinen borçlar
-- Kaba kurgu tekil görselleri (fotoğraf) kullanmıyor; yalnızca video sahneleri.
 - ElevenLabs çağrısı retry edilmez; karakter kotası iki kez tüketilmesin diye bilinçli.
 - `edit_plan.py` ve `media_library.py` isimleri tarihsel (Faz 2 öncesi); davranışları shared 2.1 sözleşmesine uyar.
 - Arayüz testleri AppTest ile; tarayıcıya özgü davranışlar (ör. v2.2.0'daki metin kutusu hatası) AppTest'te görünmeyebilir.

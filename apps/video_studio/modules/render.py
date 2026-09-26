@@ -9,10 +9,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from shared.edit_models import ClipType, EditProject, Framing, TrackKind
-from shared.media_models import MediaLibrary
+from shared.edit_models import Clip, ClipType, EditProject, Framing, TrackKind
+from shared.media_models import ImageAsset, MediaLibrary
 
 from .ffmpeg_runner import PROBE_TIMEOUT_SECONDS, long_job_timeout, run_ffmpeg
+from .video_asset import image_geometry
 
 X264 = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
 AMF = ["-c:v", "h264_amf", "-quality", "quality", "-b:v", "10M"]  # AMD ekran kartı donanım kodlayıcısı
@@ -27,6 +28,10 @@ MAX_BOOST_DB = 12.0  # sessiz kesitte gürültüyü şişirme (seslendirme temiz
 FADE_S = 0.03  # kesit kenarlarında çıt sesi olmasın
 LIMITER = "alimiter=limit=0.79:attack=5:release=60:level=disabled"
 AUDIO_FORMAT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+# Fotoğraf (v4.0): FFmpeg'in kendi döndürmesi kapalı (-noautorotate; sürüme göre değişiyor), EXIF yönü burada uygulanır.
+EXIF_TURN = {2: "hflip", 3: "hflip,vflip", 4: "vflip", 5: "transpose=0", 6: "transpose=1", 7: "transpose=3",
+             8: "transpose=2"}
+PHOTO_SCALE = 4  # yakınlaşma büyütülmüş karede hesaplanır: zoompan'ın tam piksel adımları titreme yapmasın
 
 
 @lru_cache(maxsize=128)
@@ -65,7 +70,7 @@ def amd_encoder_available() -> bool:
     return " h264_amf " in result.stdout
 
 
-def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int, frames: int) -> str:
+def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int, frames: int, turn: str = "") -> str:
     """Tek kadraj yolu: planlayıcının seçtiği alan kırpılıp video alanına ölçeklenir (hep tam dolu).
 
     Bulanık dolgu hiçbir durumda üretilmez (editör kararı); `framing.mode` yok sayılır. view_region_end varsa kadraj
@@ -83,15 +88,52 @@ def _clip_filter(index: int, framing: Framing, width: int, height: int, fps: int
         framing_steps = f"scale={size}:force_original_aspect_ratio=increase,crop={size}"
     # tpad + trim: kaynak birkaç kare kısa kalsa bile klip tam `frames` kare olur (ses ile senkron).
     return (
-        f"[{index}:v]{framing_steps},setsar=1,fps={fps},format=yuv420p,"
+        f"[{index}:v]{turn}{framing_steps},setsar=1,fps={fps},format=yuv420p,"
         f"tpad=stop_mode=clone:stop=5,trim=end_frame={frames},setpts=PTS-STARTPTS[v{index}]"
     )
+
+
+def _zooms(framing: Framing) -> bool:
+    start, end = framing.view_region, framing.view_region_end
+    return bool(start and end and abs(start.width - end.width) > 1e-4)
+
+
+def _photo_zoom_filter(index: int, framing: Framing, width: int, height: int, fps: int, frames: int, turn: str) -> str:
+    """Fotoğrafta yavaş yakınlaşma/uzaklaşma: büyük alan kırpılıp büyütülür, küçük alana doğru zoompan (alan hep dolu)."""
+    start, end = framing.view_region, framing.view_region_end
+    outer = start if start.width >= end.width else end
+
+    def relative(region):
+        return (region.x - outer.x) / outer.width, (region.y - outer.y) / outer.height, region.width / outer.width
+
+    (sx, sy, sw), (ex, ey, ew) = relative(start), relative(end)
+    p = f"on/{max(frames - 1, 1)}"
+    return (
+        f"[{index}:v]{turn}crop=iw*{outer.width}:ih*{outer.height}:iw*{outer.x}:ih*{outer.y},"
+        f"scale={width * PHOTO_SCALE}:{height * PHOTO_SCALE}:flags=lanczos,"
+        f"zoompan=z='1/({sw:.5f}+({ew - sw:.5f})*{p})':x='iw*({sx:.5f}+({ex - sx:.5f})*{p})':"
+        f"y='ih*({sy:.5f}+({ey - sy:.5f})*{p})':d={frames}:s={width}x{height}:fps={fps},"
+        f"setsar=1,format=yuv420p,trim=end_frame={frames},setpts=PTS-STARTPTS[v{index}]"
+    )
+
+
+def _photo_input(asset: ImageAsset, source: str, clip: Clip, index: int, width: int, height: int,
+                 fps: int) -> tuple[list[str], str]:
+    orientation = asset.geometry.exif_orientation if asset.geometry else image_geometry(Path(source)).exif_orientation
+    turn = f"{EXIF_TURN[orientation]}," if orientation in EXIF_TURN else ""
+    if _zooms(clip.framing):  # tek kare girer, zoompan klip boyunca kare üretir
+        return (["-noautorotate", "-i", source],
+                _photo_zoom_filter(index, clip.framing, width, height, fps, clip.duration_f, turn))
+    seconds = clip.duration_f / fps + 0.2  # sabit ya da kayan kadraj: kare tekrarlanır, video yolu
+    return (["-loop", "1", "-framerate", str(fps), "-t", f"{seconds:.3f}", "-noautorotate", "-i", source],
+            _clip_filter(index, clip.framing, width, height, fps, clip.duration_f, turn))
 
 
 def build_render_command(edit_project: dict[str, Any], media_library: dict[str, Any], output: Path, encoder: list[str]) -> list[str]:
     project = EditProject.model_validate(edit_project)
     library = MediaLibrary.model_validate(media_library)
     sources = {asset.asset_id: asset.source.original_path for asset in library.assets}
+    assets = {asset.asset_id: asset for asset in library.assets}
     timeline = project.edit_plan.timeline
     clips = sorted(
         (c for t in timeline.tracks if t.kind == TrackKind.VIDEO for c in t.clips if c.clip_type == ClipType.MEDIA),
@@ -108,8 +150,14 @@ def build_render_command(edit_project: dict[str, Any], media_library: dict[str, 
         source = sources.get(clip.asset_id)
         if not source or not Path(source).exists():
             raise FileNotFoundError(
-                f"Video bulunamadı: {source or clip.asset_id}. Dosya taşındıysa görüntüleri yeniden seçip analiz et."
+                f"Görüntü bulunamadı: {source or clip.asset_id}. Dosya taşındıysa görüntüleri yeniden seçip analiz et."
             )
+        if isinstance(assets[clip.asset_id], ImageAsset):
+            inputs, graph = _photo_input(assets[clip.asset_id], source, clip, index, timeline.width, timeline.height,
+                                         timeline.fps)
+            command += inputs
+            filters.append(graph)
+            continue
         seconds = clip.source_out_s - clip.source_in_s
         command += ["-ss", f"{clip.source_in_s:.3f}", "-t", f"{seconds + 0.2:.3f}", "-i", source]
         filters.append(

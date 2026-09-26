@@ -4,13 +4,17 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from .framing import standard_vertical_region
+from .visual_analysis import exif_orientation
 from shared.media_models import (
     AnalysisFrame,
     AnalysisWindow,
     AudioTechnicalInfo,
     DisplayGeometry,
     ImageAsset,
+    ImageGeometry,
     MediaSource,
     Shot,
     VideoAsset,
@@ -122,6 +126,16 @@ def build_video_asset(
     ).model_dump(mode="json")
 
 
+def image_geometry(path: Path) -> ImageGeometry:
+    """Fotoğrafın ekranda görünen boyutu (EXIF yönü uygulanmış) ve ham yön etiketi (render aynı dönüşü yapar)."""
+    with Image.open(path) as image:
+        orientation = exif_orientation(image)
+        width, height = image.size
+    if orientation >= 5:  # 5–8: 90° dönük kayıt
+        width, height = height, width
+    return ImageGeometry(width=width, height=height, exif_orientation=orientation)
+
+
 def build_image_asset_model(image: dict[str, Any], visual: dict[str, Any] | None, usage: dict[str, Any]) -> dict[str, Any]:
     path = Path(image["path"])
     return ImageAsset(
@@ -133,6 +147,7 @@ def build_image_asset_model(image: dict[str, Any], visual: dict[str, Any] | None
             original_path=str(path),
             size_bytes=path.stat().st_size,
         ),
+        geometry=image_geometry(path),
         visual=visual,
         analysis_model=usage.get("model", ""),
         analysis_prompt_version=LUNA_PROMPT_VERSION,

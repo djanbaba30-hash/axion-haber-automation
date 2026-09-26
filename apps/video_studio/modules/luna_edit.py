@@ -2,7 +2,7 @@
 
 Haber başına tek, görüntüsüz Luna çağrısı: haberin anlatımı (paylaşım metninin başı), seslendirme sahneleri
 (duraklamalarda kesilmiş, söylenen metinle) ve analizdeki pencereler (kaynak zamanı, çekim, tür, açıklama, mekân,
-karedeki yazı) gider. Luna önce olay örgüsünü yazar, her sahneye aşama verir (olay anı, müdahale, sonuç…), sonra
+karedeki yazı; v4.0'dan beri fotoğraflar da) gider. Luna önce olay örgüsünü yazar, her sahneye aşama verir (olay anı, müdahale, sonuç…), sonra
 sahneye bir pencere ve o penceredeki başlangıç anını seçer (v3.7: "haberin konusunu bilerek kurgu"). Kesme zamanları, kadraj (bulanık dolgu yok, dikeyde sabit), kaynak sesli kesitler ve aynı
 anın iki kez kullanılmaması kurallarla kalır (`rough_cut.plan_rough_cut(picks=...)`). Luna'ya ulaşılamazsa ya da
 anahtar yoksa kurallı kurgu kullanılır.
@@ -39,6 +39,8 @@ SYSTEM_PROMPT = """Haber videosu kurgucususun. Haberi anlayarak seslendirmenin h
 Girdi: başlıklar; haberin kendisi (olayın tam anlatımı); seslendirme sahneleri (sıra no, süre, o sırada söylenen);
 görüntü pencereleri (id, video/çekim, kaynak zamanı, tür/rol, kısa açıklama, özne, mekân, karede okunan yazı).
 Pencereler kaynaktaki sırasıyladır; aynı çekimin pencereleri tek kesintisiz çekimin ardışık parçalarıdır.
+"fotoğraf" pencereleri hareketsiz karedir (videoda yavaş yakınlaşmayla gösterilir): videolar gibi seçilebilir, her
+fotoğraf en fazla bir kez; kaynak_bas 0.
 Görüntü açıklamaları kısadır: haberle bağını tür, mekân ve karedeki yazıdan kur (ör. "OLAY YERİ İNCELEME" yazılı
 araç = soruşturma/olay yeri; ambulans = müdahale; hasarlı araç = olayın sonucu).
 
@@ -76,12 +78,16 @@ def build_prompt(prep: Prepared) -> str:
     """Luna'ya giden metin (önceki kurgu notu hariç: imza bundan hesaplanır)."""
     news = prep.project.news
     videos: dict[str, int] = {}
+    photos: dict[str, int] = {}
     shots: dict[tuple[str, str], int] = {}
     rows: list[list[Any]] = []  # [ilk id, son id, konum, başlangıç, bitiş, açıklama, notlar, pencere sayısı]
     for pid, c in zip(window_ids(prep), prep.candidates):
-        video = videos.setdefault(c.asset_id, len(videos) + 1)
-        shot = shots.setdefault((c.asset_id, c.shot_id), sum(1 for asset, _ in shots if asset == c.asset_id) + 1)
-        place = f"video {video} çekim {shot}"
+        if c.photo:
+            place = f"fotoğraf {photos.setdefault(c.asset_id, len(photos) + 1)}"
+        else:
+            video = videos.setdefault(c.asset_id, len(videos) + 1)
+            shot = shots.setdefault((c.asset_id, c.shot_id), sum(1 for asset, _ in shots if asset == c.asset_id) + 1)
+            place = f"video {video} çekim {shot}"
         notes = []
         if c.role is not EditorialRole.UNKNOWN:
             notes.append(f"{c.visual_type.value}/{c.role.value}")
@@ -105,7 +111,8 @@ def build_prompt(prep: Prepared) -> str:
     for first, last, place, start, end, description, notes, count, seen in rows:
         ids = first if count == 1 else f"{first}–{last} ({count} ardışık pencere, hepsi aynı görünüyor)"
         extra = [*notes, seen] if count == 1 and seen else notes
-        lines.append(f"{ids} | {place} | {start:.1f}–{end:.1f} sn | {description or '-'} | " + " · ".join(extra))
+        span = "hareketsiz" if place.startswith("fotoğraf") else f"{start:.1f}–{end:.1f} sn"
+        lines.append(f"{ids} | {place} | {span} | {description or '-'} | " + " · ".join(extra))
     slots = []
     for number, (start, end, text) in enumerate(prep.slots(), 1):
         mark = " (kapak)" if number == 1 else ""

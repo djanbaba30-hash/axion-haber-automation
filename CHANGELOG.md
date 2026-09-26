@@ -1,3 +1,24 @@
+# v4.0.0-alpha.1 — Fotoğraflar kurguda — 2026-09-26
+
+4.0'ın ilk parçası (editör kararı: 4.0 parça parça ön sürümlerle; denemeler hepsi bitince).
+
+## Added
+- **Fotoğraflar kurguda kullanılır** (bilinen borç; editör var sanıyordu). 2. adımda seçilen fotoğraflar zaten
+  analiz ediliyordu, artık videoya da girer: yavaş yakınlaşma ya da uzaklaşma (sahneden sahneye sırayla; 5 sn'de
+  en fazla 1,15x), alan hep tam dolu, bulanık dolgu yok. Öznenin tamamı yakınlaşmada da kadrajda kalır; özne alandan
+  genişse videodaki gibi yavaşça kayar. Aynı fotoğraf, başka malzeme varken ikinci kez gelmez. Yalnız fotoğraflı
+  haberden de video çıkar.
+- **Luna'nın sahne seçimine fotoğraflar da gider** ("fotoğraf 1 | hareketsiz | açıklama"; her fotoğraf en fazla bir
+  kez). İstem değiştiği için eski haberlerde "Videoyu yeniden oluştur" bir kez yeni sahne seçimi çağrısı yapar.
+- **Telefonda dik çekilmiş fotoğraf** (EXIF yönü) hem Luna'ya hem videoya dik gider. Render'da FFmpeg'in kendi
+  döndürmesi kapalı, yönü Axion uygular (FFmpeg sürümüne göre değişmesin).
+
+## Notes
+- Yakınlaşma 4 kat büyütülmüş karede hesaplanır (FFmpeg `zoompan` tam piksel adımında titriyor; sandbox'ta ölçüldü:
+  titreme 3x'e göre ~%33 az; 4 fotoğraf sahneli 20 sn'lik kurgu 5,8 → 7,1 sn).
+- Eski analizlerde fotoğrafın boyutu kayıtlı değil: kurguda dosyadan okunur; dosya silinmişse fotoğraf atlanır.
+- Geliştirici bilgileri'ndeki sahne tablosunda fotoğraflar da görünür.
+
 # v3.7.2 — Kısa çekimde 1 sn'lik ara sahne yok — 2026-09-26
 
 Editörün Eymen haberi (255 sn, 29 çekimlik DHA paketi; teşhis dosyasıyla): "ufak metin düzeltmeleri dışında her şey

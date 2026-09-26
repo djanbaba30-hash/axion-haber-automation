@@ -205,7 +205,7 @@ with st.expander(
             "Dosyalar",
             local_files,
             key="selected_media",
-            placeholder="İndirilenler'den video veya görsel seç" if local_files else "Klasörde video bulunamadı",
+            placeholder="İndirilenler'den video ya da fotoğraf seç" if local_files else "Klasörde video ya da fotoğraf yok",
             format_func=lambda path: f"{path.name} · {path.stat().st_size / (1024 * 1024):.0f} MB",
             label_visibility="collapsed",
             filter_mode=None,  # tablette dokununca klavye açılmasın

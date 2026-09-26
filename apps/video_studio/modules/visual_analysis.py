@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 import numpy as np
 from openai import OpenAI
-from PIL import Image
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 
 from shared.media_models import EditorialRole, FocusPoint, Region, VisualMetadata, VisualType
@@ -128,6 +128,12 @@ def image_mime_type(image_path: Path) -> str:
     return mime
 
 
+def exif_orientation(image: Image.Image) -> int:
+    """Ham EXIF yön etiketi (1 = düz; 6 = telefonda dik çekilmiş, 90° dönmeli)."""
+    value = image.getexif().get(0x0112, 1)
+    return value if isinstance(value, int) and 1 <= value <= 8 else 1
+
+
 def image_data_url(image_path: Path, max_side: int | None = None, crop: dict[str, float] | None = None) -> str:
     """Görsel (data URL). `crop` (0–1): yalnız bu bölge gider (yanları bulanık videoda net şerit: özne daha büyük
     görünür, token daha az)."""
@@ -137,11 +143,14 @@ def image_data_url(image_path: Path, max_side: int | None = None, crop: dict[str
     data = image_path.read_bytes()
     if max_side or crop:
         with Image.open(image_path) as image:
+            turned = exif_orientation(image) != 1  # telefon fotoğrafı: Luna ekranda görüneni görsün (kadraj ona göre)
+            if turned:
+                image = ImageOps.exif_transpose(image)
             if crop:
                 w, h = image.size
                 image = image.crop((round(crop["x"] * w), round(crop["y"] * h),
                                     round((crop["x"] + crop["width"]) * w), round((crop["y"] + crop["height"]) * h)))
-            if crop or (max_side and max(image.size) > max_side):
+            if turned or crop or (max_side and max(image.size) > max_side):
                 image = image.convert("RGB")
                 if max_side:
                     image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)

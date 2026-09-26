@@ -155,9 +155,13 @@ def is_current_media_library(data: dict[str, Any] | None) -> bool:
 def shot_rows(media_library: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
     for asset in media_library.get("assets", []):
-        if asset.get("asset_type") != "video":
-            continue
         filename = asset.get("source", {}).get("filename", "")
+        if asset.get("asset_type") == "image":  # fotoğraf: tek satır, süresi yok
+            visual = asset.get("visual") or {}
+            rows.append({"Video": filename, "Sahne": None, "Başlangıç": "fotoğraf", "Bitiş": "", "Süre (sn)": None,
+                         "Görüntü": visual.get("visual_type", ""), "Rol": visual.get("editorial_role", ""),
+                         "Açıklama": visual.get("description", "")})
+            continue
         for shot in asset.get("shots", []):
             visual = shot.get("visual") or {}
             rows.append(

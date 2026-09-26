@@ -151,7 +151,7 @@ yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalış
 1. **Kurguda sahne değiştirme:** Video Stüdyosu'nda seslendirme parçası başına küçük kare şeridi; sahneye dokun →
    aynı görüntülerden 3–4 alternatif (fotoğraflar dahil) → seç → yalnız o parça yeniden kurulur (API yok; Luna'nın
    planı v3.6.0'dan beri `kurgu_plani.json`'da, elle değişiklik onun üstüne yazılır).
-2. **Fotoğraf desteği** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/
+2. **Fotoğraf desteği — yapıldı (v4.0.0-alpha.1)** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/
    kaydırma; alan tam dolu, bulanık dolgu yok) ve sahne değiştirmede seçilebilir.
 3. **Yazıya dökme (bilgisayarda, Whisper benzeri yerel model; boyut sorun değil, bilgisayarda 32 GB RAM):** kaynak
    videonun sesi metne çevrilir → kesit seçimi metinden (cümleye dokun); röportaj alıntısı ham haberle/sesle

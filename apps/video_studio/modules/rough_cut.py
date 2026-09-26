@@ -2,7 +2,8 @@
 
 Kesmeler seslendirmedeki duraklamalara (cümle sonu, virgül, nefes arası) konur; her sahne MIN–MAX_CLIP_SECONDS.
 Her kesit için o sırada söylenen kelimeler, Luna açıklaması, rol ve kullanım geçmişine göre en iyi pencere seçilir.
-Faz 4'te bu seçimi Luna Edit Planner yapacak; bu modül onun yedeği olarak kalır.
+v3.6'dan beri seçimi Luna yapar (`luna_edit.py`); bu modül ortak hazırlık, yedek ve Luna'nın bıraktığını doldurma.
+Fotoğraflar (v4.0) da adaydır: hareketsiz kare, yavaş yakınlaşmayla (alan tam dolu, bulanık dolgu yok).
 """
 
 from __future__ import annotations
@@ -10,13 +11,15 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from shared.axion_template import VIDEO_HEIGHT, VIDEO_WIDTH, video_seconds
 from shared.edit_models import Clip, ClipOrigin, EditProject, Framing, FramingMode, TrackKind
-from shared.media_models import EditorialRole, FocusPoint, MediaLibrary, Region, VideoAsset, VisualType
+from shared.media_models import EditorialRole, FocusPoint, ImageAsset, MediaLibrary, Region, VideoAsset, VisualType
 
 from .soundbites import PLACEMENT_LABELS, Soundbite, ordered
+from .video_asset import image_geometry
 
 # Sahne süresi: çok hızlı geçiş olmasın (editör: "yarım saniyede bir sahne değişmesin"),
 # 5 sn'den uzun kesintisiz konuşmada araya sahne girebilir.
@@ -29,6 +32,10 @@ EDGE_SECONDS = 0.2  # Shot geçişindeki karışık karelerden kaçın.
 # Özne kaydırması: özne kadrajdan bu oranda büyükse kaydır; hız saniyede kare genişliğinin %3'ü (editör ayarı).
 PAN_MIN_RATIO = 1.15
 PAN_SPEED = 0.03
+# Fotoğraf: kaynakta süresi yok; sahneye yetecek sanal bir "çekim" (en uzun sahne + kenar payları). Yakınlaşma
+# saniyede %3 (5 sn'de 1,15x); öznenin tamamı hep kadrajda kalır.
+PHOTO_SECONDS = MAX_CLIP_SECONDS + 2 * EDGE_SECONDS
+PHOTO_ZOOM = 0.03
 
 # Röportaj (konuşan kişi) sessiz dolgu olarak kötü durur; başka seçenek yoksa kullanılır.
 ROLE_BONUS = {
@@ -87,6 +94,7 @@ class Candidate:
     location: str = ""
     visible_text: str = ""
     people: bool | None = None
+    photo: bool = False  # hareketsiz kare (v4.0): kaynak aralığı sanal, render yakınlaşmayla gösterir
 
 
 @dataclass
@@ -103,8 +111,11 @@ class _Usage:
 def _candidates(library: MediaLibrary) -> list[Candidate]:
     items: list[Candidate] = []
     for asset in library.assets:
-        if not isinstance(asset, VideoAsset):
-            continue  # Tekil görseller (hareketsiz kare) sonraki fazda.
+        if isinstance(asset, ImageAsset):
+            photo = _photo_candidate(asset, len(items))
+            if photo:
+                items.append(photo)
+            continue
         for shot in asset.shots:
             windows = shot.analysis_windows or []
             spans = [(w.start_seconds, w.end_seconds, w.visual or shot.visual,
@@ -147,6 +158,29 @@ def _candidates(library: MediaLibrary) -> list[Candidate]:
             if c.content_region is not None:
                 c.anchor_y = anchor
     return items
+
+
+def _photo_candidate(asset: ImageAsset, order: int) -> Candidate | None:
+    geometry = asset.geometry
+    if geometry is None:  # v4.0 öncesi analiz: boyut kayıtlı değil, dosyadan okunur
+        try:
+            geometry = image_geometry(Path(asset.source.original_path))
+        except (OSError, ValueError):
+            return None  # dosya yok/bozuk: render da yapamaz
+    visual = asset.visual
+    description = visual.description if visual else ""
+    return Candidate(
+        asset_id=asset.asset_id, shot_id=asset.asset_id, shot_start=0.0, shot_end=PHOTO_SECONDS, start=0.0,
+        end=PHOTO_SECONDS, order=order, tokens=_tokens(f"{description} {visual.location if visual else ''}"),
+        role=visual.editorial_role if visual else EditorialRole.UNKNOWN,
+        visual_type=visual.visual_type if visual else VisualType.UNKNOWN,
+        confidence=visual.confidence if visual else 0.0,
+        plate=bool(visual and PLATE.search(visual.visible_text.upper())), description=description,
+        focus=visual.focus_point if visual else None, subject=visual.subject_region if visual else None,
+        frame_aspect=geometry.width / geometry.height, location=visual.location if visual else "",
+        visible_text=visual.visible_text if visual else "", people=visual.visible_people if visual else None,
+        photo=True,
+    )
 
 
 def _generic(candidate: Candidate) -> bool:
@@ -222,14 +256,14 @@ def _score(candidate: Candidate, segment_tokens: list[str], opening: bool, previ
     if candidate.plate:
         score -= 1.0
     score += candidate.confidence * 0.5
-    if candidate.shot_count > 1:  # birden çok çekim varsa çeşitlilik (tek çekimde hepsi aynı çekim)
+    if candidate.shot_count > 1 or candidate.photo:  # birden çok çekim varsa çeşitlilik (tek çekimde hepsi aynı)
         score -= 3.0 * usage.count.get(candidate.shot_id, 0)
         if candidate.shot_id == previous_shot:
             score -= 8.0
     score -= 2.0 * usage.window_count.get((candidate.shot_id, candidate.start), 0)
     if _generic(candidate):
         score -= 5.0  # belirli bir özne yok (ağaçlık, boş yol): haberi anlatmaz
-    if story is not None and candidate.shot_count <= 2:
+    if story is not None and candidate.shot_count <= 2 and not candidate.photo:
         # Tek uzun çekim (cep telefonu): olay kaynakta akışıyla anlatılır; seslendirmenin başı çekimin başına,
         # sonu sonuna yakın pencereden (editör: "olay örgüsü orada yazıyor").
         length = max(1e-6, candidate.shot_end - candidate.shot_start)
@@ -290,6 +324,30 @@ def _view_regions(candidate: Candidate, slot_aspect: float, seconds: float, dire
     return (first, last) if first != last else (first, None)
 
 
+def _photo_zoom(candidate: Candidate, view: Region, seconds: float) -> Region | None:
+    """Fotoğrafta yavaş yakınlaşmanın son alanı: `view`in içinde, öznenin (yoksa odağın) ortasına doğru, aynı oranda.
+    Öznenin tamamı kadrajda kalır; özne alanı zaten dolduruyorsa yakınlaşma yok."""
+    zoom = 1 + PHOTO_ZOOM * seconds
+    s = candidate.subject
+    if s:
+        zoom = min(zoom, view.width / max(s.width, 1e-6), view.height / max(s.height, 1e-6))
+        center_x, center_y = s.x + s.width / 2, s.y + s.height / 2
+    else:
+        focus = candidate.focus or FocusPoint()
+        center_x, center_y = focus.x, focus.y
+    if zoom < 1.02:
+        return None
+    width, height = view.width / zoom, view.height / zoom
+    x, y = center_x - width / 2, center_y - height / 2
+    if s:  # özne kutusu yakınlaşmada da kesilmesin
+        x = min(max(x, s.x + s.width - width), s.x)
+        y = min(max(y, s.y + s.height - height), s.y)
+    x = min(max(x, view.x), view.x + view.width - width)
+    y = min(max(y, view.y), view.y + view.height - height)
+    floor = lambda v: math.floor(v * 10_000) / 10_000  # noqa: E731
+    return Region(x=floor(x), y=floor(y), width=floor(width), height=floor(height))
+
+
 def clip_framing(candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_HEIGHT,
                  seconds: float = 3.0, direction: int = 1) -> Framing:
     """Kaynaktaki gösterilecek alan (+ kaydırma). Kadraj her zaman tam dolu (editör kararı)."""
@@ -299,6 +357,10 @@ def clip_framing(candidate: Candidate, slot_aspect: float = VIDEO_WIDTH / VIDEO_
         fx = (fx - region.x) / region.width
         fy = (fy - region.y) / region.height
     view, view_end = _view_regions(candidate, slot_aspect, seconds, direction)
+    if candidate.photo and view_end is None:
+        view_end = _photo_zoom(candidate, view, seconds)
+        if view_end and direction < 0:  # sahneden sahneye bir yakınlaş, bir uzaklaş
+            view, view_end = view_end, view
     return Framing(
         mode=FramingMode.FILL_CROP,
         focus_x=round(min(1.0, max(0.0, fx)), 3),
@@ -454,7 +516,7 @@ def prepare(edit_project: dict[str, Any], media_library: dict[str, Any],
     library = MediaLibrary.model_validate(media_library)
     candidates = _candidates(library)
     if not candidates:
-        raise ValueError("Kurgu için analiz edilmiş video sahnesi yok.")
+        raise ValueError("Kurgu için analiz edilmiş görüntü (video ya da fotoğraf) yok.")
     fps = project.edit_plan.timeline.fps
     blocked: list[tuple[str, float, float]] = []
 
@@ -548,7 +610,8 @@ def plan_rough_cut(
                     reason=best.description,
                 )
             )
-            usage.used.setdefault(best.shot_id, []).append((source_in, source_out))
+            # Fotoğrafın sanal aralığının tamamı kullanılmış sayılır: aynı kare ikinci kez gelirse tekrardır.
+            usage.used.setdefault(best.shot_id, []).append((0.0, PHOTO_SECONDS) if best.photo else (source_in, source_out))
             usage.window_count[(best.shot_id, best.start)] = usage.window_count.get((best.shot_id, best.start), 0) + 1
             usage.count[best.shot_id] = usage.count.get(best.shot_id, 0) + 1
             previous_shot = best.shot_id
