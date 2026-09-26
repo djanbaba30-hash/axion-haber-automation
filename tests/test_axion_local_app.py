@@ -263,6 +263,31 @@ def saved_project(library, source_text=""):
     return project
 
 
+def test_image_analysis_logs_its_sub_steps(local_env, monkeypatch):
+    """v4.1 (3. madde; analiz medyan 14 sn, en uzun 45 sn): alt adımların süresi ölçüm satırına yazılır ve Geliştirici
+    bilgileri'nde görünür; hızlandırma bu veriyle kararlaştırılır."""
+    from apps.axion_local import metrics
+
+    library = media_library()
+    library["assets"][0]["source"]["duration_seconds"] = 71.0
+
+    def fake_prepare(files, *args, steps=None, **kwargs):
+        steps.update(proxy=3.2, sahne_tespiti=1.1, luna_cevap=6.4)
+        return library, {"frame_count": 12, "estimated_cost_usd": 0.002}
+
+    monkeypatch.setattr("apps.video_studio.modules.media_pipeline.prepare_media_library", fake_prepare)
+    project = saved_project({"assets": []})
+    at = open_page(project)
+    at.multiselect(key="selected_media").select(local_env / "Downloads" / "dha_kaza.mp4").run()
+    button(at, "Görüntüleri analiz et").click().run()
+    assert not at.exception
+    measured = metrics.last("goruntu_analizi", project.id)
+    assert measured["adimlar"] == {"proxy": 3.2, "sahne_tespiti": 1.1, "luna_cevap": 6.4}
+    assert (measured["kare"], measured["video_sn"]) == (12, 71.0)
+    assert any(c.value.startswith("Son analizin süresi:") and c.value.endswith(
+        "(video 71.0 sn) · analiz kopyası 3.2 · sahne tespiti 1.1 · Luna cevabı 6.4") for c in at.caption)
+
+
 def test_saved_media_analysis_is_restored(local_env):
     library = media_library([{
         "shot_id": "video_001_shot_001", "asset_id": "video_001", "shot_number": 1,

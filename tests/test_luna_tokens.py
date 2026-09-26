@@ -63,7 +63,9 @@ def test_copied_window_gets_the_result_of_its_source(tmp_path, monkeypatch):
             return SimpleNamespace(output_parsed=va.VisualAnalysisResponse(windows=[item], images=[]), usage=None)
 
     monkeypatch.setattr(va, "OpenAI", Fake)
-    windows, _, usage = va.analyze_media_with_luna([shot], [], "anahtar")
+    steps = {}
+    windows, _, usage = va.analyze_media_with_luna([shot], [], "anahtar", steps=steps)
+    assert set(steps) == {"luna_hazirlik", "luna_cevap"}  # v4.1: yerel hazırlık ve Luna'nın cevabı ayrı ölçülür
     assert windows["w2"] == windows["w1"] and usage["skipped_windows"] == 1 and usage["frame_count"] == 1
     assert sum(part["type"] == "input_image" for part in calls[0]["input"][1]["content"]) == 1
 

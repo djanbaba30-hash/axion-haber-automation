@@ -10,6 +10,7 @@ from openai import OpenAI
 from PIL import Image, ImageOps
 from pydantic import BaseModel
 
+from apps.axion_local.metrics import step
 from shared.media_models import EditorialRole, FocusPoint, Region, VisualMetadata, VisualType
 
 
@@ -224,13 +225,16 @@ def analyze_media_with_luna(
     images: list[dict[str, Any]],
     api_key: str,
     context: str = "",
+    steps: dict[str, float] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
     """Tüm shot pencerelerini ve görselleri tek Luna çağrısında analiz eder. `context` (v3.7): haberin başlıkları ve
     seslendirmesi; açıklama ve rol haberle ilgili görünen ayrıntıya göre seçilsin (kurguda Luna olay örgüsünü kurar).
 
-    Döndürür: (window_id → VisualMetadata, image asset_id → VisualMetadata, kullanım).
+    Döndürür: (window_id → VisualMetadata, image asset_id → VisualMetadata, kullanım). `steps` (v4.1): süre ölçümü,
+    yerel hazırlık (aynı kareleri eleme, küçültme) ve Luna'nın cevabı ayrı.
     """
-    windows, copies = frames_to_send(shots)
+    with step(steps, "luna_hazirlik"):
+        windows, copies = frames_to_send(shots)
     usage_data = {
         "model": LUNA_MODEL,
         "input_tokens": 0,
@@ -247,37 +251,39 @@ def analyze_media_with_luna(
         raise ValueError("OPENAI_API_KEY bulunamadı.")
 
     content: list[dict[str, Any]] = []
-    if context.strip():
-        content.append({"type": "input_text", "text": NEWS_CONTEXT.format(context=" ".join(context.split())[:900])})
-    frame_total = 0
-    crops = {window["window_id"]: crop for window, _, crop in windows}
-    for window, frames, crop in windows:
-        content.append(
-            {
-                "type": "input_text",
-                "text": f"WINDOW {window['window_id']} ({window['start_seconds']:.1f}-{window['end_seconds']:.1f} sn, {len(frames)} kare)",
-            }
-        )
-        for frame in frames:
-            content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"]), LUNA_IMAGE_MAX_SIDE, crop),
+    with step(steps, "luna_hazirlik"):
+        if context.strip():
+            content.append({"type": "input_text", "text": NEWS_CONTEXT.format(context=" ".join(context.split())[:900])})
+        frame_total = 0
+        crops = {window["window_id"]: crop for window, _, crop in windows}
+        for window, frames, crop in windows:
+            content.append(
+                {
+                    "type": "input_text",
+                    "text": f"WINDOW {window['window_id']} ({window['start_seconds']:.1f}-{window['end_seconds']:.1f} sn, {len(frames)} kare)",
+                }
+            )
+            for frame in frames:
+                content.append({"type": "input_image", "image_url": image_data_url(Path(frame["path"]), LUNA_IMAGE_MAX_SIDE, crop),
+                                "detail": "auto"})
+                frame_total += 1
+        for image in images:
+            content.append({"type": "input_text", "text": f"IMAGE {image['asset_id']}"})
+            content.append({"type": "input_image", "image_url": image_data_url(Path(image["path"]), LUNA_IMAGE_MAX_SIDE),
                             "detail": "auto"})
             frame_total += 1
-    for image in images:
-        content.append({"type": "input_text", "text": f"IMAGE {image['asset_id']}"})
-        content.append({"type": "input_image", "image_url": image_data_url(Path(image["path"]), LUNA_IMAGE_MAX_SIDE),
-                        "detail": "auto"})
-        frame_total += 1
 
-    response = OpenAI(api_key=api_key, timeout=LUNA_TIMEOUT_SECONDS).responses.parse(
-        model=LUNA_MODEL,
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": content},
-        ],
-        text_format=VisualAnalysisResponse,
-        # Görsel indeksleme uzun akıl yürütme gerektirmiyor: düşük seviye yeterli ve ucuz (editör kararı).
-        reasoning={"effort": LUNA_REASONING_EFFORT},
-    )
+    with step(steps, "luna_cevap"):
+        response = OpenAI(api_key=api_key, timeout=LUNA_TIMEOUT_SECONDS).responses.parse(
+            model=LUNA_MODEL,
+            input=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": content},
+            ],
+            text_format=VisualAnalysisResponse,
+            # Görsel indeksleme uzun akıl yürütme gerektirmiyor: düşük seviye yeterli ve ucuz (editör kararı).
+            reasoning={"effort": LUNA_REASONING_EFFORT},
+        )
     parsed = response.output_parsed
     if parsed is None:
         raise RuntimeError("Luna yapılandırılmış görsel analiz sonucu döndürmedi.")

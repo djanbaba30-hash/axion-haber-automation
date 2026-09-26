@@ -27,7 +27,7 @@ def make_video(path):
 VISUAL = {"description": "Hasarlı araç", "visual_type": "vehicle", "editorial_role": "detail", "confidence": 0.9}
 
 
-def fake_luna(shots, images, api_key, context=""):
+def fake_luna(shots, images, api_key, context="", steps=None):
     windows = [w for shot in shots for w in shot["analysis_windows"]]
     for window in windows:
         for frame in window["frames"]:
@@ -46,10 +46,14 @@ def test_local_video_and_image_become_media_library(tmp_path, monkeypatch):
     image.write_bytes(b"\x89PNG")
     monkeypatch.setattr(media_pipeline, "analyze_media_with_luna", fake_luna)
     messages = []
+    steps = {}
 
     library, usage = media_pipeline.prepare_media_library(
-        [LocalMediaFile(video), LocalMediaFile(image)], 1, "Ekonomik", "sk-test", progress=messages.append
+        [LocalMediaFile(video), LocalMediaFile(image)], 1, "Ekonomik", "sk-test", progress=messages.append, steps=steps
     )
+    # v4.1: görüntü analizinin alt adımları ayrı ölçülür (Luna'nın içi sahte olduğundan burada yok).
+    assert set(steps) == {"okuma", "proxy", "sahne_tespiti", "kareler", "kadraj", "hareket"} <= set(
+        media_pipeline.STEP_LABELS) and all(seconds >= 0 for seconds in steps.values())
 
     assert media_pipeline.is_current_media_library(library)
     video_asset, image_asset = library["assets"]

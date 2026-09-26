@@ -13,7 +13,7 @@ import streamlit as st
 from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.metrics import timed
 from apps.axion_local.project_picker import project_selector, selected_project
-from apps.axion_local import corrections, diagnostics, ledger, update_check
+from apps.axion_local import corrections, diagnostics, ledger, metrics, update_check
 from apps.axion_local import status as axion_status
 from apps.axion_local.settings import require_secrets, secret
 from apps.axion_local.store import (
@@ -34,7 +34,12 @@ from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
 from apps.video_studio.modules.media_library import detect_media_type
-from apps.video_studio.modules.media_pipeline import is_current_media_library, prepare_media_library, shot_rows
+from apps.video_studio.modules.media_pipeline import (
+    STEP_LABELS,
+    is_current_media_library,
+    prepare_media_library,
+    shot_rows,
+)
 from apps.video_studio.modules.moment import action_windows, suggested_range
 from apps.video_studio.modules.news_package import news_package_to_state
 from apps.video_studio.modules.rough_cut import clip_rows, has_rough_cut, matches_template, plan_rough_cut
@@ -359,7 +364,7 @@ with st.expander(
         if st.button(label, type="primary", width="stretch"):
             try:
                 with st.status("Görüntüler analiz ediliyor...", expanded=True) as status, \
-                        timed("goruntu_analizi", project.id if project else None, video=len(media_files)):
+                        timed("goruntu_analizi", project.id if project else None, video=len(media_files)) as measured:
                     media_library, usage = prepare_media_library(
                         media_files,
                         frame_count,
@@ -368,7 +373,10 @@ with st.expander(
                         progress=status.write,
                         storage_dir=(project.folder / "media") if project else None,
                         context=news_context(project),
+                        steps=measured.setdefault("adimlar", {}),  # v4.1: alt adımların süresi (hızlandırma kararı)
                     )
+                    measured.update(kare=usage.get("frame_count"), video_sn=round(sum(
+                        float(a["source"].get("duration_seconds") or 0) for a in media_library["assets"]), 1))
                     status.update(label="Analiz tamamlandı.", state="complete", expanded=False)
                     ledger.add("goruntu", usage.get("estimated_cost_usd"))
             except Exception as error:
@@ -612,6 +620,11 @@ if media_library:
             f"Model: {usage.get('model', '—')} · API çağrısı: {usage.get('api_calls', 0)} · "
             f"Kare: {usage.get('frame_count', 0)} · Analiz: {analysis_mode}"
         )
+        took = metrics.last("goruntu_analizi", project.id) if project else None
+        if took and took.get("adimlar"):  # v4.1: hangi alt adım ne kadar sürdü (hızlandırma kararı bu veriyle)
+            st.caption(f"Son analizin süresi: {took['sn']:.1f} sn (video {took.get('video_sn', '?')} sn) · "
+                       + " · ".join(f"{STEP_LABELS.get(name, name)} {seconds:.1f}"
+                                    for name, seconds in took["adimlar"].items()))
         if project:
             st.caption(f"Proje klasörü: {project.folder}")
         rows = shot_rows(media_library)

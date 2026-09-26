@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from apps.axion_local.metrics import step
 from shared.media_models import MediaLibrary
 
 from .framing import detect_content_region, motion_regions
@@ -22,6 +23,9 @@ from .visual_analysis import analyze_media_with_luna
 
 PROXY_WIDTH = 640  # Luna'ya giden analiz kareleri de 640 px; daha büyük proxy yalnızca süre kaybı.
 MAX_FRAMES_PER_VIDEO = 40
+# Süre ölçümünün alt adımları (v4.1; data/olcumler.jsonl "adimlar", Geliştirici bilgileri'nde bu adlarla).
+STEP_LABELS = {"okuma": "okuma", "proxy": "analiz kopyası", "sahne_tespiti": "sahne tespiti", "kareler": "kareler",
+               "kadraj": "kadraj", "hareket": "hareket", "luna_hazirlik": "Luna hazırlık", "luna_cevap": "Luna cevabı"}
 Progress = Callable[[str], None]
 
 
@@ -53,15 +57,18 @@ def capped_frame_count(shots: list[dict[str, Any]], frame_count: int) -> int:
     return max(1, MAX_FRAMES_PER_VIDEO // max(1, windows))
 
 
-def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, storage_dir: Path | None = None):
+def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, storage_dir: Path | None = None,
+                  steps: dict[str, float] | None = None):
     progress(f"{file.name}: video okunuyor")
-    video_path = save_uploaded_video(file, storage_dir=storage_dir)
-    metadata = probe_video(video_path)
+    with step(steps, "okuma"):
+        video_path = save_uploaded_video(file, storage_dir=storage_dir)
+        metadata = probe_video(video_path)
     metadata["original_filename"] = file.name
     metadata["original_path"] = str(video_path)
 
     progress(f"{file.name}: analiz kopyası (proxy) hazırlanıyor")
-    proxy_path = create_proxy(video_path, width=PROXY_WIDTH, duration_seconds=metadata.get("duration_seconds"))
+    with step(steps, "proxy"):
+        proxy_path = create_proxy(video_path, width=PROXY_WIDTH, duration_seconds=metadata.get("duration_seconds"))
     metadata["proxy"] = {
         "path": str(proxy_path),
         "size_mb": round(proxy_path.stat().st_size / (1024 * 1024), 2),
@@ -70,8 +77,10 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
 
     try:
         progress(f"{file.name}: sahneler tespit ediliyor")
-        shots = detect_shots(proxy_path, metadata["duration_seconds"])
-        shots = extract_representative_frames(proxy_path, shots, frame_count=capped_frame_count(shots, frame_count))
+        with step(steps, "sahne_tespiti"):
+            shots = detect_shots(proxy_path, metadata["duration_seconds"])
+        with step(steps, "kareler"):
+            shots = extract_representative_frames(proxy_path, shots, frame_count=capped_frame_count(shots, frame_count))
     except Exception:
         # Yarıda kalan analiz geçici dosya bırakmasın (başarılıysa temizlik prepare_media_library'de).
         proxy_path.unlink(missing_ok=True)
@@ -79,7 +88,8 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
     progress(f"{file.name}: kadraj alanı belirleniyor")
     full_frame = []  # tam karedeki pencereler: sabit kamerada hareket bölgesi (yanları dolgulu dikeyde kadraj sabit)
     for shot in shots:
-        region = detect_content_region([Path(frame["path"]) for frame in shot["analysis_frames"]])
+        with step(steps, "kadraj"):
+            region = detect_content_region([Path(frame["path"]) for frame in shot["analysis_frames"]])
         shot["content_region"] = region.model_dump() if region else None
         shot["asset_id"] = asset_id
         shot["shot_id"] = f"{asset_id}_shot_{int(shot['shot_number']):03d}"
@@ -88,7 +98,9 @@ def _ingest_video(file, asset_id: str, frame_count: int, progress: Progress, sto
             if region is None:
                 full_frame.append(window)
     spans = [(float(w["start_seconds"]), float(w["end_seconds"])) for w in full_frame]
-    for window, moving in zip(full_frame, motion_regions(proxy_path, spans)):
+    with step(steps, "hareket"):
+        moving_regions = motion_regions(proxy_path, spans)
+    for window, moving in zip(full_frame, moving_regions):
         window["motion_region"] = moving.model_dump() if moving else None
     return metadata, shots
 
@@ -101,7 +113,10 @@ def prepare_media_library(
     progress: Progress = lambda message: None,
     storage_dir: Path | None = None,
     context: str = "",
+    steps: dict[str, float] | None = None,
 ):
+    """`steps` (v4.1): alt adımların süresi (okuma, proxy, sahne tespiti, kareler, kadraj, hareket, Luna hazırlık ve
+    cevap; birkaç videoda toplam) buraya yazılır; çağıran ölçüm satırına ekler (data/olcumler.jsonl)."""
     videos = []
     all_shots = []
     images = []
@@ -113,7 +128,8 @@ def prepare_media_library(
             media_type = detect_media_type(file.name)
             if media_type == "video":
                 asset_id = f"video_{len(videos) + 1:03d}"
-                metadata, shots = _ingest_video(file, asset_id, frame_count, progress, storage_dir=storage_dir)
+                metadata, shots = _ingest_video(file, asset_id, frame_count, progress, storage_dir=storage_dir,
+                                                steps=steps)
                 scratch.extend(_scratch_files(metadata, shots))
                 videos.append((asset_id, metadata, shots))
                 all_shots.extend(shots)
@@ -126,7 +142,7 @@ def prepare_media_library(
                     temp_images.append(image_path)
 
         progress("Luna görüntüleri analiz ediyor")
-        window_visuals, image_visuals, usage = analyze_media_with_luna(all_shots, images, api_key, context)
+        window_visuals, image_visuals, usage = analyze_media_with_luna(all_shots, images, api_key, context, steps)
 
         assets: list[dict[str, Any]] = [
             build_video_asset(

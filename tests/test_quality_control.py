@@ -114,6 +114,23 @@ def test_step_timings_are_logged_locally(local_env):
         ("kurgu", "haber-1", "x264", None), ("seslendirme", None, None, "RuntimeError")]
 
 
+def test_sub_steps_add_up_and_last_measurement_is_found(local_env):
+    """v4.1: görüntü analizinin alt adımları (aynı adım birkaç videoda toplanır); Geliştirici bilgileri son ölçümü okur."""
+    from apps.axion_local import metrics
+
+    with metrics.timed("goruntu_analizi", "haber-1") as info:
+        steps = info.setdefault("adimlar", {})
+        for _ in range(2):
+            with metrics.step(steps, "proxy"):
+                pass
+        with metrics.step(None, "kareler"):  # ölçülmeyen çağrı
+            pass
+    with metrics.timed("goruntu_analizi", "haber-2"):
+        pass
+    assert list(metrics.last("goruntu_analizi", "haber-1")["adimlar"]) == ["proxy"]
+    assert metrics.last("goruntu_analizi", "haber-3") is None and metrics.last("kurgu", "haber-1") is None
+
+
 def test_headline_only_error_uses_the_small_headline_call(local_env, monkeypatch):
     """v3.3 token tasarrufu: yalnız başlık hatalıysa tam düzeltme (sistem + ham haber + tüm çıktı) yerine başlık çağrısı."""
     from types import SimpleNamespace

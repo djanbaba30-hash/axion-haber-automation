@@ -59,7 +59,8 @@ apps/axion_local/
   media.py                     media_url(): dosya/görseli tarayıcıya Streamlit medya sunucusuyla verir (Tasarım, Tarayıcı)
   copy_button.py               📋 Paylaşım metnini kopyala (components v2; http'de pano API'si yoksa execCommand yedeği)
   presence.py                  Aynı haber iki cihazda açık mı (oturum → haber; bağlı mı: Streamlit oturum yöneticisi)
-  metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
+  metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`, alt adım `step(...)`,
+                               son ölçüm `last(...)`; teşhis dosyasında da gider)
   update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 2 dk'da bir;
                                satır fragment, 2 dk'da kendiliğinden yenilenir);
                                uygulamadan güncelleme (`git pull`, çıkış kodu 3 → bekçi pip + yeniden başlatır);
@@ -99,7 +100,8 @@ apps/news_studio/              HABER STÜDYOSU
 
 apps/video_studio/             VIDEO STÜDYOSU
   page.py                      Sayfa: 1. Haber → 2. Görüntüler (analiz) → 3. Kaynak sesli kesitler → 4. Video (kurgu + render)
-  modules/media_pipeline.py    ingestion → proxy → shot tespiti → temsilci kare → Luna → Media Library
+  modules/media_pipeline.py    ingestion → proxy → shot tespiti → temsilci kare → Luna → Media Library; alt adım süreleri
+                               (v4.1, `STEP_LABELS`) "goruntu_analizi" ölçüm satırının `adimlar` alanına
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı; kareler 512 px, aynı görünen kareler elenir;
                                haberin başlık + seslendirmesi bağlam olarak gider (v3.7; "görmediğini yazma")
@@ -233,7 +235,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.2.0-alpha.1 → sıradaki: v4.1 planı, 3. madde (ROADMAP "v4.1 planı")
+## Nerede kaldık (2026-09-26) — Sürüm 4.2.0-alpha.2 → sıradaki: v4.1 planı, 4. madde (Araştırma A; kod yok)
 
 **YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
 haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
@@ -247,7 +249,12 @@ fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir pa
 - **v4.2 1. madde yapıldı** (`v4.2.0-alpha.1`, editörün isteğiyle v4.1'in arasına): üslup seçimi ve örnekleri yerine
   "Haberi işle"nin yanında serbest talimat (her yeni haberde boş; boşsa objektif haber sunucusu). Editör gerçek
   haberle dener: boş talimatla çıktı eskisi kadar iyi mi, talimat uygulanıyor mu. Düzeltme kaydında haber satırının
-  `talimat` alanı ↔ düzeltilen alanlar. Sonra v4.1'e 3. maddeden devam (görüntü analizinin süre ölçümü).
+  `talimat` alanı ↔ düzeltilen alanlar.
+- **v4.1 3. madde yapıldı** (`v4.2.0-alpha.2`; sürüm numarası 4.2'den devam eder): görüntü analizinin alt adımları
+  ölçülür (`data/olcumler.jsonl` → "goruntu_analizi" satırı `adimlar`, `kare`, `video_sn`; Video Stüdyosu →
+  Geliştirici bilgileri'nde "Son analizin süresi"). Hızlandırma kararı için editörden birkaç haberin teşhis dosyası
+  (ölçüm dosyasının sonu içinde) ya da o satırın ekran görüntüsü istenir (ROADMAP 8. madde). Sıradaki: 4. madde,
+  Araştırma A (altyapı/ön yüz raporu, kod yok).
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =

@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,7 @@ from .store import data_dir
 
 FILENAME = "olcumler.jsonl"
 MAX_BYTES = 2_000_000
+TAIL_BYTES = 200_000  # `last` yalnız dosyanın sonunu okur
 _LOCK = threading.Lock()
 
 
@@ -51,3 +54,32 @@ class timed:
 
     def __exit__(self, kind, error, trace) -> None:
         record(self.step, time.monotonic() - self.started, self.project, hata=kind.__name__ if kind else None, **self.extra)
+
+
+@contextmanager
+def step(steps: dict[str, float] | None, name: str) -> Iterator[None]:
+    """Bir işin alt adımı (v4.1): süre `steps[name]`e eklenir (aynı adım birkaç videoda: toplam). `None`: ölçülmez."""
+    started = time.monotonic()
+    try:
+        yield
+    finally:
+        if steps is not None:
+            steps[name] = round(steps.get(name, 0.0) + time.monotonic() - started, 2)
+
+
+def last(step_name: str, project: str) -> dict[str, Any] | None:
+    """Bu haberin bu adımdaki son ölçümü (Geliştirici bilgileri için); yoksa None."""
+    try:
+        with path().open("rb") as handle:
+            handle.seek(max(0, handle.seek(0, 2) - TAIL_BYTES))
+            lines = handle.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for raw in reversed(lines):
+        try:
+            line = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(line, dict) and line.get("adim") == step_name and line.get("haber") == project:
+            return line
+    return None

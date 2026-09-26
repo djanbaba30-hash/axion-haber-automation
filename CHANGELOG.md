@@ -1,3 +1,16 @@
+# v4.2.0-alpha.2 — Görüntü analizinin süre ölçümü — 2026-09-26
+
+v4.1 planının 3. maddesi (ROADMAP; sürüm numarası 4.2'den devam eder). Ölçümler: analiz medyan 14 sn, en uzun 45 sn;
+hangi alt adımın sürdüğü bilinmiyordu. Hızlandırma bu veriyle ayrıca kararlaştırılacak. API çağrısı ve davranış
+değişikliği yok.
+
+## Added
+- "goruntu_analizi" ölçüm satırında (`data/olcumler.jsonl`) alt adımlar: okuma, analiz kopyası (proxy), sahne
+  tespiti, kareler, kadraj, hareket, Luna hazırlık (aynı kareleri eleme, küçültme) ve Luna cevabı; birkaç videoda
+  adım başına toplam. Ayrıca Luna'ya giden kare sayısı ve toplam video süresi.
+- Video Stüdyosu → Geliştirici bilgileri: "Son analizin süresi: … sn (video … sn) · analiz kopyası … · Luna cevabı …".
+  Ölçüm dosyasının sonu teşhis dosyasında zaten gider.
+
 # v4.2.0-alpha.1 — Üslup seçimi yerine editörün talimatı — 2026-09-26
 
 ROADMAP "v4.2 planı" 1. madde; editörün isteğiyle v4.1'in 2. maddesinden hemen sonra (v4.1'in 3–8. maddeleri sürüyor).
