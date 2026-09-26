@@ -21,3 +21,6 @@ venv/
 data/
 # Şablon dosyaları (örnek Canva videosu dahil) repoda tutulur.
 !assets/sablon/**
+
+# Axion müzik altlıkları (assets/muzik/uret.py ile sentezlendi; telif yok)
+!assets/muzik/*.mp3

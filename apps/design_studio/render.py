@@ -17,6 +17,9 @@ from shared.axion_template import VIDEO_SLOT
 
 from .blur import BlurPass, mosaic_block, sigma, write_mask_sequences
 from .design import Design
+from .music import gain_db as music_gain
+from .music import mix_filters
+from .music import path as music_path
 from .template import Layers, frame_origin, write_layers
 
 logger = logging.getLogger(__name__)
@@ -38,6 +41,7 @@ def build_final_command(
     output: Path,
     encoder: list[str],
     blurs: list[BlurPass] | None = None,
+    music: tuple[Path, float] | None = None,
 ) -> list[str]:
     x, y, w, h = VIDEO_SLOT["x"], VIDEO_SLOT["y"], VIDEO_SLOT["width"], VIDEO_SLOT["height"]
     fx, fy = frame_origin()
@@ -79,12 +83,16 @@ def build_final_command(
         f"[3:v]format=yuva420p,fps={fps}[graphics]",
         "[s2][graphics]overlay=0:0,format=yuv420p[out]",
     ]
+    audio = ["-map", "1:a?", "-c:a", "copy"]
+    if music:  # müzik altlığı (v4.0): döngüyle sona kadar, konuşurken kısılır; ses yeniden kodlanır
+        command += ["-stream_loop", "-1", "-i", str(music[0])]
+        filters += mix_filters("1:a", f"{4 + len(blurs or [])}:a", seconds, music[1])
+        audio = ["-map", "[aout]", "-c:a", "aac", "-b:a", "192k"]
     return command + [
         "-filter_complex", ";".join(filters),
-        "-map", "[out]", "-map", "1:a?",
+        "-map", "[out]", *audio,
         *encoder,
         "-pix_fmt", "yuv420p",
-        "-c:a", "copy",
         "-t", duration,
         "-movflags", "+faststart",
         str(output),
@@ -183,6 +191,8 @@ def render_final(rough_cut: Path, design: Design, background: Path, fps: int, se
     attempts = [("AMD donanım (h264_amf)", AMF)] if amd_encoder_available() else []
     attempts.append(("x264 (işlemci)", X264))
     error = ""
+    track = music_path(design.music)
+    bed = (track, music_gain(track)) if track else None
     with tempfile.TemporaryDirectory(prefix="axion_sablon_") as folder:
         check_cancel()
         layers = write_layers(Path(folder), design, background, fps, seconds)
@@ -192,7 +202,7 @@ def render_final(rough_cut: Path, design: Design, background: Path, fps: int, se
         )
         for name, encoder in attempts:
             check_cancel()
-            command = build_final_command(rough_cut, layers, fps, seconds, partial, encoder, blurs)
+            command = build_final_command(rough_cut, layers, fps, seconds, partial, encoder, blurs, bed)
             try:
                 result = _run_cancellable(command, long_job_timeout(seconds * 10), "Son video", cancel)
             except Cancelled:

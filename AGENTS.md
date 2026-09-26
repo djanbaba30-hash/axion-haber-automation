@@ -44,6 +44,7 @@ axion_local.py                 Uygulama: menü, isteğe bağlı şifre, stil (CS
 .streamlit/config.toml         Port 8501, headless, 4 GB yükleme sınırı, beyaz Axion teması (lacivert #123249)
 assets/                        axion_mark.png (tarayıcı sekmesi ikonu); windows/axion_x.ico aynı X işareti (masaüstü).
   sablon/                      Faz 5 şablon dosyaları (arka planlar, logo kutusu, örnek Canva videosu; README)
+  muzik/                       Müzik altlıkları (v4.0; uret.py ile sentezlendi, telif yok; README)
                                Uygulama içinde logo gösterilmez (editör kararı).
 .streamlit/secrets.toml        API anahtarları (git'te yok; örnek: secrets.toml.example)
 
@@ -125,6 +126,8 @@ apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
   jobs.py                      Son videoyu arka planda üretme (proje başına tek iş; bitince yalnız `rendered` imzası yazılır;
                                yeniden başlatılınca eski iş durdurulur)
   assets.py                    Arka plan sırası (02:00), uygulamadan varlık ekleme (data/varliklar) + GitHub contents API
+  music.py                     Müzik altlığı (v4.0): assets/muzik hazır parçalar + editörün müziği (yalnız yerel),
+                               son videoda döngü + sidechain kısma (`mix_filters`)
   editor.py, editor.js         Canva benzeri tarayıcı editörü (components v2): üst araç çubuğu (yazı stili, sansür),
                                sol panel (animasyon kartları, blur), tuval, sağ panel (arka plan, çerçeve), katmanlı
                                zaman çizelgesi; tasarımı kendisi tutar, her değişiklikte `edits` ile Python'a gönderir
@@ -205,7 +208,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.3 → sıradaki: alpha.4 (müzik altlığı)
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.4 → sıradaki: alpha.5 (düzeltmelerden öğrenme)
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -231,8 +234,11 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    (`editor.js` `visibleItems` aynısı); `render.build_render_command` önde kesit varsa ilk kareyi `scene == 0`
    klibinden alır (`split` + `trim`, kesit 1 kare geç). Sahne ızgarasında 1. sahne "kapak". Testler
    `tests/test_cover.py`, `test_design_studio.test_first_frame_is_the_cover_with_the_full_headline`.
-4. `alpha.4` **Müzik altlığı:** sözsüz, telifsiz haber müzikleri (data/varliklar'a eklenir); seslendirme/kesit sesinin
-   altında kısılır; editör seçer ya da kapatır.
+4. `alpha.4` **Müzik altlığı — YAPILDI:** `assets/muzik/{gundem,gerilim,sakin}.mp3` (`uret.py` ile sentez; müzik
+   siteleri bu ortamdan kapalı + repo herkese açık → lisanslı müzik konamaz); `design_studio/music.py` (liste, editörün
+   müziği `data/varliklar/muzik` yalnız yerel, `mix_filters` sidechain), `Design.music` (varsayılan "gundem",
+   "kapali"), `render.build_final_command(music=)`; Tasarım kenar çubuğu "🎵 Müzik". Testler `tests/test_music.py`.
+   **Editörden beklenen:** parçaları dinleyip beğenip beğenmediği (sandbox'ta dinlenemedi).
 5. `alpha.5` **Düzeltmelerden öğrenme (kayıt):** model çıktısı ↔ editörün son hâli farkı silinmeyen küçük kayda
    (başlık, seslendirme, paylaşım metni, sahne değişiklikleri, kesit aralığı; tasarım ve kesit ekleme hariç). Geliştirici
    belli aralıklarla okuyup istemi düzeltir (çalışma zamanında ek çağrı yok). Editör: başlık kalitesi "orta", küçük

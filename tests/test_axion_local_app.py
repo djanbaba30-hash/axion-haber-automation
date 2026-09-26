@@ -443,6 +443,39 @@ def test_design_studio_fills_template_and_renders_final_video(local_env, monkeyp
     assert any("güncel" in s.value for s in at.sidebar.success)
 
 
+def test_design_studio_music_choice_and_own_music(local_env, monkeypatch):
+    """v4.0.0-alpha.4: müzik altlığı varsayılan "Gündem"; kapatılır, başka parça seçilir, kendi müziği eklenir
+    (yalnız bu bilgisayarda, GitHub'a gitmez)."""
+    import json
+
+    from apps.design_studio import jobs
+
+    monkeypatch.setattr("apps.design_studio.jobs.render_final",
+                        lambda rough, design, background, fps, seconds, output, cancel=None: output.write_bytes(b"f") or "x264")
+    uploads = []
+    monkeypatch.setattr("apps.design_studio.assets.upload_to_github", lambda *a: uploads.append(a))
+    project = saved_project(media_library())
+    (project.folder / store.ROUGH_CUT_FILENAME).write_bytes(b"mp4")
+    at = open_page(project, DESIGN_PAGE, "design_project_id")
+    jobs.wait(project)
+    at.run()
+    assert any(e.label == "🎵 Müzik: Gündem (nötr)" for e in at.sidebar.expander)
+    box = next(b for b in at.sidebar.selectbox if "Kapalı" in b.options)
+    assert box.options[:4] == ["Kapalı", "Gündem (nötr)", "Gerilim (asayiş, son dakika)", "Sakin (insan hikâyesi)"]
+    box.select("gerilim").run()
+    design = lambda: json.loads((project.folder / store.DESIGN_FILENAME).read_text(encoding="utf-8"))  # noqa: E731
+    assert design()["music"] == "gerilim" and any("işlenmedi" in w.value for w in at.sidebar.warning)
+    next(b for b in at.sidebar.selectbox if "Kapalı" in b.options).select("kapali").run()
+    assert design()["music"] == "kapali" and any(e.label == "🎵 Müzik: Kapalı" for e in at.sidebar.expander)
+    from apps.design_studio import music
+
+    music.add("benim parçam.mp3", b"ID3")  # sayfanın yükleme düğmesi aynı işlevi çağırır
+    at.run()
+    assert "benim parçam (eklenen)" in next(b for b in at.sidebar.selectbox if "Kapalı" in b.options).options
+    assert (music.user_dir() / "benim parçam.mp3").exists() and not uploads
+    assert not at.exception
+
+
 def test_design_studio_restarts_running_render_with_new_changes(local_env, monkeypatch):
     import threading
 

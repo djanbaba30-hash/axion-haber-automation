@@ -16,7 +16,7 @@ from apps.axion_local.copy_button import caption_copy
 from apps.axion_local.project_picker import project_selector, selected_project
 from apps.axion_local.settings import secret
 from apps.axion_local.store import FINAL_VIDEO_FILENAME, ROUGH_CUT_FILENAME, load_news_project
-from apps.design_studio import assets, jobs, template
+from apps.design_studio import assets, jobs, music, template
 from apps.design_studio.design import apply_editor_patch, dump_design
 from apps.design_studio.editor import block_data, design_editor, frame_data, image_bytes, media_url
 from apps.design_studio.effects import FRAME_STYLES, LOGO_EFFECTS, SLOGAN_EFFECTS, TEXT_ENTER, TEXT_EXIT
@@ -172,6 +172,41 @@ def render_status() -> None:
     st.divider()
 
 
+def music_expander(design) -> None:
+    """Müzik altlığı (v4.0): seç, dinle, kapat; kendi müziğini ekle (yalnız bu bilgisayarda kalır)."""
+    options = {music.OFF: "Kapalı", **music.tracks()}
+    if design.music not in options:  # eklenen müzik silinmiş
+        options[design.music] = "Bulunamadı (kapalı sayılır)"
+    with st.expander(f"🎵 Müzik: {options[design.music]}"):
+        music_key = key("music")
+        if ss.get(music_key) != design.music:  # tasarımdan (ilk açılış, eklenen müzik)
+            ss[music_key] = design.music
+
+        def pick() -> None:
+            current = load_project_design(project, seconds)
+            current.music = ss[music_key]
+            save_project_design(project, current)
+
+        st.selectbox("Müzik", list(options), format_func=options.get, key=music_key, on_change=pick,
+                     label_visibility="collapsed", filter_mode=None)
+        file = music.path(design.music)
+        if file:
+            st.audio(str(file))
+        st.caption("Sözsüz altlık: seslendirme ve kesit konuşurken kısılır, videonun sonuna kadar döner. Değiştirince "
+                   "son videoyu yeniden oluştur.")
+        upload = st.file_uploader("Kendi müziğini ekle (MP3, M4A, WAV, OGG)", type=["mp3", "m4a", "wav", "ogg"],
+                                  key=key("music_upload"))
+        if upload and st.button("Müziği ekle", width="stretch"):
+            try:
+                design.music = music.add(upload.name, upload.getvalue())
+            except (ValueError, OSError) as error:
+                st.error(str(error))
+            else:
+                save()
+                st.rerun()
+        st.caption("Eklenen müzik yalnız bu bilgisayarda kalır, GitHub'a yüklenmez (telif).")
+
+
 with st.sidebar:
     status_box = st.container()
     st.markdown("**Başlıklar**")
@@ -183,6 +218,8 @@ with st.sidebar:
     if (headline_1, headline_2) != (design.headline_1.text, design.headline_2.text):
         design.headline_1.text, design.headline_2.text = headline_1, headline_2
         save()
+
+    music_expander(design)
 
     with st.expander("📦 Yazı tipi / arka plan ekle"):
         token = secret("GITHUB_TOKEN")

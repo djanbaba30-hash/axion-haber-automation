@@ -100,6 +100,8 @@ class Design(BaseModel):
     frame: FrameSettings = Field(default_factory=FrameSettings)
     texts: list[TextLayer] = Field(default_factory=list)
     blurs: list[dict[str, Any]] = Field(default_factory=list)
+    # Müzik altlığı (v4.0): `music.py` kimliği ("gundem", "kendi:dosya.mp3", "kapali").
+    music: str = "gundem"
     rendered: str | None = None  # son videoyu üreten ayarların imzası
     # Tasarımın dayandığı haber başlıkları: Haber Stüdyosu'nda başlıklar değişip proje yeniden kaydedilince tasarımdaki
     # başlık metinleri yenilenir; yalnız burada yapılan düzenlemeler (satır kırma, sansür) haber değişmedikçe korunur.

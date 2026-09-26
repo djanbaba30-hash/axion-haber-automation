@@ -1,3 +1,31 @@
+# v4.0.0-alpha.4 — Müzik altlığı — 2026-09-26
+
+Editör: "haber videolarında kullanılan türden sözsüz arka plan müziği; seslendirmenin altında kısılsın; seçerim ya da
+kapatırım".
+
+## Added
+- **Üç hazır haber müziği** (`assets/muzik/`): **Gündem** (nötr, varsayılan; 96 BPM, La minör, nabız bas + pad +
+  arpej + saat tıkırtısı), **Gerilim** (asayiş/son dakika; 110 BPM, Re minör, 16'lık bas ostinatosu, koyu pad,
+  tıkırtı, vuruşlar), **Sakin** (insan hikâyesi; 80 BPM, Do majör, piyano arpeji, davulsuz). Bu ortamdan müzik
+  sitelerine erişilemediği ve repo herkese açık olduğu için (Pixabay vb. lisanslar yeniden dağıtımı yasaklar) parçalar
+  `assets/muzik/uret.py` ile sıfırdan sentezlendi: telif yok, Axion'a ait. Dairesel hesap: döngüde dikiş yok
+  (süreler tam ölçü: 80,0 / 69,8 / 72,0 sn; ölçüldü).
+- **Son videoda karışım** (`design_studio/music.py`, `render.build_final_command(music=)`): müzik döngüyle sonuna
+  kadar, 0,4 sn açılış / 1,5 sn kapanış; seviye parçaya göre ölçülür (sessizlikte ~-25 LUFS); seslendirme ve kesit
+  konuşurken sidechain ile ~6 dB kısılır; sonda -2 dBFS sınırlayıcı. Ölçüldü (-18 LUFS'luk test sesiyle): konuşma
+  kısmı müzikle/müziksiz farkı < 1 LU, sessiz kısımda müzik -25 LUFS civarı. Müzik açıkken ses yeniden kodlanır
+  (AAC 192k); sandbox'ta 10 sn'lik video 4,2 → 9,5 sn.
+- **Tasarım Stüdyosu → 🎵 Müzik** (kapalı bölüm, başlığında seçili müzik): seç, dinle, **Kapalı**; **Kendi müziğini
+  ekle** (MP3/M4A/WAV/OGG) → `data/varliklar/muzik/`, yalnız bu bilgisayarda (GitHub'a yüklenmez). Seçim
+  `tasarim.json` `music` alanında; değişince "işlenmedi" → Yeniden oluştur. Video Stüdyosu'nun otomatik ürettiği son
+  video da varsayılan müzikle çıkar.
+
+## Notes
+- Müziklerin kulağa nasıl geldiği sandbox'ta dinlenemedi (yalnız spektrum, seviye ve döngü ölçüldü); editörün
+  beğenisine göre parçalar değiştirilir ya da kapatılır.
+- Varsayılan açık (editörün "seçer ya da kapatır" notu); eski haberlerin son videosu tasarım değiştiği için "işlenmedi"
+  görünür, yeniden oluşturulunca müzikli olur.
+
 # v4.0.0-alpha.3 — Kapak = videonun ilk karesi — 2026-09-26
 
 Editör: "ayrı bir kapak görseli yüklemek boşa iş olur"; Reels/Shorts kapağı olarak videonun ilk karesi kullanılır.
