@@ -20,6 +20,7 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
 
 1. **Doğrudan `main`'e commit ve push et.** Branch/PR açma (repo sahibinin açık talimatı).
 2. **Push etmeden önce `make test` çalıştır ve tamamen geçtiğinden emin ol** (`pip install -r requirements-dev.txt`).
+   Yalnız belge (`*.md`) değişen commit'te gerekmez; CHANGELOG'un ilk başlığı değişiyorsa gerekir (sürümü testler okur).
 3. **CHANGELOG'a yalnızca gerçekten yapılanı yaz.** Yapılmamış işi "yapıldı" diye listeleme.
 4. **API/token maliyetini gözet.** Gereksiz ikinci model çağrısı ekleme; sistem prompt'u önbelleğe alınıyor, kısa ve yoğun tut.
 5. **Editoryal kurallar editörün kararıdır** (ROADMAP → Ürün kararları). Haber üretim mantığını (prompt, doğrulama)
@@ -42,6 +43,10 @@ Tek uygulama (Streamlit): **Haber Stüdyosu**, **Video Stüdyosu**, **Tasarım S
     düzenle. **Arkada çöp bırakma** (ölü kod, kullanılmayan dosya/sabit/oturum anahtarı, eski açıklama). Optimizasyon
     ve verimlilik önceliklidir: API kullanılsa bile verimli (gereksiz çağrı/token yok) ama **kaliteden ödün vermeden**.
     Büyük işte önce plan editöre onaylatılır ("tamam / devam / iptal").
+13. **Repoya not az ve öz (editör, 2026-09-26):** repoya yalnız (a) kod değişince, (b) editör bir kararı kesinleştirince
+    (mümkünse o kararın ilk kod commit'iyle birlikte), (c) oturum biterken "Nerede kaldık" için yazılır. Beyin fırtınası,
+    seçenekler, taslaklar sohbette kalır. Her push editörde "güncelleme var" gösterir: belge için ayrı push'u biriktir.
+    GPT yalnız büyük işlerden önce (fikir) ve uzun serilerin sonunda (kontrol, hata) okur; ona sürekli not yazılmaz.
 
 ## Kod haritası
 
@@ -237,31 +242,33 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.2.0-alpha.2 → editörün kararı bekleniyor: Araştırma A (v4.1 4. madde)
+## Nerede kaldık (2026-09-26) — Streamlit 4.2.0-alpha.2'de donduruldu → sıradaki: v5.0 yeni arayüz, 1. adım prototip
 
-**YENİ OTURUM BURADAN BAŞLAR.** Faz 0–6 ve 4.0 bitti (ROADMAP "Sürüm 4.0"). Editör Axion'u her gün gerçek DHA
-haberleriyle kullanıyor (evde bilgisayardan, dükkânda tabletten Tailscale ile). Sıradaki iş editörden gelir:
-geri bildirim, teşhis dosyası, düzeltme kaydı. **Sıradaki iş: ROADMAP "v4.1 planı"** (editörle beyin fırtınası, GPT
-fikirleri `reviews/gpt-v5-fikirler.md`); maddeleri sırayla, her oturumda bir parça.
-- **v4.1 1. ve 2. madde yapıldı** (`v4.1.0-alpha.1` okunuş sözlüğü + ElevenLabs göstergesi; `alpha.2` haberdeki
-  alıntıdan kesit önerisi). Editör denerken bak: sözlükle okunan kelime, 🩺 Durum'daki ElevenLabs satırı, "📍 Haberdeki
-  alıntı" doğru cümlelere mi oturuyor (düzeltme kaydında kesit satırının `alintilar` alanı ↔ `secilen`).
-- Editör ElevenLabs anahtarına "User" iznini ekledi (2026-09-26; önce yalnız TTS ve Voices vardı): kalan karakterin
-  okunamamasının nedeni buydu.
-- **v4.2 1. madde yapıldı** (`v4.2.0-alpha.1`, editörün isteğiyle v4.1'in arasına): üslup seçimi ve örnekleri yerine
-  "Haberi işle"nin yanında serbest talimat (her yeni haberde boş; boşsa objektif haber sunucusu). Editör gerçek
-  haberle dener: boş talimatla çıktı eskisi kadar iyi mi, talimat uygulanıyor mu. Düzeltme kaydında haber satırının
-  `talimat` alanı ↔ düzeltilen alanlar.
-- **v4.1 3. madde yapıldı** (`v4.2.0-alpha.2`; sürüm numarası 4.2'den devam eder): görüntü analizinin alt adımları
-  ölçülür (`data/olcumler.jsonl` → "goruntu_analizi" satırı `adimlar`, `kare`, `video_sn`; Video Stüdyosu →
-  Geliştirici bilgileri'nde "Son analizin süresi"). Hızlandırma kararı için editörden birkaç haberin teşhis dosyası
-  (ölçüm dosyasının sonu içinde) ya da o satırın ekran görüntüsü istenir (ROADMAP 8. madde).
-- **v4.1 4. madde: rapor hazır** (`arastirma/a-altyapi-on-yuz.md`). Editör netleştirdi: sorun hız değil, daha
-  işlevsel/güzel/çok seçenekli arayüz istiyor; HTTPS açılabilir. Bu hedefte darboğaz Streamlit → öneri (6. bölüm):
-  v5.0 modern web arayüzü (FastAPI + React/Tailwind, derlenmiş dosyalar repoda; `apps/` + `shared/` aynen), sayfa
-  sayfa, Streamlit yedekte; ilk adım tıklanabilir tasarım prototipi (ürün kodu yok). Editörün cevabı (prototip?
-  tablet/bilgisayar önceliği? örnek aldığı uygulamalar?) gelmeden 5–7. maddelere ve taşınmaya başlama.
-  Denenecekler listesi: `DENENECEKLER.md`.
+**YENİ OTURUM BURADAN BAŞLAR.** Editör Axion'u her gün gerçek DHA haberleriyle kullanıyor (evde bilgisayardan,
+dükkânda tabletten Tailscale ile).
+
+**Editörün kararları (2026-09-26, kesin):**
+- **Streamlit arayüzü son hâlinde kalır:** yalnız hata düzeltme / küçük yama; yeni özellik yok. Yeni arayüz kullanıma
+  hazır olana kadar çalışır durumda kalır (editör onu kullanıyor).
+- **v5.0: modern web arayüzü** (`arastirma/a-altyapi-on-yuz.md` 6. bölüm): FastAPI + React/Tailwind; `apps/` + `shared/`
+  iş mantığı aynen; **aynı repo, aynı süreç** (`st.App` rotaları; iki arayüz aynı verileri ve arka plan işlerini görür),
+  derlenmiş ön yüz dosyaları repoda (editörün bilgisayarına Node kurulmaz). Eski sayfalar taşınmaz: **esinlenerek
+  yeniden** yapılır. Sayfa sayfa ön sürüm; hepsi hazır olunca Streamlit ve yamaları silinir.
+- **Tablet öncelikli:** dışarıda tabletten çalışıyor (Samsung Galaxy Tab S9+), evde bilgisayar zaten rahat; telefon
+  Samsung Galaxy S21 FE. Yerleşim önce tablet (yatay ve dikey), sonra telefon ve bilgisayar.
+- HTTPS (Tailscale Serve) açılabilir; ek ücret istemeyen yol (hepsi ücretsiz yazılım, API maliyeti aynı).
+- v4.1'in kalanları: 5 (Tarayıcı iyileştirmesi) yeni arayüze kaldı; 6 (Streamlit yükseltmesi) iptal; 7 (sosyal medyaya
+  yükleme) ve 8 (istem iyileştirmesi, analiz hızlandırması, altyazı) arayüzden bağımsız, haber üretildikçe küçük
+  değişikliklerle (ikisine de yarar).
+- Denemeler ve düzeltmeler gerekince (`DENENECEKLER.md`).
+
+**v5.0 sıradaki adım: tıklanabilir prototip** (ürün kodu yok; editörün tabletinde açılan sayfa, gerçek veri yok) →
+editör onayı → altyapı (uç noktalar, giriş/şifre, HTTPS, PWA, tasarım dili) → sayfa sayfa (Haber → Video → Tarayıcı →
+Tasarım). Prototip repoya değil, claude.ai sayfası (Artifact) olarak paylaşılır (güncelleme gerekmez).
+
+**Streamlit'in son özellikleri (editörün denemesi bekleniyor, `DENENECEKLER.md`):** okunuş sözlüğü + ElevenLabs
+göstergesi (`v4.1.0-alpha.1`; editör anahtara "User" iznini ekledi), haberdeki alıntıdan kesit önerisi (`alpha.2`),
+üslup yerine talimat kutusu (`v4.2.0-alpha.1`), görüntü analizinin alt adım süreleri (`alpha.2`; hızlandırma bu veriyle).
 
 ### Çalışma biçimi (editör kararları, 2026-09-26)
 - Büyük özellikler parça parça ön sürüm: CHANGELOG başlığı `# vX.Y.Z-alpha.N — <özellik> — <tarih>` (ilk başlık =

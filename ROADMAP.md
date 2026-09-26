@@ -127,10 +127,9 @@ tarama → `v4.0.0`. Hepsi API'siz (yazıya dökme de bilgisayarda):
 
 ## v4.1 planı (editörle beyin fırtınası, 2026-09-26; GPT: `reviews/gpt-v5-fikirler.md`) — ONAYLANDI (editör, 2026-09-26)
 
-Durum: 1. ve 2. madde yapıldı (`v4.1.0-alpha.1`, `alpha.2`; editör denemesi bekleniyor); araya editörün isteğiyle
-v4.2'nin 1. maddesi girdi (`v4.2.0-alpha.1`); 3. madde yapıldı (`v4.2.0-alpha.2`); 4. maddenin raporu hazır (karar
-bekliyor); editörün denemesi bekleyenler `DENENECEKLER.md`. Biten maddeyi burada
-"— YAPILDI (sürüm)" diye işaretle.
+Durum (2026-09-26, kapandı): 1–3 yapıldı; 4'ün kararı verildi (v5.0 yeni arayüz, aşağıda); 5 yeni arayüze kaldı;
+6 iptal; 7 ve 8 arayüzden bağımsız, haber üretildikçe küçük değişikliklerle. Streamlit arayüzü bu hâliyle son sürüm
+(yalnız hata düzeltme).
 
 Sıra, bağımlılığa göre: önce altyapı kararını etkilemeyen küçük işler, sonra büyük kararlar için araştırma (kod yok),
 sonra kararlara göre geliştirme. Her parça ayrı ön sürüm (`v4.1.0-alpha.N`); taşınma kararı çıkarsa o `v5.0`.
@@ -167,6 +166,17 @@ Her maddede AGENTS kural 12 (bir şey + etkilediği her şey, çöp yok, verimli
 8. **Sonra, veriyle:** düzeltme kaydı birikince (~10 haber) istem/kural iyileştirmesi (istem büyümez); görüntü analizi
    hızlandırması (3'ün verisiyle); **altyazı** yalnız editörün tarifinden sonra (nerede, nasıl; önce editöre sorulur).
    Blur/mozaik editör kullandıkça.
+
+## v5.0 planı — yeni arayüz (editör kararı, 2026-09-26)
+
+Hedef: daha işlevsel, güzel, çok seçenekli arayüz; **tablet öncelikli** (Galaxy Tab S9+; telefon Galaxy S21 FE).
+Gerekçe ve seçenekler: `arastirma/a-altyapi-on-yuz.md` 6. bölüm. FastAPI + React/Tailwind, iş mantığı aynen, aynı repo
+ve süreç; eski sayfalar taşınmaz, esinlenerek yeniden yapılır; Streamlit yeni arayüz hazır olana kadar çalışır.
+
+1. Tıklanabilir prototip (claude.ai sayfası, gerçek veri yok) → editör onayı.
+2. Altyapı: uç noktalar, giriş/şifre, HTTPS (Tailscale Serve), ana ekrana ekleme (PWA), tasarım dili.
+3. Sayfa sayfa ön sürüm: Haber Stüdyosu → Video Stüdyosu → Tarayıcı (eski 5. madde) → Tasarım Stüdyosu.
+4. Streamlit ve ona bağlı yamalar (iç API'ler, AppTest'ler) silinir.
 
 ## v4.2 planı (editörün isteği, 2026-09-26) — 1. madde v4.1'in 2. maddesinden hemen sonra (editör)
 
