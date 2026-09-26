@@ -219,7 +219,7 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.3 → sıradaki: editörün toplu denemesi + genel repo taraması → v4.0.0
+## Nerede kaldık (2026-09-26) — Sürüm 4.0.0-alpha.7.3 → sıradaki: GPT incelemesi → onaylanan düzeltmeler + genel repo taraması → v4.0.0
 
 **YENİ OTURUM BURADAN BAŞLAR.** 3.x bitti; editör 3.7.2'yi kullanıyor (tablet + Luna kurgusu gerçek haberlerde
 sorunsuz). Editör kararı (2026-09-26): 4.0 özellikleri **parça parça**, her parça ayrı ön sürüm olarak yayımlanır:
@@ -288,7 +288,13 @@ Editörün kullanım limiti sınırlı: her oturumda bir parça; bitince "Nerede
    parça sonu sesle uzar (`transcribe.levels` + `_voiced`: Whisper "doğru koştu"yu yazmamıştı), hotwords kalktı,
    `VERSION=4`, döküm `bolumler` (Whisper'ın ham bölümleri) + teşhis dosyasında `yazi/*.json`. Regresyon testi
    `test_artvin_interview_splits_where_the_editor_did` (editörün ekran görüntüsündeki döküm + seçtiği kesitler).
-Sonra: genel repo taraması → `v4.0.0`.
+   **Editör (alpha.7.3): "bu sefer konuşmadaki yazıyı daha doğru çıkardı".** 4.0 özellikleri bitti.
+
+**Sıradaki (editör kararı, 2026-09-26): GPT incelemesi.** İstek `reviews/gpt-v4-istek.md` (kapsam 8365e2b..HEAD,
+öncelikli 9 alan, rapor biçimi); GPT editörün bilgisayarında yüksek düşünmeyle çalışır, kod değiştirmez, raporu
+`reviews/gpt-v4.md` olarak `main`'e koyar. Rapor gelince Claude: her bulguyu kodla/ölçümle doğrular (katılıyor /
+katılmıyor + neden), kendi genel taramasını (ölü kod, borçlar, belgeler, AGENTS 3.x geçmişini kısaltma, CHANGELOG'da
+3.x özeti) ekler, editöre tek liste sunar; onaylananlar küçük testli commit'lerle yapılır → `v4.0.0`.
 
 **Açık notlar:** editör Axion'u güncelleyip masaüstü simgesiyle yeniden açtı (2026-09-26) → geri dönüş bekçisi
 (v3.5.0) artık etkin. Blur ayrıntılı denenmedi. Luna kurgusu gerçek haberlerle doğrulandı
