@@ -89,7 +89,9 @@ Not: Şifre boşken, evindeki Wi-Fi'a bağlı başka bir cihaz da Axion'u açabi
      **Seslendirmeden önce / sonra** → **Kesiti ekle**. Birden fazla kesit ekleyebilirsin (ör. röportajın iki kısmı);
      eklendiği sırayla oynar. Kesit olarak kullanılan görüntü, seslendirme sırasında tekrar gösterilmez.
      İlk açılışta videonun küçük bir önizlemesi hazırlanır (bir kez, birkaç saniye).
-   - **4. Video:** Axion sahneleri seslendirmeye göre kendisi seçer (ek ücret yok) → **Videoyu oluştur**.
+   - **4. Video:** **Videoyu oluştur** → sahneleri Luna seçer (olay sırasıyla, aynı görüntü tekrarlanmadan, ilk sahne
+     kapak; haber başına tek küçük çağrı, ~$0,001). Beğenmezsen **🔀 Sahneleri yeniden seç**: Luna farklı bir
+     kurgu yapar. **Videoyu yeniden oluştur** aynı sahnelerle yeniden üretir (yeni çağrı yok).
      Canva şablonundaki video alanının ölçüsünde (960×1226) MP4 hazırlanır.
      - Video alanı her sahnede tam dolu kalır; hiçbir yanda bulanık dolgu olmaz. Kadraj haberin ana öznesine
        (araç, konuşan kişi) kayar; özne çok genişse (ör. yandan otobüs) kadraj onun üzerinde yavaşça kayar.

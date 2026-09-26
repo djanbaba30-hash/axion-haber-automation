@@ -27,6 +27,7 @@ from apps.axion_local.store import (
     save_project_json,
 )
 from apps.video_studio import jobs as video_jobs
+from apps.video_studio.modules import luna_edit
 from apps.video_studio.modules.audio_ingestion import probe_audio
 from apps.video_studio.modules.edit_plan import build_edit_project
 from apps.video_studio.modules.local_media import LocalMediaFile
@@ -77,7 +78,7 @@ def render_status(project: NewsProject) -> None:
     def status() -> None:
         job = video_jobs.get(project)
         if job and job.running:
-            st.info(f"⏳ {video_jobs.STAGES[job.stage]} oluşturuluyor… {job.elapsed:.0f} sn. Bu bilgisayarda sürer: "
+            st.info(f"⏳ {video_jobs.STAGES[job.stage]}… {job.elapsed:.0f} sn. Bu bilgisayarda sürer: "
                     "sayfadan ayrılabilir ya da tableti kapatabilirsin, bitince burada görünür.")
         elif job and job.finished and not job.seen:
             job.seen = True
@@ -357,19 +358,31 @@ with st.expander("4. Video", expanded=True):
         render_status(project)
         job = video_jobs.get(project)
         busy = bool(job and job.running)
+        if job and job.finished and job.edit_project:  # Luna'nın seçtiği sahneler (diskten: sonradan geçersiz kılınmadıysa)
+            ss.edit_project = edit_project = load_project_json(project, EDIT_PROJECT_FILENAME) or edit_project
         label = "Videoyu yeniden oluştur" if output.exists() else "🎬 Videoyu oluştur"
-        if st.button("⏳ Video oluşturuluyor…" if busy else label, type="primary", width="stretch", disabled=busy):
-            try:
-                # Plan güncel kurallarla yeniden kurulur (API yok): kural güncellemeleri eski projelere de uygulanır.
-                edit_project = plan_rough_cut(edit_project, media_library, soundbites=soundbites)
+
+        def start_video(replan: bool) -> None:
+            try:  # kesitler vb. hızlı kontrol (API yok); asıl sahne seçimi arka planda Luna ile
+                base = plan_rough_cut(edit_project, media_library, soundbites=soundbites)
             except ValueError as error:
                 st.error(f"Kurgu planı oluşturulamadı: {error}")
-            else:
-                ss.edit_project = edit_project
-                save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
-                # Kurgu ve ardından son video (1080x1920, Axion şablonu; varsa editörün tasarımıyla) arka planda üretilir.
-                video_jobs.start(project, edit_project, media_library)
-                st.rerun()
+                return
+            # Sahne seçimi (Luna; girdiler aynıysa kayıtlı plan), kurgu ve son video (1080x1920, Axion şablonu; varsa
+            # editörün tasarımıyla) arka planda üretilir.
+            video_jobs.start(project, base, media_library,
+                             video_jobs.PlanRequest(soundbites=soundbites, api_key=secret("OPENAI_API_KEY"), replan=replan))
+            st.rerun()
+
+        if st.button("⏳ Video oluşturuluyor…" if busy else label, type="primary", width="stretch", disabled=busy):
+            start_video(replan=False)
+        if output.exists() and not busy and st.button(
+            "🔀 Sahneleri yeniden seç", width="stretch",
+            help="Luna'dan bu kurgudan farklı bir sahne seçimi ister (küçük bir yapay zekâ çağrısı), video yeniden oluşur.",
+        ):
+            start_video(replan=True)
+        if job and job.finished and job.plan_info and job.plan_info.get("not"):
+            (st.warning if job.plan_info.get("kaynak") == "kural" else st.caption)(job.plan_info["not"])
         final = project.folder / FINAL_VIDEO_FILENAME
         if job and job.finished and job.error:
             st.error("Video oluşturulamadı.")
@@ -389,8 +402,8 @@ with st.expander("4. Video", expanded=True):
             caption_copy(news_text, key="video_paylasim_kopyala")  # videoyu paylaşırken gereken metin
         else:
             st.caption(
-                "Sahneler seslendirmeye göre seçildi. Kadraj her sahnede haberin ana öznesine göre ayarlanır, "
-                "video alanı hep tam dolu kalır."
+                "Sahneleri Luna seçer: olay sırasıyla, aynı görüntü tekrarlanmadan, ilk sahne kapak. Kadraj her sahnede "
+                "haberin ana öznesine göre ayarlanır, video alanı hep tam dolu kalır."
             )
 
 
@@ -420,5 +433,11 @@ if media_library:
             job = video_jobs.get(project) if project else None
             if job and job.encoder:
                 st.caption(f"Kurgu kodlayıcısı: {job.encoder} · {job.elapsed:.0f} sn")
+            plan = load_project_json(project, luna_edit.PLAN_FILENAME) if project else None
+            if plan:
+                used = plan.get("kullanim", {})
+                st.caption(f"Sahne seçimi (Luna, {plan.get('tarih', '')}): girdi {used.get('input_tokens', 0):,} · "
+                           f"çıktı {used.get('output_tokens', 0):,} · düşünme {used.get('reasoning_tokens', 0):,} · "
+                           f"${float(used.get('estimated_cost_usd', 0) or 0):.4f}")
             st.dataframe(clip_rows(edit_project), width="stretch", hide_index=True)
             st.json(edit_project, expanded=False)

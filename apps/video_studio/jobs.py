@@ -1,4 +1,4 @@
-"""Videoyu (kaba kurgu + Axion şablonlu son video) arka planda üretme.
+"""Videoyu (Luna sahne seçimi + kaba kurgu + Axion şablonlu son video) arka planda üretme.
 
 Sayfa beklemez: editör tabletten çalışırken ekran kapansa ya da bağlantı kopsa da üretim evdeki bilgisayarda sürer;
 sayfa yeniden açılınca sonucu gösterir. Proje başına tek iş. Aynı haberin Tasarım Stüdyosu'nda süren son video üretimi
@@ -13,13 +13,22 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from apps.axion_local.metrics import timed
-from apps.axion_local.store import ROUGH_CUT_FILENAME, NewsProject
+from apps.axion_local.store import EDIT_PROJECT_FILENAME, ROUGH_CUT_FILENAME, NewsProject, save_project_json
 from apps.design_studio import jobs as design_jobs
 from apps.design_studio import pipeline
 
-from .modules import render
+from .modules import luna_edit, render
+from .modules.soundbites import Soundbite
 
-STAGES = {"kurgu": "Kurgu", "sablon": "Axion şablonu"}
+STAGES = {"plan": "Sahneler seçiliyor (Luna)", "kurgu": "Kurgu oluşturuluyor", "sablon": "Axion şablonu uygulanıyor"}
+
+
+@dataclass
+class PlanRequest:
+    """Sahne seçimi (Faz 4): Luna ile (kayıtlı plan girdiler aynıysa yeniden kullanılır), olmazsa kurallarla."""
+    soundbites: list[Soundbite] = field(default_factory=list)
+    api_key: str = ""
+    replan: bool = False  # "Sahneleri yeniden seç": önceki plan "beğenilmedi" notuyla, yeni çağrı
 
 
 @dataclass
@@ -28,6 +37,8 @@ class Job:
     finished: float | None = None
     stage: str = "kurgu"
     encoder: str | None = None
+    edit_project: dict[str, Any] | None = None  # sahne seçiminden sonraki plan (sayfa bunu gösterir)
+    plan_info: dict[str, Any] | None = None     # {"kaynak": "luna"|"kayitli"|"kural", "not", "kullanim"}
     error: str | None = None        # kurgu üretilemedi
     final_error: str | None = None  # kurgu hazır, şablon uygulanamadı
     seen: bool = False              # sayfa sonucu bir kez gösterdi mi
@@ -46,8 +57,18 @@ _JOBS: dict[str, Job] = {}
 _LOCK = design_jobs.START_LOCK  # iki stüdyonun başlatması tek kilitte
 
 
-def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any], job: Job) -> None:
+def _run(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any], job: Job,
+         plan: PlanRequest | None = None) -> None:
     try:
+        if plan is not None:
+            job.stage = "plan"
+            with timed("sahne_secimi", project.id) as info:
+                edit_project, job.plan_info = luna_edit.plan(edit_project, media_library, plan.soundbites,
+                                                             plan.api_key, project.folder, replan=plan.replan)
+                info["kaynak"] = job.plan_info["kaynak"]
+            save_project_json(project, EDIT_PROJECT_FILENAME, edit_project)
+            job.edit_project = edit_project
+            job.stage = "kurgu"
         with timed("kurgu", project.id) as info:
             job.encoder = info["kodlayici"] = render.render_rough_cut(edit_project, media_library,
                                                                       project.folder / ROUGH_CUT_FILENAME)
@@ -74,14 +95,15 @@ def busy(project: NewsProject | None = None) -> bool:
     return any(job.running for job in _JOBS.values())
 
 
-def start(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any]) -> bool:
-    """İşi başlatır; zaten çalışan varsa False."""
+def start(project: NewsProject, edit_project: dict[str, Any], media_library: dict[str, Any],
+          plan: PlanRequest | None = None) -> bool:
+    """İşi başlatır; zaten çalışan varsa False. `plan` verilirse önce sahneler seçilir (Luna)."""
     with _LOCK:
         current = _JOBS.get(str(project.folder))
         if current and current.running:
             return False
         job = Job()
-        job.thread = threading.Thread(target=_run, args=(project, edit_project, media_library, job), daemon=True,
+        job.thread = threading.Thread(target=_run, args=(project, edit_project, media_library, job, plan), daemon=True,
                                       name=f"axion-video-{project.id}")
         _JOBS[str(project.folder)] = job
         job.thread.start()

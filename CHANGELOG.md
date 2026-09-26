@@ -1,3 +1,37 @@
+# v3.6.0 — Faz 4: sahneleri Luna seçer — 2026-09-26
+
+Editör kararı: "kurguyla, yanlış kesilmiş videolarla sürekli uğraşmayalım; bu işi Luna yapsın, verimli olsun.
+4.0'dan önceki son büyük güncelleme bu olsun."
+
+## Added
+- **Sahneleri Luna seçer** (`apps/video_studio/modules/luna_edit.py`): "Videoyu oluştur" deyince arka planda önce tek,
+  görüntüsüz bir Luna çağrısı (`gpt-5.6-luna`, düşünme "low"). Giden: başlıklar, seslendirme sahneleri (duraklamalarda
+  2–5 sn'lik parçalar, o sırada söylenen metinle; ilki "kapak") ve analizdeki pencereler (video/çekim, kaynak zamanı,
+  tür/rol, kısa açıklama, özne var mı, plaka, kesit). Aynı çekimde aynı görünen ardışık pencereler tek satır (uzun
+  röportajda token tasarrufu). Luna her sahneye bir pencere ve o penceredeki başlangıç anını seçer; şema pencere
+  kimliklerini enum'la sınırlar. Kurallar: olay örgüsü, tekrar yok, ilk sahne kapak, röportaj/genel görüntü/plaka
+  ancak gerekirse, kesit aralıkları kullanılmaz. Örnek haberde istek ~2.700 karakter (~1.300 token sistemle); tahmini
+  maliyet haber başına ~$0,001.
+- Kurallar kalanı yapar: kesme zamanları (duraklamalar), kadraj (tam dolu, dikeyde sabit), kaynak sesli kesitler,
+  aynı anın iki kez kullanılmaması (Luna aynı anı iki kez isterse ikincisi pencerenin kullanılmamış kısmından gelir),
+  aynı çekimin parçalarının kaynak sırası (v3.3). Luna'nın seçtiği pencere sahneye yetmezse ya da bir sahneyi boş
+  bırakırsa kalan süre kurallarla dolar. Luna'nın klipleri `origin: "llm"`.
+- **Plan saklanır** (`kurgu_plani.json`: imza, seçimler, token): girdiler (seslendirme, görüntüler, kesitler) aynıysa
+  "Videoyu yeniden oluştur" yeni çağrı yapmaz, aynı kurguyu üretir.
+- **"🔀 Sahneleri yeniden seç"**: video hazırken; önceki kurguyu "editör beğenmedi, farklı seç" notuyla gönderir.
+- Luna'ya ulaşılamazsa ya da anahtar yoksa video yine çıkar: sahneler kurallarla seçilir, sayfada uyarı görünür.
+- Durum satırı: "Sahneler seçiliyor (Luna)… → Kurgu oluşturuluyor… → Axion şablonu uygulanıyor…". Token ve maliyet
+  Geliştirici bilgileri'nde; adım süresi `data/olcumler.jsonl`'da (`sahne_secimi`).
+
+## Changed
+- Kurallı kurgu (`rough_cut`) artık yalnız yedek ve kalan süreyi doldurma; kuralları ayrıca geliştirilmeyecek (editör:
+  "sistemin kendi başına çözmeye çalıştığı alanı basitleştirelim"). Kod, Luna ile ortak "hazırlık" (`prepare`: kesitler,
+  sahne zamanları, adaylar) ve seçim (`plan_rough_cut(picks=...)`) olarak ayrıldı.
+
+## Denenmedi
+- Gerçek Luna ile denenmedi (bu ortamda API anahtarı yok); testler sahte Luna yanıtıyla. İlk gerçek denemede Geliştirici
+  bilgileri'ndeki sahne tablosu ve `kurgu_plani.json` ile kontrol edilir.
+
 # v3.5.1 — Tablet denemesinden: klavye, Tarayıcı boşluğu, başlık yenileme — 2026-09-26
 
 Editörün dükkândaki tablet denemesi (ekran görüntüleriyle).

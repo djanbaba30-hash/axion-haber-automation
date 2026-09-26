@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -245,6 +246,35 @@ def test_render_button_creates_video_full_bleed(local_env, monkeypatch):
     assert any(b.label == "⬇️ Son videoyu indir" for b in at.get("download_button"))
     assert any(b.label == "🎨 Tasarım Stüdyosu'nda düzenle →" for b in at.button)
     assert any(c.value == store.load_news_project(project)[0].caption for c in at.code)  # paylaşım metni
+    # Faz 4: sahneleri Luna seçer; ulaşılamazsa (testte hep) kurallarla ve editör uyarılır.
+    assert any("Luna'ya ulaşılamadı" in w.value for w in at.warning)
+    assert any(b.label == "🔀 Sahneleri yeniden seç" for b in at.button)
+
+    # Luna yanıt verince: sahne seçimi kaydedilir, "Sahneleri yeniden seç" önceki kurguyu "beğenilmedi" diye gönderir.
+    from apps.video_studio.modules import luna_edit
+
+    prompts = []
+
+    def fake_request(prompt, ids, api_key, client=None):
+        prompts.append(prompt)
+        return [{"parca": 1, "pencere": ids[0], "kaynak_bas": 1.0 + len(prompts)}], {"input_tokens": 900, "output_tokens": 80}
+
+    monkeypatch.setattr(luna_edit, "request", fake_request)
+    button(at, "Videoyu yeniden oluştur").click().run()
+    video_jobs.wait(project)
+    at.run()
+    saved = json.loads((project.folder / luna_edit.PLAN_FILENAME).read_text(encoding="utf-8"))
+    assert len(prompts) == 1 and saved["sahneler"][0]["kaynak_bas"] == 2.0
+    clips = [c for t in at.session_state["edit_project"]["edit_plan"]["timeline"]["tracks"] if t["kind"] == "video" for c in t["clips"]]
+    # Tek çekim: parçalar kaynak sırasına dizilir (v3.3 kuralı); Luna'nın seçtiği parça videoda (etiketiyle) yer alır.
+    assert [c["origin"] for c in clips].count("llm") == 1
+    button(at, "Videoyu yeniden oluştur").click().run()  # girdiler aynı: kayıtlı plan, yeni çağrı yok
+    video_jobs.wait(project)
+    assert len(prompts) == 1
+    at.run()
+    button(at, "🔀 Sahneleri yeniden seç").click().run()
+    video_jobs.wait(project)
+    assert len(prompts) == 2 and "<onceki_kurgu>" in prompts[1] and "1: P1 @ 2.0" in prompts[1]
 
 
 def test_video_render_failure_is_shown_and_can_be_retried(local_env, monkeypatch):

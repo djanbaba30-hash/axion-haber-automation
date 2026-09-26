@@ -80,7 +80,7 @@ Sürüm 3.0.0 (2026-09-25): Faz 0–3 ve 5 tamam, Faz 6'nın temel akışı haz�
 | 1 ✅ | **News Studio:** zaman bilgili TTS (`convert_with_timestamps`), metin değişince sesin geçersiz sayılması, NewsPackage'da ses hash'i | TTS cümleleri zamanlanabilir |
 | 2 ✅ | **Video Studio sözleşme geçişi:** `shared/` 2.1 modelleri, enum'lu Luna şeması, uzun shot pencereleri (Windows'ta doğrulandı) | Planner'a güvenilir veri |
 | 3 ✅ | **Kaba kurgu:** kural tabanlı TTS ↔ shot eşleştirme + FFmpeg ile şablon video alanı ölçüsünde (960×1226) MP4 | **CapCut'a gerek kalmaz** |
-| 4 (ertelendi; ihtiyaç halinde geri dönülecek) | **AI Edit Planner:** TTS segmentleri + shot açıklamaları → tek Luna metin çağrısı → sahne seçimi. Editör kararı: token harcamamak için şimdilik yapılmıyor (3.0'da da yok); günlük kullanımdaki sahne seçimi şikâyetleri önce kurallarla (API'siz, `rough_cut.py`) çözülür. Kurallar yetmezse yapılacak biçim hazır: her haberde otomatik değil, yalnızca editörün Video Stüdyosu'nda bastığı "Sahneleri Luna ile düzenle" düğmesiyle, haber başına tek metin çağrısı (görüntü yok; mevcut analiz açıklamaları kullanılır). | Daha isabetli sahne seçimi |
+| 4 ✅ (v3.6.0) | **Luna sahne seçimi (AI Edit Planner):** editör kararı (2026-09-26): "kurguyla sürekli uğraşmayalım, Luna yapsın, verimli olsun". Her videoda tek, görüntüsüz Luna metin çağrısı (`reasoning low`): seslendirme sahneleri (duraklamalarda kesilmiş, söylenen metinle) + analiz pencereleri (kaynak zamanı, çekim, tür, açıklama; aynı görünen ardışık pencereler tek satır) → her sahneye pencere + başlangıç anı. Kesme zamanları, kadraj, kesitler, aynı anın tekrar edilmemesi ve aynı çekimin kaynak sırası kurallarla kalır. Plan `kurgu_plani.json`'da; girdiler aynıysa yeniden çağrı yok; "🔀 Sahneleri yeniden seç" önceki kurguyu "beğenilmedi" notuyla gönderir. Luna'ya ulaşılamazsa kurallı kurgu (`rough_cut`, artık yalnız yedek ve kalan süreyi doldurma; kuralları ayrıca geliştirilmez). | Kurguyla uğraşmak biter |
 | 5 ✅ (v2.5–v2.9; Windows doğrulaması bekliyor) | **Tasarım Stüdyosu = sade Canva:** Axion şablonu otomatik (kurguyla birlikte son video hazır); canlı önizleme (tuval, efektler oynar); başlık/yazı stili, sansür, eklenen yazılar, seçilebilir animasyonlar, çerçeve animasyonları, arka plan seçimi, varlık ekleme; **elle blur/mozaik** (şekil, açı, yumuşak kenar, anahtar kare, canlı takip). Ayrıntı: aşağıda ve `shared/axion_template.py` | **Canva'ya gerek kalmaz** |
 | 6 (3.0'da temel akış hazır) | **Tabletten tam kullanım:** Axion tablette Tailscale ile açılır; iş bilgisayarda yapılır, tablete yalnızca önizleme ve son video (İndir) gelir. Dükkân başka ilçede, interneti yavaş (45/13 Mbps): büyük dosya tabletten yüklenmez, tablete de indirilmez. DHA videoları Axion'un **🌐 Tarayıcı** sayfasından indirilir (v2.10.0): evdeki bilgisayarda görünmez bir Brave (Axion'un kendi profili; editör Edge kullanmaz), tablete yalnızca ekran görüntüsü gelir, video evin internetiyle İndirilenler'e iner. Giriş bilgileri bir kez kaydedilir (Windows'ta şifreli), sonra kutular kendiliğinden dolar; inen video "🎬 Video Stüdyosu'nda kullan" ile seçili gelir (v3.0.0). Video ve son video arka planda üretilir: tablet kapansa da bilgisayarda sürer (v3.0.0). Uzak masaüstü yalnızca yedek (editör: iki monitör + gizli görev çubuğuyla pratik değil). Paylaş düğmesi ve APK yok (editör: işe yaramıyor). Açık işler: Tarayıcı sayfasının gerçek DHA paneliyle denenmesi, tablet dokunmatiğinde Tasarım Stüdyosu denemesi, aynı haberin iki cihazda açılması uyarısı. | Evde olmadan haber → video |
 
@@ -122,6 +122,11 @@ kontrolü kaldırmak değil, hızlandırmak.
      test (GitHub) istenmedi.
    - **Sürüm numarası** kenar çubuğunda ("Yenilikler" istenmedi).
    - Sonra editör dükkânda tabletten tam akışı dener; notları 4.0'dan önce yapılır.
+10. **v3.5.1** (editörün tablet denemesi, yapıldı): seçim kutularında klavye açılmaz, Tarayıcı'da kaymış görüntü yerine
+   oturur, "yeniden üret" başlıkları önceki başlıkları görür (gerçek modelle denenmesi bekleniyor).
+11. **v3.6.0 = Faz 4** (editör kararı, 2026-09-26: "4.0'dan önceki son büyük güncelleme"): sahneleri Luna seçer
+   (yukarıdaki Faz 4 satırı). Gerçek Luna ile ilk deneme editörde. Açık: teşhis dosyalarının (proje JSON'ları)
+   uzaktan güncellemede repoya gitmesi — repo herkese açık; editörün kararı bekleniyor (AGENTS "Nerede kaldık").
 
 Gerekmeyenler: Windows açılışında otomatik başlatma; Windows'ta otomatik test (GitHub Actions); güncellemeden sonra
 "Yenilikler"; yatay/kare çıktı (yalnız Reels/Shorts paylaşılıyor). (Haber metni: DHA'nın "metni kopyala"sı uzaktan
@@ -133,8 +138,8 @@ Tema: Axion'u uzaktan güvenle kullanmak ve son kararı editöre hızlı verdirm
 yeniden değerlendirilir. Hepsi API'siz (yazıya dökme de bilgisayarda çalışır).
 
 1. **Kurguda sahne değiştirme:** Video Stüdyosu'nda seslendirme parçası başına küçük kare şeridi; sahneye dokun →
-   aynı görüntülerden 3–4 alternatif (fotoğraflar dahil) → seç → yalnız o parça yeniden kurulur. Faz 4'teki "Sahneleri
-   Luna ile düzenle" düğmesinin token'sız karşılığı; Faz 4 yine gerekirse.
+   aynı görüntülerden 3–4 alternatif (fotoğraflar dahil) → seç → yalnız o parça yeniden kurulur (API yok; Luna'nın
+   planı v3.6.0'dan beri `kurgu_plani.json`'da, elle değişiklik onun üstüne yazılır).
 2. **Fotoğraf desteği** (bilinen borç; editör var sanıyordu): kurgu fotoğrafları da kullanır (yavaş yakınlaşma/
    kaydırma; alan tam dolu, bulanık dolgu yok) ve sahne değiştirmede seçilebilir.
 3. **Yazıya dökme (bilgisayarda, Whisper benzeri yerel model; boyut sorun değil, bilgisayarda 32 GB RAM):** kaynak

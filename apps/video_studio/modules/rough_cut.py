@@ -153,9 +153,11 @@ def _generic(candidate: Candidate) -> bool:
     return overlap_w * overlap_h >= 0.7 * c.width * c.height
 
 
-def _source_range(candidate: Candidate, usage: _Usage, need: float) -> tuple[float, float, bool]:
+def _source_range(candidate: Candidate, usage: _Usage, need: float,
+                  prefer: float | None = None) -> tuple[float, float, bool]:
     """Pencereden kullanılabilir kaynak aralığı: (başlangıç, kullanılabilir süre, tekrar mı). Başlangıç her zaman
-    pencerenin içindedir (görüntü seçilen pencereden gelir; klip sonraki pencereye taşabilir)."""
+    pencerenin içindedir (görüntü seçilen pencereden gelir; klip sonraki pencereye taşabilir). `prefer`: Luna'nın
+    istediği an (v3.6); kullanılmışsa ya da yetmiyorsa her zamanki sıraya düşülür."""
     lead = EDGE_SECONDS if candidate.start <= candidate.shot_start else 0.0
     shot_limit = candidate.shot_end - EDGE_SECONDS
     blocked = [(start, end) for asset, start, end in usage.blocked if asset == candidate.asset_id]
@@ -180,6 +182,8 @@ def _source_range(candidate: Candidate, usage: _Usage, need: float) -> tuple[flo
     starts = [begin]
     if candidate.seen is not None:
         starts.insert(0, min(max(begin, candidate.seen - min(need, MAX_CLIP_SECONDS) / 2), window_end - 0.5))
+    if prefer is not None:
+        starts.insert(0, min(max(begin, prefer), window_end - 0.5))
     for start in starts:
         fresh = first_free(start, taken)
         if fresh < window_end - 0.5 and limit_from(fresh, taken) - fresh >= min(need, MIN_CLIP_SECONDS):
@@ -413,32 +417,43 @@ def _soundbite_clip(bite: Soundbite, clip_id: str, start_f: int, fps: int, libra
     )
 
 
-def plan_rough_cut(
-    edit_project: dict[str, Any],
-    media_library: dict[str, Any],
-    soundbites: list[Soundbite] | None = None,
-) -> dict[str, Any]:
-    """EditProject'in video_main izini kural tabanlı kliplerle doldurur.
+@dataclass
+class Prepared:
+    """Kurgunun sabit kısmı: kesitler, seslendirme sahnelerinin zamanları (duraklamalarda) ve aday pencereler.
+    Kurallı seçim ve Luna seçimi (luna_edit.py) aynı sahne zamanlarını kullanır."""
+    project: EditProject
+    library: MediaLibrary
+    candidates: list[Candidate]
+    fps: int
+    before: list[Clip]
+    after: list[Clip]
+    blocked: list[tuple[str, float, float]]
+    intro_end_f: int
+    broll_s: float
+    broll_end_f: int
+    cuts: list[float]
 
-    Sıra: seslendirme öncesi kesitler → seslendirme (dolgu görüntüleriyle) → seslendirme sonrası kesitler.
-    """
+    def slots(self) -> list[tuple[float, float, str]]:
+        """Seslendirme sahneleri: (başlangıç, bitiş, o sırada söylenen) — seslendirmenin başına göre saniye."""
+        return [(start, end, _spoken_text(self.project, start, end).strip()) for start, end in zip(self.cuts, self.cuts[1:])]
+
+
+def prepare(edit_project: dict[str, Any], media_library: dict[str, Any],
+            soundbites: list[Soundbite] | None = None) -> Prepared:
     project = EditProject.model_validate(edit_project)
     library = MediaLibrary.model_validate(media_library)
     candidates = _candidates(library)
     if not candidates:
         raise ValueError("Kurgu için analiz edilmiş video sahnesi yok.")
-
     fps = project.edit_plan.timeline.fps
-    soundbites = soundbites or []
-    usage = _Usage(blocked=[])
-    clips: list[Clip] = []
+    blocked: list[tuple[str, float, float]] = []
 
     def soundbite_clips(placement: str) -> list[Clip]:
         result = []
-        for bite in ordered(soundbites, placement):
+        for bite in ordered(soundbites or [], placement):
             clip = _soundbite_clip(bite, "", 0, fps, library, candidates)
             result.append(clip)
-            usage.blocked.append((clip.asset_id, bite.start_s, bite.end_s))
+            blocked.append((clip.asset_id, bite.start_s, bite.end_s))
         return result
 
     # Önce kesitler hazırlanır: süreleri toplamı belirler, aralıkları dolgu görüntüsünde tekrar edilmez.
@@ -448,13 +463,35 @@ def plan_rough_cut(
     # Seslendirme kısmı; video toplamda şablonun en kısa süresinden kısa kalmasın (sessiz uzatma).
     tts_s = project.audio.duration_seconds
     broll_s = max(tts_s, video_seconds(tts_s, intro_s + outro_s) - intro_s - outro_s)
-    broll_end_f = intro_end_f + round(broll_s * fps)
+    return Prepared(project, library, candidates, fps, before, after, blocked, intro_end_f, broll_s,
+                    intro_end_f + round(broll_s * fps), _cut_times(project, broll_s))
+
+
+def plan_rough_cut(
+    edit_project: dict[str, Any],
+    media_library: dict[str, Any],
+    soundbites: list[Soundbite] | None = None,
+    picks: dict[int, tuple[int, float | None]] | None = None,
+) -> dict[str, Any]:
+    """EditProject'in video_main izini doldurur.
+
+    Sıra: seslendirme öncesi kesitler → seslendirme (dolgu görüntüleriyle) → seslendirme sonrası kesitler.
+    `picks`: Luna'nın seçimi (v3.6, Faz 4) {sahne no: (aday no, kaynak başlangıcı)}; verilmeyen sahne ve pencere
+    yetmezse kalan süre kurallarla seçilir.
+    """
+    prep = prepare(edit_project, media_library, soundbites)
+    project, candidates, fps = prep.project, prep.candidates, prep.fps
+    usage = _Usage(blocked=list(prep.blocked))
+    clips: list[Clip] = []
+    before, after = prep.before, prep.after
+    intro_end_f, broll_s, broll_end_f = prep.intro_end_f, prep.broll_s, prep.broll_end_f
+    picks = dict(picks or {})  # kopyası: seçilen sahneler sırayla düşülür
 
     previous_shot: str | None = None
     previous_tokens: list[str] = []
     headline_tokens = _tokens(f"{project.news.headline_1} {project.news.headline_2}")
-    cuts = _cut_times(project, broll_s)
-    for start, end in zip(cuts, cuts[1:]):
+    cuts = prep.cuts
+    for slot, (start, end) in enumerate(zip(cuts, cuts[1:])):
         # Sahne, o sırada söylenen kelimelere göre seçilir (sessiz uzatmada son söylenenlere göre).
         tokens = _tokens(_spoken_text(project, start, end)) or previous_tokens
         previous_tokens = tokens
@@ -467,8 +504,13 @@ def plan_rough_cut(
             wanted = tokens + headline_tokens if opening else tokens  # kapak: haberin bütününü (başlıkları) anlatsın
             # Anlatımdaki yer (bu parçanın ortası, 0–1): tek uzun çekimde kaynaktaki yere eşlenir.
             story = (cursor_f + min(end_f - cursor_f, IDEAL_CLIP_SECONDS * fps) / 2 - intro_end_f) / max(1, broll_end_f - intro_end_f)
-            best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need, story), -c.order))
-            source_in, available, _ = _source_range(best, usage, need)
+            pick = picks.pop(slot, None)  # Luna'nın seçimi sahnenin başında bir kez; yetmezse kalanı kurallar
+            if pick is not None and 0 <= pick[0] < len(candidates):
+                best, prefer, origin = candidates[pick[0]], pick[1], ClipOrigin.LLM
+            else:
+                best = max(candidates, key=lambda c: (_score(c, wanted, opening, previous_shot, usage, need, story), -c.order))
+                prefer, origin = None, ClipOrigin.RULE
+            source_in, available, _ = _source_range(best, usage, need, prefer)
             # Sahne yetmezse (kısa shot) kalan süre bir sonraki en iyi sahneyle doldurulur.
             duration_f = max(1, min(end_f - cursor_f, math.floor(available * fps)))
             source_out = source_in + duration_f / fps
@@ -483,7 +525,7 @@ def plan_rough_cut(
                     start_f=cursor_f,
                     duration_f=duration_f,
                     framing=clip_framing(best, seconds=duration_f / fps, direction=1 if len(clips) % 2 else -1),
-                    origin=ClipOrigin.RULE,
+                    origin=origin,
                     reason=best.description,
                 )
             )
@@ -528,20 +570,20 @@ def _chronological(clips: list[Clip], candidates: list[Candidate], blocked: list
         if len(group) < 2:
             continue
         slots = sorted(group, key=lambda c: c.start_f)  # videodaki yerler (süreleriyle)
-        pieces = sorted(((c.source_in_s, c.framing, c.reason) for c in group), key=lambda p: p[0])
+        pieces = sorted(((c.source_in_s, c.framing, c.reason, c.origin) for c in group), key=lambda p: p[0])
         limit = shot_end.get(shot_id, math.inf) - EDGE_SECONDS
         plan, previous_out = [], 0.0
-        for slot, (source_in, framing, reason) in zip(slots, pieces):
+        for slot, (source_in, framing, reason, origin) in zip(slots, pieces):
             start = max(source_in, previous_out)
             out = start + (slot.source_out_s - slot.source_in_s)
             if out > limit + 1e-6 or any(a == slot.asset_id and s < out and start < e for a, s, e in blocked):
                 break
-            plan.append((slot, start, out, framing, reason))
+            plan.append((slot, start, out, framing, reason, origin))
             previous_out = out
         else:
-            for slot, start, out, framing, reason in plan:
+            for slot, start, out, framing, reason, origin in plan:
                 slot.source_in_s, slot.source_out_s = round(start, 3), round(out, 3)
-                slot.framing, slot.reason = framing, reason
+                slot.framing, slot.reason, slot.origin = framing, reason, origin
 
 
 def has_rough_cut(edit_project: dict[str, Any] | None) -> bool:

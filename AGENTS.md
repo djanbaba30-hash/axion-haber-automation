@@ -84,7 +84,11 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/ffmpeg_runner.py     Tüm FFmpeg/FFprobe çağrıları (işleme göre timeout)
   modules/visual_analysis.py   Luna (gpt-5.6-luna) görsel analiz çağrısı; kareler 512 px, aynı görünen kareler elenir
   modules/edit_plan.py         Deterministic EditProject 2.1 builder; shared/edit_models.py sözleşmesini üretir
-  modules/rough_cut.py         Faz 3 kural tabanlı kurgu: TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi (API yok);
+  modules/luna_edit.py         Faz 4 (v3.6): sahneleri Luna seçer — tek görüntüsüz çağrı (sahneler + pencereler → pencere +
+                               başlangıç anı, enum'lu şema); plan kurgu_plani.json (imza aynıysa yeniden çağrı yok;
+                               "yeniden seç" önceki kurguyu "beğenilmedi" diye gönderir); olmazsa kurallar
+  modules/rough_cut.py         Faz 3 kural tabanlı kurgu (v3.6'dan beri yedek + Luna'nın bıraktığını doldurma; `prepare` ortak
+                               hazırlık, `plan_rough_cut(picks=)`): TTS duraklamalarında kesme (2–5 sn sahneler) → sahne penceresi;
                                aynı çekim kaynak sırasıyla, tek uzun çekimde anlatım sırası, dikeyde sabit kadraj
   modules/framing.py           Akıllı kadraj: bulanık/siyah kenar tespiti (önce DHA'nın sınır çizgisi çifti; analiz karelerinden,
                                numpy/Pillow, API yok)
@@ -92,7 +96,7 @@ apps/video_studio/             VIDEO STÜDYOSU
   modules/moment.py            Kesitin varsayılan aralığı = olay anı (ani hareket/ses + Luna "action"; API yok)
   modules/render.py            EditProject → tek FFmpeg komutu → kaba_kurgu.mp4 (h264_amf varsa, yoksa x264); ses: parça
                                başına ölçülmüş sabit kazanç (TTS -18, kesit -20 LUFS), kenar yumuşatma, -2 dBFS sınırlayıcı
-  jobs.py                      Videoyu arka planda üretme: kaba kurgu → son video (aynı haberin tasarım üretimi önce
+  jobs.py                      Videoyu arka planda üretme: sahne seçimi (Luna, PlanRequest) → kaba kurgu → son video (aynı haberin tasarım üretimi önce
                                durdurulur); sayfa saniyede bir durumu yeniler, tablet kapansa da sürer
 
 apps/design_studio/            TASARIM STÜDYOSU (Faz 5, sade Canva; API yok)
@@ -193,7 +197,17 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.5.1
+## Nerede kaldık (2026-09-26) — Sürüm 3.6.0
+
+**3.6.0 = Faz 4 (editör kararı: 4.0'dan önceki son büyük güncelleme):** sahneleri Luna seçer (`luna_edit.py`; ayrıntı
+CHANGELOG). Gerçek Luna ile denenmedi (sandbox'ta anahtar yok); editörün ilk gerçek haberi: sahne tablosu + token.
+Kurallı kurgu artık yedek; kurallarını ayrıca geliştirme (editör). Aynı çekimin parçaları yine kaynak sırasına dizilir
+(`_chronological`, Luna'nın seçtiği parçalar da; etiket `origin` parçayla taşınır).
+**Açık (editörün kararı bekleniyor): teşhis dosyaları.** Editör "uzaktan güncellediğimde proje dosyaları (media_library,
+edit_project) repoya gitsin, bir gün tutulsun" dedi. Repo **herkese açık**; taslak (ayrı `teshis` dalı, geçmişsiz tek
+commit, DHA ham metni çıkarılmış, 24 saatte silinir, `GITHUB_TOKEN` gerekir) yazıldı ama commit edilmedi: anahtarı
+yükleme koduna bağlarken ortamın izin denetimi durdurdu; editöre soruldu (herkese açık repo, token, alternatif:
+repoyu özel yapmak ya da tablete indirilecek teşhis paketi).
 
 **3.5.1 (editörün tablet denemesi):** seçim kutuları yazmasız (`filter_mode=None`, klavye açılmaz; test kaynağı
 tarar), Tarayıcı'da kaymış kalan görüntü 0,8 sn'de yerine oturur (`viewer.js` `settle`), "yeniden üret" başlıkları

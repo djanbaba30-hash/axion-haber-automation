@@ -26,3 +26,12 @@ def no_update_check(monkeypatch):
 
     monkeypatch.setattr(update_check, "status", lambda now=None: None)
 
+
+
+@pytest.fixture(autouse=True)
+def no_luna_edit_calls(monkeypatch):
+    """Testlerde sahne seçimi için gerçek Luna çağrısı yapılmaz (kurallara düşülür); Luna kurgusu kendi testinde."""
+    def offline(*args, **kwargs):
+        raise RuntimeError("testte Luna yok")
+
+    monkeypatch.setattr("apps.video_studio.modules.luna_edit.request", offline)
