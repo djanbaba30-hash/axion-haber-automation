@@ -191,16 +191,15 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 
 ## Nerede kaldık (2026-09-26) — Sürüm 3.4.3
 
-**3.4.3:** editör sabah `guncelle.bat` ile v3.4.2'yi aldı (Axion açık). İsteği: güncelleme kontrolü daha sık → 2 dk'da
-bir (`INTERVAL_SECONDS`), kenar çubuğu satırı `@st.fragment(run_every=30)` ile dokunmadan yenilenir. Editör bu sürümü
-telefondan "⬇️ Güncelle ve yeniden başlat" ile almayı deneyecek (Windows'ta bekçinin kod 3 yolunun ilk gerçek denemesi;
-çalışan v3.4.2 yarım saatte bir kontrol ediyor ve satırı yalnız dokununca yeniler). Sonuç bekleniyor.
+**3.4.3:** güncelleme kontrolü 2 dk'da bir (`INTERVAL_SECONDS`), kenar çubuğu satırı `@st.fragment(run_every=30)` ile
+dokunmadan yenilenir. Editör v3.4.2'yi sabah, v3.4.3'ü de kendisi (`guncelle.bat`) aldı: **uygulamadan güncelleme
+(bekçinin kod 3 yolu) Windows'ta hâlâ denenmedi.** Bu belge güncellemesi repoyu değiştirdiği için deneme fırsatıdır:
+editörün Axion'unda birkaç dakikada 🔴 çıkmalı → telefondan "⬇️ Güncelle ve yeniden başlat" → ~yarım dakikada sayfa
+kendiliğinden gelir, 🟢 görünür. Olmazsa `data\axion.log` ile bakılır; o gün evde `guncelle.bat`.
 
 **3.4.1–3.4.2:** kenar çubuğunda güncelleme göstergesi + "⬇️ Güncelle ve yeniden başlat" (editör isteği; tabletten
 de): `update_check.apply_update` (git pull --ff-only) → çıkış kodu 3 → bekçi pip kurar, yeniden başlatır; sayfa
-kendiliğinden yenilenir (`update_check.reload_when_back`). Sandbox'ta uçtan uca denendi; Windows'ta denenmedi. Editörün
-bilgisayarında şu an v3.4.0 (gösterge ve düğme yok): sabah bir kez `guncelle.bat` + masaüstü simgesi gerekir; göstergeyi
-ve düğmeyi ilk kez bir SONRAKİ sürümde görecek.
+kendiliğinden yenilenir (`update_check.reload_when_back`). Sandbox'ta uçtan uca denendi (tarayıcıyla, 3.4.3'te de).
 
 **3.4.0:** "Sıradaki: v3.4.0" planı yapıldı (aşağıdaki bölüm; ayrıntı CHANGELOG). Kurgu olay örgüsü (aralık bazlı
 kullanım, tek uzun çekimde anlatım sırası, Luna'nın gördüğü kare çevresi, öznesiz pencere geride), kenar tespiti sınır
@@ -212,12 +211,21 @@ başarılı" (olay sırasıyla, net şeridin tamamı). Gerçek kullanım: Haber 
 ≈ $0.0013. Haber başına toplam ~$0.002.
 Tailscale kuruldu: evdeki bilgisayar + telefon (mobil veriyle) Axion'u açtı.
 
-**Sıradaki (4.0'dan önce, editörün onayladığı liste; ROADMAP "Sıradaki işler" 8):**
-1. ~~Editör sabah `guncelle.bat`~~ (yapıldı, 2026-09-26); telefondan 3.4.3'e uzaktan güncelleme denemesi sürüyor.
-2. Editör dükkânda tabletten tam akışı dener (haber → ses → Tarayıcı'dan DHA → video); notlarını getirir → yapılır.
-3. Günlük/aylık toplam maliyet (Geliştirici bilgileri; history.sqlite3 + media_library analiz kayıtları).
-4. Bunlar bitince sürüm 4.0 (CHANGELOG, belgeler). Bir sonraki sürüm yayımlanınca editör tabletten "⬇️ Güncelle ve
-   yeniden başlat"ı ilk kez gerçek dener (Windows'ta bekçinin kod 3 yolu henüz denenmedi; olmazsa evde guncelle.bat).
+**Sıradaki: 4.0'dan önce yapılabilecekler (editörün onayladığı liste; ROADMAP "Sıradaki işler" 8):**
+1. **Uygulamadan güncellemeyi gerçek dene** (yukarıda; bu belge commit'iyle). Olursa bundan sonraki her sürüm
+   tabletten alınabilir; olmazsa önce bu düzeltilir (4.0 buna dayanıyor: editör dükkândayken sürüm alabilmeli).
+2. **Dükkânda tabletten tam akış** (haber → ses → Tarayıcı'dan DHA → video → Tasarım → indir/paylaş). Editör notlarını
+   getirir → küçük, testli commit'lerle yapılır. Özellikle bakılacaklar: Tailscale üzerinden Tarayıcı hızı ve akış
+   kanalı, gerçek DHA paneliyle giriş kaydı/otomatik doldurma, arka planda video (tablet kapanınca), "✅ videosu hazır"
+   bildirimi, paylaşım metni kopyalama.
+3. **Günlük/aylık toplam maliyet** (ROADMAP g): Geliştirici bilgileri altında tek küçük tablo; kaynak
+   `history.sqlite3` (haber çağrıları) + projelerin `media_library.json` analiz kayıtları. 3 gün saklama yüzünden aylık
+   toplam için ayrı, silinmeyen küçük bir özet gerekir (ör. `data/maliyet.jsonl`, satır başına gün + $). API yok.
+4. **Editörün denemesi beklenen açıklar** (yukarıdaki listeler): başlık küçük çağrısının kalitesi, kesit aralığı
+   (güvenlik kamerası), 512 px analizde kadraj isabeti. Şikâyet gelirse `rough_cut`/`framing` kurallarıyla (API'siz).
+5. **Sürüm 4.0:** yukarıdakiler bitince; CHANGELOG'da 3.x özeti, KURULUM gözden geçirme (ekran adları, güncelleme
+   bölümü), AGENTS "Nerede kaldık"ın 3.x geçmişini kısaltma (ayrıntı CHANGELOG'da kalır), `make test` + Windows'ta
+   `windows\testler.bat`. Yeni özellik eklenmez.
 İstenmeyenler ve sonraya kalanlar ROADMAP'te (tekrar önerme). Yeni oturum AGENTS.md + ROADMAP'ten başlar.
 
 **3.3.2:** Brave DHA indirmelerinde çöküyordu (editörün günlüğü); indirmeleri artık Axion yapar (`service.fetch_file`:

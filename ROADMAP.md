@@ -116,9 +116,10 @@ kontrolü kaldırmak değil, hızlandırmak.
      sunucuda; editör çoğunlukla tabletten kullanıyor), değiştirilmedi.
    - Açık karar: sistem komutunu kısaltmak (v3.3 plan 5. adım) — önbellek tuttuğu için gerek görülmüyor.
    - **Yapıldı (editör isteği, 3.4.1–3.4.2):** 🟢/🔴 güncelleme göstergesi + uygulamadan (tabletten) "Güncelle ve yeniden
-     başlat". Editör 2026-09-26 sabahı `guncelle.bat` ile aldı; 3.4.3 (kontrol 2 dk'da bir, satır kendiliğinden
-     yenilenir) ilk gerçek uzaktan güncelleme denemesi.
-   - **4.0'dan önce yapılacaklar (editörün onayladığı liste):** (1) günlük/aylık maliyet (g), (2) editörün dükkândaki
+     başlat"; 3.4.3: kontrol 2 dk'da bir, satır kendiliğinden yenilenir. Editör 3.4.2 ve 3.4.3'ü `guncelle.bat` ile
+     aldı; uygulamadan güncellemenin Windows'taki ilk denemesi sıradaki commit'le (AGENTS "Nerede kaldık").
+   - **4.0'dan önce yapılacaklar (editörün onayladığı liste):** (0) uygulamadan güncellemenin gerçek denemesi,
+     (1) günlük/aylık maliyet (g), (2) editörün dükkândaki
      tablet denemesinin notları. Bunlar bitince sürüm 4.0. İsteğe bağlı sonra: Luna ile sahne düzenleme (i).
 
 Gerekmeyenler: Windows açılışında otomatik başlatma. (Haber metni: DHA'nın "metni kopyala"sı uzaktan tablete
