@@ -212,6 +212,7 @@ Tailscale'deki `100.x.x.x`); Windows Home ise **Chrome Uzaktan Masaüstü** ya d
 Yeni bir sürüm çıktığında `C:\Axion\windows\guncelle.bat` dosyasına çift tıkla.
 Yeni sürüm olduğunu Axion kendisi gösterir: kenar çubuğunun altında **🔴 Güncelleme var** yazar (güncelse
 **🟢 Axion güncel**; birkaç dakikada bir kendiliğinden kontrol edilir, tabletten de görünür).
+Tabletin ekranı kapansa ya da başka uygulamaya geçsen de Axion'da yazdıkların 3 saat korunur.
 Dükkândayken (bilgisayara erişim yokken) **🔴 Güncelleme var**'ın altındaki **⬇️ Güncelle ve yeniden başlat**'a bas:
 Axion yeni sürümü indirir, kendini yeniden başlatır; sayfa yarım dakika içinde kendiliğinden geri gelir. Video
 oluşturuluyorsa bitmesini bekle. Düğme, Axion masaüstündeki simgeyle açıldıysa görünür.

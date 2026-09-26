@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BRANCH = "main"
 INTERVAL_SECONDS = 2 * 60
-REFRESH_SECONDS = 30  # kenar çubuğundaki satır dokunmadan bu sıklıkla yenilenir (kontrolün sonucu görünsün)
+REFRESH_SECONDS = 120  # kenar çubuğundaki satır dokunmadan bu sıklıkla yenilenir (v3.7.1: 30 sn tablette sık göz kırpıyordu)
 TIMEOUT_SECONDS = 15
 PULL_TIMEOUT_SECONDS = 180
 RESTART_CODE = 3  # bekçiye: "güncellendi, paketleri kontrol et ve hemen yeniden başlat" (çökme sayılmaz)

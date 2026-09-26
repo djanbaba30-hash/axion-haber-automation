@@ -6,6 +6,9 @@ maxUploadSize = 4096
 # Kod değişince modülleri yeniden yükleme: bellekteki nesneler (ses zamanları, arka plan işleri) bozulmasın.
 # Güncelleme zaten Axion'u yeniden başlatır (guncelle.bat).
 fileWatcherType = "none"
+# Tablette ekran kapanınca ya da başka uygulamaya geçince bağlantı kopar. Streamlit kopan oturumu varsayılan 2 dk
+# saklıyordu; dönünce sayfa sıfırdan açılıyor, yazılan haber kayboluyordu (editör, v3.7.1). 3 saat saklanır.
+disconnectedSessionTTL = 10800
 
 [browser]
 gatherUsageStats = false

@@ -127,7 +127,7 @@ def accumulate(total: dict | None, usage: dict) -> dict:
     return out
 
 
-@st.fragment(run_every=60)
+@st.fragment(run_every=120)  # dakika sayacı; 2 dk'da bir yeter (sayfa boşta sık yenilenmesin)
 def cache_status(provider: str, model_id: str) -> None:
     """Sistem komutu önbellekte mi (tahmin: son haber + önbellek süresi). Sıcakken sistem komutu ~%10 fiyatına gider."""
     left = cost.minutes_left(data_dir(), provider, model_id)

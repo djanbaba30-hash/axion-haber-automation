@@ -1,3 +1,17 @@
+# v3.7.1 — Tablette ekran kapanınca yazılanlar kaybolmaz; boştaki sayfa daha sakin — 2026-09-26
+
+Editör: "sayfa inaktifken arada kendini mi yeniliyor?"
+
+## Fixed
+- **Asıl neden: kopan bağlantı 2 dk sonra oturumu siliyordu.** Tablette ekran kapanınca ya da başka uygulamaya
+  geçince bağlantı kopar; Streamlit kopan oturumu varsayılan 2 dk saklıyordu. Daha uzun ayrı kalınca geri dönüşte
+  sayfa sıfırdan açılıyor, yazılan ham haber, başlıklar, ses gidiyordu. Artık 3 saat saklanır
+  (`.streamlit/config.toml` `disconnectedSessionTTL = 10800`). Tarayıcıda denendi (bağlantı sayfanın içinden
+  koparılıp 160 sn engellendi): eski ayarla ham haber kutusu boşaldı, yeni ayarla yerinde kaldı.
+- **Boştayken kendiliğinden yenilenen parçalar seyreldi:** kenar çubuğundaki güncelleme satırı 30 sn'de bir, Haber
+  Stüdyosu'ndaki önbellek sayacı 60 sn'de bir sunucuya soruyordu (tablette sağ üstte kısa "çalışıyor" göstergesi).
+  İkisi de artık 2 dk'da bir. Sayfanın tamamı hiç yenilenmiyordu (ölçüldü: yazılan metin ve imleç yerinde kalıyor).
+
 # v3.7.0 — Luna kurguyu haberi bilerek yapar — 2026-09-26
 
 Editör: "Faz 4'ü verimli geliştirmek için elimizden geleni yapalım; yapay zekâ olay örgüsünü, haberin konusunu bilerek

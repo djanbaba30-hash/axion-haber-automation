@@ -997,3 +997,19 @@ def test_diagnostics_file_for_the_developer(local_env):
     assert "(eksik)" in total  # bu testin haberinde metin maliyeti kayıtlı değil (eski proje gibi)
     assert any("sahne seçimi" in c.value and "haber metni —" in c.value for c in at.caption)
     assert any("yalnız bu adımın" in m.value for m in at.markdown)
+
+
+def test_tablet_session_survives_a_disconnect_and_idle_page_stays_quiet():
+    """Editör (v3.7.1): "sayfa inaktifken kendini mi yeniliyor?" Tablette ekran kapanınca bağlantı kopar; Streamlit
+    kopan oturumu 2 dk saklıyordu, dönünce sayfa sıfırlanıyordu → 3 saat. Boştaki sayfada kendiliğinden yenilenen
+    parçalar (güncelleme satırı, önbellek sayacı) en sık 2 dk'da bir."""
+    import re
+    import tomllib
+
+    from apps.axion_local import update_check
+
+    config = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
+    assert config["server"]["disconnectedSessionTTL"] >= 3 * 3600
+    assert update_check.REFRESH_SECONDS >= 120
+    source = (ROOT / "apps" / "news_studio" / "page.py").read_text(encoding="utf-8")
+    assert all(int(n) >= 120 for n in re.findall(r"run_every=(\d+)\)", source))

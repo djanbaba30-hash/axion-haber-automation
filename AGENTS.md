@@ -54,7 +54,7 @@ apps/axion_local/
   presence.py                  Aynı haber iki cihazda açık mı (oturum → haber; bağlı mı: Streamlit oturum yöneticisi)
   metrics.py                   Adım süreleri → data/olcumler.jsonl (geliştirici için; `timed(...)`)
   update_check.py              🟢/🔴 güncelleme göstergesi: git HEAD ↔ `ls-remote origin main` (arka planda, 2 dk'da bir;
-                               satır fragment, 30 sn'de kendiliğinden yenilenir);
+                               satır fragment, 2 dk'da kendiliğinden yenilenir);
                                uygulamadan güncelleme (`git pull`, çıkış kodu 3 → bekçi pip + yeniden başlatır);
                                önceki sürüm data/guncelleme_onceki.txt, geri dönüş uyarısı; sürüm = CHANGELOG ilk başlığı
   self_check.py                Açılış kontrolü (bekçi güncellemeden sonra çalıştırır): derle, içe aktar, 3 sayfayı AppTest
@@ -201,7 +201,12 @@ Tarayıcı ──indir────────────►   İndirilenler/<d
 | Tarayıcıyla indirilen videolar | İndirilenler (yarımken `.iniyor` uzantılı) | Axion silmez |
 
 
-## Nerede kaldık (2026-09-26) — Sürüm 3.7.0
+## Nerede kaldık (2026-09-26) — Sürüm 3.7.1
+
+**3.7.1:** tablette ekran kapanınca oturum 2 dk'da siliniyordu (Streamlit `disconnectedSessionTTL` varsayılanı) →
+3 saat (config.toml; tarayıcıda koparma testiyle doğrulandı). Boştaki sayfada fragment'lar (güncelleme satırı,
+önbellek sayacı) 2 dk'da bir. Yeni `run_every` eklerken tabletin yavaş bağlantısını düşün (her biri sağ üstte
+"çalışıyor" gösterir).
 
 **3.7.0 (editör: "Luna olay örgüsünü, haberin konusunu bilerek kurgu yapsın"):** sahne seçimine haberin anlatımı
 (paylaşım metninin başı) ve pencere ipuçları (mekân, karedeki yazı, insan) gider; Luna önce `olay_orgusu`, sahne başına
